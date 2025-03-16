@@ -1,7 +1,5 @@
 <?php
 
-// app/Models/User.php
-
 namespace App\Models;
 
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -17,15 +15,14 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'bank_account',
+        'id_number',
         'phone_number',
         'gender',
         'birth_date',
         'address',
         'description',
         'profile_photo_path',
-        'cv_path',
-        'portfolio_path',
-        'role',
     ];
 
     protected $hidden = [
@@ -35,7 +32,20 @@ class User extends Authenticatable
 
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'birth_date' => 'date',
     ];
+
+    // Relasi ke Education
+    public function educations()
+    {
+        return $this->hasMany(UserEducation::class);
+    }
+
+    // Relasi ke Documents
+    public function documents()
+    {
+        return $this->hasMany(UserDocument::class);
+    }
 
     // Relasi ke Project (sebagai pemilik proyek)
     public function ownedProjects()
@@ -54,5 +64,23 @@ class User extends Authenticatable
     public function tasks()
     {
         return $this->hasMany(Task::class, 'assigned_to');
+    }
+    
+    // Helper untuk mendapatkan CV
+    public function getCv()
+    {
+        return $this->documents()->where('type', 'cv')->latest()->first();
+    }
+    
+    // Helper untuk mendapatkan Portfolio
+    public function getPortfolio()
+    {
+        return $this->documents()->where('type', 'portfolio')->latest()->first();
+    }
+    
+    // Helper untuk mendapatkan Certificates
+    public function getCertificates()
+    {
+        return $this->documents()->where('type', 'certificate')->get();
     }
 }

@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Project;
 use App\Models\Category;
+use App\Models\ActivityLog;
 
 class ProjectController extends Controller
 {
@@ -32,6 +33,12 @@ class ProjectController extends Controller
         
         return view('dashboard', compact('projects', 'userProjects'));
     }
+
+    // Menampilkan detail proyek
+public function show(Project $project)
+{
+    return view('projects.show', compact('project'));
+}
 
     // Menampilkan daftar proyek
     public function index()
@@ -131,5 +138,30 @@ class ProjectController extends Controller
 
     // Tampilkan view dengan data proyek dan flag isOwner
     return view('projects.my-projects', compact('projects', 'isOwner'));
+}
+
+// Di ProjectController.php, tambahkan method ini:
+
+public function projectDashboard(Project $project)
+{
+    // Ambil 4 aktivitas terbaru untuk proyek ini
+    $recentActivities = ActivityLog::where('project_id', $project->id)
+                                 ->with('user') // Eager load relasi user
+                                 ->orderBy('created_at', 'desc')
+                                 ->take(4)
+                                 ->get();
+
+    // Data lainnya (task stats, workers, dll.)
+    $tasks = $project->tasks;
+    $taskStats = [
+        'todo' => $tasks->where('status', 'To Do')->count(),
+        'in_progress' => $tasks->where('status', 'In Progress')->count(),
+        'review' => $tasks->where('status', 'review')->count(),
+        'done' => $tasks->where('status', 'Done')->count(),
+    ];
+    $inProgressTasks = $tasks->where('status', 'In Progress');
+    $workers = $project->workers;
+
+    return view('projects.dashboard', compact('project', 'taskStats', 'inProgressTasks', 'workers', 'recentActivities'));
 }
 }

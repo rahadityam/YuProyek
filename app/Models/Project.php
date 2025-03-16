@@ -18,6 +18,7 @@ class Project extends Model
         'budget',
         'status',
         'owner_id',
+        'wip_limits',
     ];
 
     // Relasi ke User (pemilik proyek)
@@ -44,4 +45,14 @@ class Project extends Model
     {
         return $this->belongsToMany(Category::class, 'project_categories');
     }
+
+    public function wageStandards()
+    {
+        return $this->hasMany(WageStandard::class);
+    }
+    
+    public function activityLogs()
+{
+    return $this->hasMany(ActivityLog::class)->orderBy('created_at', 'desc');
+}
 }

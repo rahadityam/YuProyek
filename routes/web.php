@@ -1,10 +1,13 @@
 <?php
 
+use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\ProjectApplicationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SettingController;
+use App\Http\Controllers\WageStandardController;
 use Illuminate\Support\Facades\Route;
 
 // Halaman Utama
@@ -34,15 +37,35 @@ Route::middleware('auth')->group(function () {
 
     // Halaman di dalam proyek
     Route::prefix('projects/{project}')->group(function () {
-        Route::get('/dashboard', function ($project) {
-            return view('projects.dashboard', compact('project'));
-        })->name('projects.dashboard');
+        Route::get('/dashboard', [ProjectController::class, 'projectDashboard'])->name('projects.dashboard');
 
         Route::get('/kanban', [TaskController::class, 'kanban'])->name('projects.kanban');
         Route::get('/penggajian', [PaymentController::class, 'index'])->name('projects.penggajian');
-        Route::get('/pembayaran', [PaymentController::class, 'payment'])->name('projects.pembayaran');
         Route::get('/pengaturan', [SettingController::class, 'index'])->name('projects.pengaturan');
+
+        Route::get('/pembayaran', [PaymentController::class, 'payment'])->name('projects.pembayaran');
+        Route::post('/pembayaran/store', [PaymentController::class, 'storePayment'])->name('projects.storePayment');
+        Route::patch('/pembayaran/{payment}/status', [PaymentController::class, 'updateStatus'])->name('payments.updateStatus');
+        Route::delete('/pembayaran/{payment}', [PaymentController::class, 'destroy'])->name('payments.destroy');
+
+
+        // Activity Log Route
+        Route::get('/aktivitas', [ActivityController::class, 'index'])->name('projects.activity');
+        Route::get('/aktivitas/filter', [ActivityController::class, 'filter'])->name('projects.activity.filter');
+
+        // Wage Standards routes
+        Route::get('/wage-standards', [WageStandardController::class, 'index'])->name('projects.wage-standards.index');
+        Route::get('/wage-standards/create', [WageStandardController::class, 'create'])->name('projects.wage-standards.create');
+        Route::post('/wage-standards', [WageStandardController::class, 'store'])->name('projects.wage-standards.store');
+        Route::get('/wage-standards/{wageStandard}/edit', [WageStandardController::class, 'edit'])->name('projects.wage-standards.edit');
+        Route::put('/wage-standards/{wageStandard}', [WageStandardController::class, 'update'])->name('projects.wage-standards.update');
+        Route::delete('/wage-standards/{wageStandard}', [WageStandardController::class, 'destroy'])->name('projects.wage-standards.destroy');
     });
+
+    Route::get('/user/switch-role/{role}', [ProfileController::class, 'switchRole'])->name('user.switch-role');
+
+    Route::get('/projects/{project}/apply', [ProjectApplicationController::class, 'create'])->name('projects.apply');
+    Route::post('/projects/{project}/apply', [ProjectApplicationController::class, 'store'])->name('projects.apply.store');
     // Rute untuk Manajemen Tugas (Tasks)
     Route::resource('tasks', TaskController::class);
     Route::patch('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.updateStatus');

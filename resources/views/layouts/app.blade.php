@@ -23,28 +23,28 @@
     </div>
 
     <div class="flex flex-1">
-    <!-- Sidebar hanya muncul jika ada project_id di URL -->
-@if(request()->segment(1) === 'projects' && is_numeric(request()->segment(2)))
-    <div class="w-64 bg-white text-[#6D6D6D] pl-8 pr-2 pt-4 pb-4 overflow-y-auto" style="height: calc(100vh - 4rem);">
-        @include('components.sidebar', ['projectId' => request()->segment(2)])
-    </div>
-@endif
+        <!-- Sidebar hanya muncul jika ada project_id di URL dan bukan halaman detail project -->
+        @if(request()->segment(1) === 'projects' && is_numeric(request()->segment(2)) && request()->segment(3))
+            <div class="w-64 bg-white text-[#6D6D6D] pl-8 pr-2 pt-4 pb-4 overflow-y-auto" style="height: calc(100vh - 4rem);">
+                @include('components.sidebar', ['projectId' => request()->segment(2)])
+            </div>
+        @endif
 
-
-    <!-- Scrollable Main Content -->
-    <div class="flex-1 p-6 overflow-y-auto" style="height: calc(100vh - 4rem);">
-        <main>
-            {{ $slot }}
-        </main>
+        <!-- Scrollable Main Content -->
+        <div class="flex-1 overflow-y-auto" style="height: calc(100vh - 4rem);">
+            <main>
+                {{ $slot }}
+            </main>
+        </div>
     </div>
-</div>
 
 </div>
 <!-- Panggil Alpine.js -->
 <script src="{{ asset('js/bundle.js') }}" defer></script>
-<script src="https://unpkg.com/lucide@latest"></script>
-<script>
+<!-- <script src="https://unpkg.com/lucide@latest"></script> -->
+<!-- <script>
   lucide.createIcons(); // Inisialisasi ikon
-</script>
+</script> -->
+@stack('scripts')
 </body>
 </html>

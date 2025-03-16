@@ -7,7 +7,8 @@
 
     <div class="py-2">
         <div class="max-w-full mx-auto sm:px-6 lg:px-8">
-            <div class="flex flex-row space-x-8" style="height: calc(100vh - 130px);">
+            
+            <div class="flex flex-row pt-6 pr-6 space-x-8" style="height: calc(100vh - 110px);">
                 <!-- Global Projects (Left Side) - Fixed width -->
                 <div class="w-3/4 overflow-y-auto pr-2" style="flex: 0 0 75%;">
                     <div>
@@ -31,9 +32,10 @@
                                                 {{ ucfirst(str_replace('_', ' ', $project->status)) }}
                                             </span>
                                         </div>
-                                        <div class="mt-3">
-                                            <a href="{{ route('projects.show', $project) }}" class="text-sm text-blue-600 hover:text-blue-800">View Details</a>
-                                        </div>
+                                        <a href="{{ route('projects.show', $project->id) }}" 
+                                        class="mt-4 inline-block bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition duration-200">
+                                            Lihat Detail
+                                        </a>
                                     </div>
                                 @endforeach
                             </div>
@@ -51,7 +53,7 @@
                                 </h3>
                                 <a href="{{ route('projects.my-projects') }}" class="text-sm text-blue-600 hover:text-blue-800">View All</a>
                             </div>
-                            <div class="grid grid-cols-1 gap-4 overflow-y-auto pr-2 flex-grow">
+                            <div class="grid grid-cols-1 gap-4 overflow-y-auto pr-2">
                                 @if(count($userProjects) > 0)
                                     @foreach($userProjects as $project)
                                         <div class="border rounded-lg shadow p-4 hover:shadow-md transition">
@@ -67,9 +69,10 @@
                                                     {{ ucfirst(str_replace('_', ' ', $project->status)) }}
                                                 </span>
                                             </div>
-                                            <div class="mt-3">
-                                                <a href="{{ route('projects.show', $project) }}" class="text-sm text-blue-600 hover:text-blue-800">View Details</a>
-                                            </div>
+                                            <a href="{{ route('projects.dashboard', $project->id) }}" 
+                       class="mt-4 inline-block bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition duration-200">
+                        Lihat Detail
+                    </a>
                                         </div>
                                     @endforeach
                                 @else

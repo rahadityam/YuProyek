@@ -56,7 +56,7 @@
                     </div>
 
                     <!-- Tombol Detail -->
-                    <a href="{{ route('projects.show', $project->id) }}" 
+                    <a href="{{ route('projects.dashboard', $project->id) }}" 
                        class="mt-4 inline-block bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition duration-200">
                         Lihat Detail
                     </a>
