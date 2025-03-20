@@ -19,13 +19,8 @@ return new class extends Migration
             
             if (Schema::hasColumn('tasks', 'user_id')) {
                 // Cek apakah ada foreign key pada kolom user_id
-                $foreignKeys = $this->listTableForeignKeys('tasks');
-                foreach ($foreignKeys as $foreignKey) {
-                    if (in_array('user_id', $foreignKey['columns'])) {
-                        $table->dropForeign($foreignKey['name']);
-                        break;
-                    }
-                }
+                $table->dropForeign(['user_id']);
+
                 $table->dropColumn('user_id');
             }
             
