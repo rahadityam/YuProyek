@@ -164,4 +164,32 @@ public function projectDashboard(Project $project)
 
     return view('projects.dashboard', compact('project', 'taskStats', 'inProgressTasks', 'workers', 'recentActivities'));
 }
+/**
+ * Display team members and applicants for a project.
+ *
+ * @param  \App\Models\Project  $project
+ * @return \Illuminate\Http\Response
+ */
+public function teamMembers(Project $project)
+{
+    // Check if user is authorized to view team members
+    // $this->authorize('view', $project);
+    
+    // Get the project owner
+    $owner = $project->owner;
+    
+    // Get active project members (accepted status)
+    $members = $project->workers()
+        ->wherePivot('status', 'accepted')
+        ->withPivot('position')
+        ->get();
+    
+    // Get applicants (applied status)
+    $applicants = $project->workers()
+        ->wherePivot('status', 'applied')
+        ->withPivot('position')
+        ->get();
+    
+    return view('projects.team', compact('project', 'owner', 'members', 'applicants'));
+}
 }

@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Project;
 use App\Models\ProjectUser;
+use App\Models\User;
 use App\Models\ActivityLog;
 
 class ProjectApplicationController extends Controller
@@ -70,4 +71,86 @@ class ProjectApplicationController extends Controller
         return redirect()->route('projects.show', $project)
             ->with('success', 'Your application has been submitted successfully!');
     }
+
+    /**
+ * Update application status (accept or reject).
+ *
+ * @param  \Illuminate\Http\Request  $request
+ * @param  \App\Models\Project  $project
+ * @param  \App\Models\User  $user
+ * @return \Illuminate\Http\Response
+ */
+public function updateStatus(Request $request, Project $project, User $user)
+{
+    // Authorize that the current user is the project owner
+    if ($project->owner_id !== Auth::id()) {
+        abort(403, 'Unauthorized action.');
+    }
+    
+    // Validate the request
+    $request->validate([
+        'status' => 'required|in:accepted,rejected',
+    ]);
+    
+    // Update the project user status
+    $projectUser = ProjectUser::where('project_id', $project->id)
+        ->where('user_id', $user->id)
+        ->first();
+    
+    if (!$projectUser) {
+        return redirect()->route('projects.team', $project)
+            ->with('error', 'Application not found.');
+    }
+    
+    $projectUser->status = $request->status;
+    $projectUser->save();
+    
+    // Log the activity
+    ActivityLog::create([
+        'project_id' => $project->id,
+        'user_id' => Auth::id(),
+        'action' => $request->status == 'accepted' ? 'accepted_application' : 'rejected_application',
+        'description' => $request->status == 'accepted' 
+            ? 'accepted ' . $user->name . '\'s application as ' . $projectUser->position
+            : 'rejected ' . $user->name . '\'s application',
+    ]);
+    
+    $message = $request->status == 'accepted' 
+        ? $user->name . ' has been added to the team.'
+        : $user->name . '\'s application has been rejected.';
+        
+    return redirect()->route('projects.team', $project)
+        ->with('success', $message);
+}
+
+/**
+ * Remove a member from the project.
+ *
+ * @param  \App\Models\Project  $project
+ * @param  \App\Models\User  $user
+ * @return \Illuminate\Http\Response
+ */
+public function removeMember(Project $project, User $user)
+{
+    // Authorize that the current user is the project owner
+    if ($project->owner_id !== Auth::id()) {
+        abort(403, 'Unauthorized action.');
+    }
+    
+    // Delete the project user relationship
+    ProjectUser::where('project_id', $project->id)
+        ->where('user_id', $user->id)
+        ->delete();
+    
+    // Log the activity
+    ActivityLog::create([
+        'project_id' => $project->id,
+        'user_id' => Auth::id(),
+        'action' => 'removed_member',
+        'description' => 'removed ' . $user->name . ' from the project',
+    ]);
+    
+    return redirect()->route('projects.team', $project)
+        ->with('success', $user->name . ' has been removed from the team.');
+}
 }

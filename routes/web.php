@@ -48,6 +48,10 @@ Route::middleware('auth')->group(function () {
         Route::patch('/pembayaran/{payment}/status', [PaymentController::class, 'updateStatus'])->name('payments.updateStatus');
         Route::delete('/pembayaran/{payment}', [PaymentController::class, 'destroy'])->name('payments.destroy');
 
+        // Add these inside the prefix('projects/{project}') group
+        Route::get('/team', [ProjectController::class, 'teamMembers'])->name('projects.team');
+        Route::patch('/team/{user}/update-status', [ProjectApplicationController::class, 'updateStatus'])->name('projects.application.updateStatus');
+        Route::delete('/team/{user}/remove', [ProjectApplicationController::class, 'removeMember'])->name('projects.team.remove');
 
         // Activity Log Route
         Route::get('/aktivitas', [ActivityController::class, 'index'])->name('projects.activity');

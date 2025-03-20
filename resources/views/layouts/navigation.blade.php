@@ -11,6 +11,12 @@
                     </a>
                 </div>
 
+                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex items-end h-16">
+                    <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+                        {{ __('Home') }}
+                    </x-nav-link>
+                </div>
+
                 <!-- Navigation Links - Positioned to align with bottom border -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex items-end h-16">
                     <x-nav-link :href="route('projects.index')" :active="request()->routeIs('projects.index')">
