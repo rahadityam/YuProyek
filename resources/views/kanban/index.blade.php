@@ -5,6 +5,149 @@
             {{ __('Kanban Board') }} - {{ $project->name }}
         </h2>
     </x-slot>
+    <!-- Di dalam x-app-layout, setelah task creation modal -->
+@include('tasks.partials.edit_modal', ['users' => $users, 'project' => $project])
+    <div x-data="{ createTaskModal: false, currentStatus: '' }" 
+         x-on:open-create-task-modal.window="createTaskModal = true; currentStatus = $event.detail.status">
+        <div x-show="createTaskModal" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            <div class="flex items-end justify-center min-h-screen px-4 text-center md:items-center sm:block sm:p-0">
+                <!-- Overlay -->
+                <div x-show="createTaskModal" 
+                     x-transition:enter="transition ease-out duration-300 transform"
+                     x-transition:enter-start="opacity-0" 
+                     x-transition:enter-end="opacity-100"
+                     x-transition:leave="transition ease-in duration-200 transform"
+                     x-transition:leave-start="opacity-100" 
+                     x-transition:leave-end="opacity-0"
+                     class="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-40" 
+                     aria-hidden="true"
+                     @click="createTaskModal = false">
+                </div>
+
+                <!-- Modal Content -->
+                <div x-show="createTaskModal"
+                     x-transition:enter="transition ease-out duration-300 transform"
+                     x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
+                     x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                     x-transition:leave="transition ease-in duration-200 transform"
+                     x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
+                     x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                     class="inline-block w-full max-w-2xl p-8 my-20 overflow-hidden text-left transition-all transform bg-white rounded-lg shadow-xl 2xl:max-w-3xl">
+                    
+                    <div class="flex items-center justify-between space-x-4">
+                        <h1 class="text-xl font-medium text-gray-800">Create New Task</h1>
+                        <button @click="createTaskModal = false" class="text-gray-600 focus:outline-none hover:text-gray-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Task Creation Form -->
+                    <form id="createTaskForm" method="POST" action="{{ route('tasks.store') }}" x-ref="createTaskForm">
+                        @csrf
+                        <input type="hidden" name="status" x-bind:value="currentStatus">
+                        <input type="hidden" name="project_id" value="{{ $project->id }}">
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                            <!-- Task Title -->
+                            <div class="mb-4 col-span-2">
+                                <label for="title" class="block text-gray-700 text-sm font-bold mb-2">
+                                    Task Name:
+                                </label>
+                                <input type="text" name="title" id="title" required
+                                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                            </div>
+                            
+                            <!-- Task Description -->
+                            <div class="mb-4 col-span-2">
+                                <label for="description" class="block text-gray-700 text-sm font-bold mb-2">
+                                    Description:
+                                </label>
+                                <textarea name="description" id="description" rows="4"
+                                          class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"></textarea>
+                            </div>
+                            
+                            <!-- Difficulty Level -->
+                            <div class="mb-4">
+                                <label for="difficulty_level" class="block text-gray-700 text-sm font-bold mb-2">
+                                    Difficulty Level:
+                                </label>
+                                <select name="difficulty_level" id="difficulty_level" required
+                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                    <option value="">Select Level</option>
+                                    <option value="1">1 - Very Easy</option>
+                                    <option value="2">2 - Easy</option>
+                                    <option value="3">3 - Normal</option>
+                                    <option value="4">4 - Hard</option>
+                                    <option value="5">5 - Very Hard</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Priority Level -->
+                            <div class="mb-4">
+                                <label for="priority_level" class="block text-gray-700 text-sm font-bold mb-2">
+                                    Priority:
+                                </label>
+                                <select name="priority_level" id="priority_level" required
+                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                    <option value="">Select Priority</option>
+                                    <option value="1">1 - Very Low</option>
+                                    <option value="2">2 - Low</option>
+                                    <option value="3">3 - Normal</option>
+                                    <option value="4">4 - High</option>
+                                    <option value="5">5 - Very High</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Start Time -->
+                            <div class="mb-4">
+                                <label for="start_time" class="block text-gray-700 text-sm font-bold mb-2">
+                                    Start Date:
+                                </label>
+                                <input type="date" name="start_time" id="start_time" required
+                                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                            </div>
+                            
+                            <!-- End Time -->
+                            <div class="mb-4">
+                                <label for="end_time" class="block text-gray-700 text-sm font-bold mb-2">
+                                    End Date:
+                                </label>
+                                <input type="date" name="end_time" id="end_time" required
+                                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                            </div>
+                            
+                            <!-- Assigned User -->
+                            <div class="mb-4 col-span-2">
+                                <label for="assigned_to" class="block text-gray-700 text-sm font-bold mb-2">
+                                    Assign User:
+                                </label>
+                                <select name="assigned_to" id="assigned_to" required
+                                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                    <option value="">Select User</option>
+                                    @foreach($users as $user)
+                                        <option value="{{ $user->id }}" 
+                                                {{ auth()->id() == $user->id ? 'selected' : '' }}>
+                                            {{ $user->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Submit Button -->
+                        <div class="flex items-center justify-end mt-6">
+                            <button @click="createTaskModal = false" type="submit" 
+                                    class="bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                                Create Task
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="container mx-auto mt-6">
         <!-- Fixed Header (Not Scrollable) -->
@@ -45,13 +188,20 @@
 
                             <div class="flex items-center space-x-2">
                                 <!-- Tombol Add Task (Updated route) -->
-                                <button @click="window.location.href='{{ route('tasks.create', ['status' => $status, 'project_id' => $project->id]) }}'" 
-                                        class="p-1 rounded hover:bg-{{ $color }}-300 transition-colors duration-200">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                                    </svg>
-                                </button>
+                                <button 
+            @click="$dispatch('open-create-task-modal', { status: '{{ $status }}' })"
+            class="p-1 rounded hover:bg-{{ $color }}-300 transition-colors duration-200 group"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" 
+                 class="w-5 h-5 text-gray-600 group-hover:text-gray-800" 
+                 fill="none" 
+                 viewBox="0 0 24 24" 
+                 stroke="currentColor"
+            >
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+        </button>
                                 
                                 <!-- Tombol Collapse -->
                                 <button @click="isCollapsed = true" class="p-1 rounded hover:bg-{{ $color }}-300 transition-colors duration-200">
@@ -66,107 +216,20 @@
                         <div x-show="!isCollapsed" id="{{ strtolower(str_replace(' ', '-', $status)) }}" 
                              class="task-list flex-1 p-2 border-2 border-{{ $color }}-500 bg-white shadow-inner overflow-y-auto"
                              data-status="{{ $status }}">
-                            @foreach($tasks->where('status', $status)->sortBy('order') as $task)
-                                <div x-data="{ showMenu: false }" class="task bg-white p-4 shadow-md border-l-4 border-{{ $color }}-500 mb-3 cursor-grab relative"
-                                     data-id="{{ $task->id }}" data-status="{{ $status }}" data-order="{{ $task->order }}">
-                                    <div class="flex justify-between">
-                                        <h4 class="font-bold text-gray-800 text-lg">{{ $task->title }}</h4>
-                                        
-                                        <!-- Three dot menu -->
-                                        <div class="relative">
-                                            <button @click="showMenu = !showMenu" class="text-gray-500 hover:text-gray-700 focus:outline-none">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                    <circle cx="12" cy="12" r="1"></circle>
-                                                    <circle cx="12" cy="5" r="1"></circle>
-                                                    <circle cx="12" cy="19" r="1"></circle>
-                                                </svg>
-                                            </button>
-                                            
-                                            <!-- Dropdown menu (Updated routes) -->
-                                            <div x-show="showMenu" @click.away="showMenu = false" 
-                                                 class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-50">
-                                                <a href="{{ route('tasks.edit', $task->id) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                                    Edit Task
-                                                </a>
-                                                <form action="{{ route('tasks.destroy', $task->id) }}" method="POST" class="block">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <input type="hidden" name="project_id" value="{{ $project->id }}">
-                                                    <button type="submit" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100" 
-                                                            onclick="return confirm('Are you sure you want to delete this task?')">
-                                                        Delete Task
-                                                    </button>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Task description if available -->
-                                    @if ($task->description)
-                                        <p class="text-gray-600 mt-1">{{ Str::limit($task->description, 100) }}</p>
-                                    @endif
-
-                                    <!-- Indikator tambahan (sementara) -->
-                                    <div class="flex flex-wrap items-center gap-2 mt-2 text-sm">
-                                        @if($task->difficulty_level)
-                                            @php
-                                                $difficultyColors = [
-                                                    '1' => ['bg' => 'bg-blue-100', 'text' => 'text-blue-600', 'label' => 'Sangat Ringan'],
-                                                    '2' => ['bg' => 'bg-green-100', 'text' => 'text-green-600', 'label' => 'Ringan'],
-                                                    '3' => ['bg' => 'bg-yellow-100', 'text' => 'text-yellow-600', 'label' => 'Normal'],
-                                                    '4' => ['bg' => 'bg-orange-100', 'text' => 'text-orange-600', 'label' => 'Berat'],
-                                                    '5' => ['bg' => 'bg-red-100', 'text' => 'text-red-600', 'label' => 'Sangat Berat'],
-                                                ];
-                                                $diffClass = isset($difficultyColors[$task->difficulty_level]) ? 
-                                                    $difficultyColors[$task->difficulty_level] : 
-                                                    ['bg' => 'bg-gray-100', 'text' => 'text-gray-600', 'label' => 'Level ' . $task->difficulty_level];
-                                            @endphp
-                                            <span class="{{ $diffClass['bg'] }} {{ $diffClass['text'] }} px-2 py-1 rounded text-xs font-semibold">
-                                                {{ $diffClass['label'] }}
-                                            </span>
-                                        @endif
-                                    
-                                        @if($task->priority_level)
-                                            @php
-                                                $priorityColors = [
-                                                    '1' => ['bg' => 'bg-blue-100', 'text' => 'text-blue-600', 'label' => 'Sangat Rendah'],
-                                                    '2' => ['bg' => 'bg-green-100', 'text' => 'text-green-600', 'label' => 'Rendah'],
-                                                    '3' => ['bg' => 'bg-yellow-100', 'text' => 'text-yellow-600', 'label' => 'Normal'],
-                                                    '4' => ['bg' => 'bg-orange-100', 'text' => 'text-orange-600', 'label' => 'Tinggi'],
-                                                    '5' => ['bg' => 'bg-red-100', 'text' => 'text-red-600', 'label' => 'Sangat Tinggi'],
-                                                ];
-                                                $prioClass = isset($priorityColors[$task->priority_level]) ? 
-                                                    $priorityColors[$task->priority_level] : 
-                                                    ['bg' => 'bg-gray-100', 'text' => 'text-gray-600', 'label' => 'Prioritas ' . $task->priority_level];
-                                            @endphp
-                                            <span class="{{ $prioClass['bg'] }} {{ $prioClass['text'] }} px-2 py-1 rounded text-xs font-semibold">
-                                                {{ $prioClass['label'] }}
-                                            </span>
-                                        @endif
-                                    
-                                        @if($task->end_time)
-                                            <span class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs flex items-center">
-                                                @php
-                                                    $date = \Carbon\Carbon::parse($task->end_time);
-                                                    $day = $date->format('d');
-                                                    $month_map = [
-                                                        1 => 'Jan', 2 => 'Feb', 3 => 'Mar', 4 => 'Apr', 5 => 'Mei', 
-                                                        6 => 'Jun', 7 => 'Jul', 8 => 'Ags', 9 => 'Sep', 10 => 'Okt', 
-                                                        11 => 'Nov', 12 => 'Des'
-                                                    ];
-                                                    $month = $month_map[$date->month];
-                                                @endphp
-                                                {{ $day }} {{ $month }}
-                                            </span>
-                                        @endif
-                                    </div>
-
-                                    <!-- Inisial User -->
-                                    <div class="absolute bottom-2 right-2 w-8 h-8 bg-blue-500 text-white flex items-center justify-center rounded-full text-xs font-bold">
-                                        {{ substr($task->assignedUser->name, 0, 2) }}
-                                    </div>
-                                </div>
-                            @endforeach
+                             @foreach($tasks->where('status', $status)->sortBy('order') as $task)
+    @php
+        $colors = [
+            'To Do' => '#ef4444',
+            'In Progress' => '#ffd96b',
+            'Done' => '#10b981'
+        ];
+        $color = $colors[$status] ?? '#6b7280';
+    @endphp
+    @include('tasks.partials.task_card', [
+        'task' => $task, 
+        'color' => $color
+    ])
+@endforeach
                         </div>
                     </div>
                 @endforeach
@@ -189,6 +252,68 @@
             let lists = document.querySelectorAll('.task-list');
             let updateTimeout;
             const statusMessage = document.getElementById('status-message');
+            const createTaskForm = document.getElementById('createTaskForm');
+
+            createTaskForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(createTaskForm);
+    
+    fetch('{{ route('tasks.store') }}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Reset form
+            createTaskForm.reset();
+            
+            // Find the correct column to append the task
+            const statusColumn = document.querySelector(`[data-status="${data.task.status}"]`);
+            
+
+            if (statusColumn) {
+                // Parse the HTML and insert it into the column
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = data.taskHtml.trim();
+                const newTaskElement = tempDiv.firstChild;
+                
+                // Append the new task to the column
+                statusColumn.appendChild(newTaskElement);
+                
+                // Close the modal
+                window.dispatchEvent(new CustomEvent('alpine:init'));
+                Alpine.store('createTaskModal', false);
+            }
+            
+        } else {
+            alert('Failed to create task');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while creating the task');
+    });
+});
+
+            // Modify the existing Add Task buttons to trigger the modal
+            document.querySelectorAll('[data-status]').forEach(column => {
+            const status = column.dataset.status;
+            const addTaskButton = column.closest('[x-data]').querySelector('button[type="button"]');
+
+            if (addTaskButton) {
+                addTaskButton.addEventListener('click', () => {
+                    window.dispatchEvent(new CustomEvent('open-create-task-modal', { 
+                        detail: { status: status } 
+                    }));
+                });
+            }
+            });
             
             // Show status message
             function showStatusMessage(message, isSuccess = true) {
@@ -282,6 +407,81 @@
                     }
                 });
             });
+            const observer = new MutationObserver((mutationsList, observer) => {
+    mutationsList.forEach(mutation => {
+        if (mutation.type === 'childList') {
+            // Pasang ulang event listener untuk edit task
+            document.querySelectorAll('.edit-task-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const taskId = this.dataset.taskId;
+                    const taskData = JSON.parse(this.dataset.taskData);
+                    window.dispatchEvent(new CustomEvent('open-edit-task-modal', { 
+                        detail: { task: taskData } 
+                    }));
+                });
+            });
+        }
+    });
+});
+
+observer.observe(document.body, { childList: true, subtree: true });
         });
+        // Add this to your JavaScript section
+document.addEventListener('DOMContentLoaded', function() {
+    // Set up a delegated event listener for delete forms
+    document.body.addEventListener('click', function(e) {
+        // Find if we clicked a delete button
+        const deleteButton = e.target.closest('.delete-task-btn');
+        
+        if (deleteButton) {
+            e.preventDefault();
+            
+            // Confirm deletion
+            if (confirm('Are you sure you want to delete this task?')) {
+                const form = deleteButton.closest('form');
+                const taskId = form.getAttribute('data-task-id');
+                const projectId = form.querySelector('input[name="project_id"]').value;
+                
+                // Send AJAX request to delete the task
+                fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-HTTP-Method-Override': 'DELETE'
+                    },
+                    body: JSON.stringify({ 
+                        project_id: projectId,
+                        _method: 'DELETE'
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Find and remove the task card
+                        const taskCard = document.querySelector(`.task[data-id="${taskId}"]`);
+                        if (taskCard) {
+                            taskCard.remove();
+                            
+                            // Show success message
+                            showStatusMessage('Task deleted successfully');
+                            
+                            // Update task orders
+                            updateTaskOrders();
+                        }
+                    } else {
+                        showStatusMessage('Error deleting task', false);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showStatusMessage('Error deleting task', false);
+                });
+            }
+        }
+    });
+});
     </script>
 </x-app-layout>

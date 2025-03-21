@@ -16,13 +16,13 @@ class TaskController extends Controller
         // Retrieve tasks for this project ordered by their position
         $tasks = $project->tasks()->orderBy('order')->get();
         
+        // Get users for this project for the modal forms
+        $users = $this->getProjectUsers($project);
+        
         // Return the kanban view with tasks and project data
-        return view('kanban.index', compact('tasks', 'project'));
+        return view('kanban.index', compact('tasks', 'project', 'users'));
     }
 
-    /**
-     * Show the form for creating a new task.
-     */
     /**
      * Show the form for creating a new task.
      */
@@ -37,16 +37,24 @@ class TaskController extends Controller
         // Get only users who are part of this project (owner + workers)
         $users = $this->getProjectUsers($project);
         
+        if($request->ajax()) {
+            return view('tasks.partials.create_form', compact('status', 'project_id', 'project', 'users'));
+        }
+        
         return view('tasks.create', compact('status', 'project_id', 'project', 'users'));
     }
 
-    public function edit(Task $task)
+    public function edit(Task $task, Request $request)
     {
         // Get project for this task
         $project = $task->project;
         
         // Get only users who are part of this project (owner + workers)
         $users = $this->getProjectUsers($project);
+        
+        if($request->ajax()) {
+            return view('tasks.partials.edit_modal', compact('task', 'users'));
+        }
         
         return view('tasks.edit', compact('task', 'users'));
     }
@@ -114,6 +122,21 @@ class TaskController extends Controller
             'has created task "' . $task->title . '"'
         );
 
+        if($request->ajax()) {
+            // Load the user for the task
+            $task->load('assignedUser');
+            
+            // Return a JSON response with the task data and HTML
+            $taskHtml = view('tasks.partials.task_card', ['task' => $task, 'color' => $this->getColorForStatus($task->status)])->render();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Task created successfully!',
+                'task' => $task,
+                'taskHtml' => $taskHtml
+            ]);
+        }
+
         // Redirect back to the project's kanban board
         return redirect()->route('projects.kanban', $request->project_id)
                          ->with('success', 'Task created successfully!');
@@ -159,48 +182,66 @@ class TaskController extends Controller
             ]
         );
 
+        $task = $task->fresh();
+
+    if($request->ajax()) {
+        $task->load('assignedUser');
+        
+        $taskHtml = view('tasks.partials.task_card', [
+            'task' => $task, 
+            'color' => $this->getColorForStatus($task->status)
+        ])->render();
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Task updated successfully!',
+            'task' => $task,
+            'taskHtml' => $taskHtml
+        ]);
+    }
+
         // Redirect back to the project's kanban board
         return redirect()->route('projects.kanban', $task->project_id)
                          ->with('success', 'Task updated successfully!');
     }
 
     /**
+     * Helper method to get color for status
+     */
+    private function getColorForStatus($status)
+    {
+        $colors = [
+            'To Do' => '#ef4444',
+            'In Progress' => '#ffd96b',
+            'Done' => '#10b981'
+        ];
+
+        return $colors[$status] ?? '#6b7280';
+    }
+
+    /**
      * Remove the specified task from storage.
      */
-    public function destroy(Request $request, Task $task)
-    {
-        // Store project_id for redirection after deletion
-        $projectId = $task->project_id;
-        $taskTitle = $task->title;
-        
-        DB::transaction(function () use ($task) {
-            // Get current task status, order, and project_id
-            $status = $task->status;
-            $order = $task->order;
-            $projectId = $task->project_id;
-            
-            // Log the activity before deleting
-            ActivityLogger::log(
-                'deleted',
-                $task,
-                $projectId,
-                'has deleted task "' . $task->title . '"'
-            );
-            
-            // Delete the task
-            $task->delete();
-            
-            // Reorder tasks with higher order in the same status and project
-            Task::where('status', $status)
-                ->where('project_id', $projectId)
-                ->where('order', '>', $order)
-                ->update(['order' => DB::raw('`order` - 1')]);
-        });
-
-        // Redirect back to the project's kanban board
-        return redirect()->route('projects.kanban', $projectId)
-                         ->with('success', 'Task deleted successfully!');
+    // In your TaskController
+public function destroy(Task $task, Request $request)
+{
+    $projectId = $request->input('project_id');
+    
+    // Delete the task
+    $task->delete();
+    
+    // Return JSON response for AJAX requests
+    if ($request->ajax() || $request->wantsJson()) {
+        return response()->json([
+            'success' => true,
+            'message' => 'Task deleted successfully'
+        ]);
     }
+    
+    // For non-AJAX requests, redirect back
+    return redirect()->route('projects.kanban', $projectId)
+        ->with('success', 'Task deleted successfully');
+}
 
     /**
      * Batch update tasks status and order

@@ -10,6 +10,21 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            height: 100%;
+            width: 100%;
+        }
+        
+        .content-container {
+            height: calc(100vh - 4rem);
+            overflow: hidden;
+            display: flex;
+        }
+    </style>
 </head>
 <body class="font-sans antialiased h-full">
 <div class="min-h-screen bg-gray-100 flex flex-col">
