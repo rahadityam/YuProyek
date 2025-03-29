@@ -307,8 +307,11 @@
 
                 <!-- Team Section -->
                 <div>
-                    <h3 class="text-lg font-semibold mb-4">Tim Proyek</h3>
-
+                    <div class="flex justify-between items-center">
+                        <h3   h3 class="text-lg font-semibold mb-4">Tim Proyek</h3>
+                        <a href="{{ route('projects.team', $project) }}" class="text-blue-600 hover:text-blue-800 text-sm">Lihat Semua</a>
+                    </div>
+    
                     <!-- Owner -->
                     <div class="mb-4">
                         <h4 class="text-sm font-medium text-gray-500 mb-2">Project Owner</h4>
@@ -326,10 +329,10 @@
 
                     <!-- Team Members -->
                     <div>
-                        <h4 class="text-sm font-medium text-gray-500 mb-2">Anggota Tim ({{ $workers->count() }})</h4>
-                        @if($workers->count() > 0)
+                        <h4 class="text-sm font-medium text-gray-500 mb-2">Anggota Tim ({{ $acceptedWorkers->count() }})</h4>
+                        @if($acceptedWorkers->count() > 0)
                             <div class="space-y-3">
-                                @foreach($workers as $worker)
+                                @foreach($acceptedWorkers as $worker)
                                     <div class="flex items-center">
                                         <div
                                             class="h-8 w-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-700">

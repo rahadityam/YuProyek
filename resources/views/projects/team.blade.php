@@ -49,6 +49,9 @@
                                         </div>
                                         @if($project->owner_id === auth()->id())
                                             <div>
+                                                <a href="{{ route('projects.user.profile', ['project' => $project->id, 'user' => $member->id]) }}" class="text-blue-500 hover:text-blue-700 mr-4 px-1.5">
+                                                    View Profile
+                                                </a>
                                                 <button class="text-red-500 hover:text-red-700" 
                                                         onclick="if(confirm('Are you sure you want to remove this member?')) { 
                                                             document.getElementById('remove-member-{{ $member->id }}').submit(); 
@@ -94,9 +97,9 @@
                                                     </div>
                                                 </div>
                                                 <div class="space-x-2">
-                                                    <a href="#" class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700">
-                                                        View Profile
-                                                    </a>
+                                                <a href="{{ route('projects.user.profile', ['project' => $project->id, 'user' => $applicant->id]) }}" class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700">
+                                                    View Profile
+                                                </a>
                                                     <!-- For the Accept button (replace the # in action="#") -->
 <form method="POST" action="{{ route('projects.application.updateStatus', ['project' => $project->id, 'user' => $applicant->id]) }}" class="inline">
     @csrf

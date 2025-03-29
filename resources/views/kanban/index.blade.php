@@ -1,10 +1,10 @@
 <!-- resources/views/kanban/index.blade.php (updated without Lucide) -->
 <x-app-layout>
-    <x-slot name="header">
+    <!-- <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
             {{ __('Kanban Board') }} - {{ $project->name }}
         </h2>
-    </x-slot>
+    </x-slot> -->
     <!-- Di dalam x-app-layout, setelah task creation modal -->
 @include('tasks.partials.edit_modal', ['users' => $users, 'project' => $project])
     <div x-data="{ createTaskModal: false, currentStatus: '' }" 
@@ -149,10 +149,125 @@
         </div>
     </div>
 
-    <div class="container mx-auto mt-6">
-        <!-- Fixed Header (Not Scrollable) -->
-        <h2 class="text-2xl font-bold mb-4 text-center">Kanban Board - {{ $project->name }}</h2>
-
+    <div class="container mx-auto">
+        <!-- Updated Search and Filter section -->
+<div class="container mx-auto">
+    <div class="flex justify-end items-center">
+        <div x-data="{ showFilters: false }" class="relative">
+            <!-- Search and Filter Toggle -->
+            <div class="flex items-center gap-2">
+                <div class="w-64">
+                    <div class="relative">
+                        <input type="text" id="taskSearch" placeholder="Search tasks..." 
+                               class="w-full px-3 py-1.5 pr-8 rounded-lg border border-gray-300 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                        <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                
+                <button @click="showFilters = !showFilters" 
+                        class="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                    <span x-text="showFilters ? 'Hide Filters' : 'Show Filters'" class="text-sm"></span>
+                </button>
+            </div>
+            
+            <!-- Floating Filter Options -->
+            <div x-show="showFilters" 
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 transform -translate-y-4"
+                 x-transition:enter-end="opacity-100 transform translate-y-0"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 transform translate-y-0"
+                 x-transition:leave-end="opacity-0 transform -translate-y-4"
+                 class="absolute right-0 mt-2 p-4 bg-white shadow-lg rounded-lg border border-gray-200 z-10 w-80">
+                
+                <div class="grid grid-cols-1 gap-3">
+                    <!-- Assigned User Filter -->
+                    <div>
+                        <label for="userFilter" class="block text-xs font-medium text-gray-700 mb-1">Assigned To</label>
+                        <select id="userFilter" class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                            <option value="">All Users</option>
+                            @foreach($users as $user)
+                                <option value="{{ $user->id }}">{{ $user->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-2">
+                        <!-- Date Range Filter -->
+                        <div>
+                            <label for="startDateFilter" class="block text-xs font-medium text-gray-700 mb-1">Start Date</label>
+                            <input type="date" id="startDateFilter" class="w-full rounded-lg border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                        </div>
+                        
+                        <div>
+                            <label for="endDateFilter" class="block text-xs font-medium text-gray-700 mb-1">End Date</label>
+                            <input type="date" id="endDateFilter" class="w-full rounded-lg border border-gray-300 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-2">
+                        <!-- Difficulty Level Filter -->
+                        <div>
+                            <label for="difficultyFilter" class="block text-xs font-medium text-gray-700 mb-1">Difficulty</label>
+                            <select id="difficultyFilter" class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                                <option value="">All Levels</option>
+                                <option value="1">Very Easy</option>
+                                <option value="2">Easy</option>
+                                <option value="3">Normal</option>
+                                <option value="4">Hard</option>
+                                <option value="5">Very Hard</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Priority Level Filter -->
+                        <div>
+                            <label for="priorityFilter" class="block text-xs font-medium text-gray-700 mb-1">Priority</label>
+                            <select id="priorityFilter" class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                                <option value="">All Priorities</option>
+                                <option value="1">Very Low</option>
+                                <option value="2">Low</option>
+                                <option value="3">Normal</option>
+                                <option value="4">High</option>
+                                <option value="5">Very High</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Status Filter -->
+                    <div>
+                        <label for="statusFilter" class="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                        <select id="statusFilter" class="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                            <option value="">All Statuses</option>
+                            <option value="To Do">To Do</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Done">Done</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Clear Filters Button -->
+                    <div class="flex mt-1">
+                        <button id="clearFilters" class="w-full px-3 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg text-sm">
+                            Clear Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filter Active Indicators -->
+    <div id="activeFilters" class="flex flex-wrap gap-1 mt-2 justify-end">
+        <!-- Active filters will be added here dynamically -->
+    </div>
+</div>
         <!-- Scrollable Container for Kanban Columns -->
         <div class="overflow-x-auto pb-4 p-4" style="max-width: 100%;">
 
@@ -481,6 +596,245 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
         }
+    });
+});
+// Add this to your existing JavaScript section or as a new script
+document.addEventListener('DOMContentLoaded', function () {
+    // Elements
+    const taskSearch = document.getElementById('taskSearch');
+    const userFilter = document.getElementById('userFilter');
+    const startDateFilter = document.getElementById('startDateFilter');
+    const endDateFilter = document.getElementById('endDateFilter');
+    const difficultyFilter = document.getElementById('difficultyFilter');
+    const priorityFilter = document.getElementById('priorityFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    const clearFiltersBtn = document.getElementById('clearFilters');
+    const activeFiltersContainer = document.getElementById('activeFilters');
+    
+    // Store all tasks for filtering
+    let allTasks;
+    
+    // Initialize by capturing all tasks
+    function initializeFiltering() {
+        // Get all task elements from the DOM
+        allTasks = document.querySelectorAll('.task');
+    }
+    
+    // Initialize
+    initializeFiltering();
+    
+    // Event listeners for filter inputs
+    taskSearch.addEventListener('input', applyFilters);
+    userFilter.addEventListener('change', applyFilters);
+    startDateFilter.addEventListener('change', applyFilters);
+    endDateFilter.addEventListener('change', applyFilters);
+    difficultyFilter.addEventListener('change', applyFilters);
+    priorityFilter.addEventListener('change', applyFilters);
+    statusFilter.addEventListener('change', applyFilters);
+    clearFiltersBtn.addEventListener('click', clearFilters);
+    
+    // Apply all filters
+    function applyFilters() {
+        // Get filter values
+        const searchText = taskSearch.value.toLowerCase();
+        const userId = userFilter.value;
+        const startDate = startDateFilter.value ? new Date(startDateFilter.value) : null;
+        const endDate = endDateFilter.value ? new Date(endDateFilter.value) : null;
+        const difficulty = difficultyFilter.value;
+        const priority = priorityFilter.value;
+        const status = statusFilter.value;
+        
+        // Update active filters display
+        updateActiveFilters();
+        
+        // Apply filters to each task
+        allTasks.forEach(task => {
+            const taskTitle = task.querySelector('h4').textContent.toLowerCase();
+            const taskDesc = task.querySelector('p') ? task.querySelector('p').textContent.toLowerCase() : '';
+            const taskUserId = task.querySelector('.edit-task-link').dataset.taskData;
+            let assignedTo = '';
+            
+            // Parse JSON data from the dataset
+            try {
+                const taskData = JSON.parse(taskUserId);
+                assignedTo = taskData.assigned_to.toString();
+            } catch (e) {
+                console.error('Error parsing task data:', e);
+            }
+            
+            // Get task dates
+            const taskStartDateEl = task.querySelector('.edit-task-link').dataset.taskData;
+            const taskEndDateEl = task.querySelector('.edit-task-link').dataset.taskData;
+            let taskStartDate = null;
+            let taskEndDate = null;
+            
+            try {
+                const taskData = JSON.parse(taskStartDateEl);
+                taskStartDate = taskData.start_time ? new Date(taskData.start_time) : null;
+                taskEndDate = taskData.end_time ? new Date(taskData.end_time) : null;
+            } catch (e) {
+                console.error('Error parsing task dates:', e);
+            }
+            
+            // Get difficulty and priority from task data
+            let taskDifficulty = '';
+            let taskPriority = '';
+            let taskStatus = task.dataset.status;
+            
+            try {
+                const taskData = JSON.parse(task.querySelector('.edit-task-link').dataset.taskData);
+                taskDifficulty = taskData.difficulty_level.toString();
+                taskPriority = taskData.priority_level.toString();
+            } catch (e) {
+                console.error('Error parsing task difficulty/priority:', e);
+            }
+            
+            // Determine if task should be visible
+            const matchesSearch = searchText === '' || 
+                                 taskTitle.includes(searchText) || 
+                                 taskDesc.includes(searchText);
+            
+            const matchesUser = userId === '' || assignedTo === userId;
+            
+            const matchesStartDate = !startDate || 
+                                    (taskStartDate && taskStartDate >= startDate);
+            
+            const matchesEndDate = !endDate || 
+                                  (taskEndDate && taskEndDate <= endDate);
+            
+            const matchesDifficulty = difficulty === '' || 
+                                     taskDifficulty === difficulty;
+            
+            const matchesPriority = priority === '' || 
+                                   taskPriority === priority;
+            
+            const matchesStatus = status === '' || 
+                                 taskStatus === status;
+            
+            // Show/hide task based on all filters
+            if (matchesSearch && matchesUser && matchesStartDate && 
+                matchesEndDate && matchesDifficulty && matchesPriority && matchesStatus) {
+                task.style.display = '';
+            } else {
+                task.style.display = 'none';
+            }
+        });
+    }
+    
+    // Update visible active filters
+    function updateActiveFilters() {
+        // Clear existing active filters
+        activeFiltersContainer.innerHTML = '';
+        
+        // Add filter pills for active filters
+        if (userFilter.value) {
+            addFilterPill('User: ' + userFilter.options[userFilter.selectedIndex].text, () => {
+                userFilter.value = '';
+                applyFilters();
+            });
+        }
+        
+        if (startDateFilter.value) {
+            addFilterPill('From: ' + formatDate(new Date(startDateFilter.value)), () => {
+                startDateFilter.value = '';
+                applyFilters();
+            });
+        }
+        
+        if (endDateFilter.value) {
+            addFilterPill('To: ' + formatDate(new Date(endDateFilter.value)), () => {
+                endDateFilter.value = '';
+                applyFilters();
+            });
+        }
+        
+        if (difficultyFilter.value) {
+            addFilterPill('Difficulty: ' + difficultyFilter.options[difficultyFilter.selectedIndex].text, () => {
+                difficultyFilter.value = '';
+                applyFilters();
+            });
+        }
+        
+        if (priorityFilter.value) {
+            addFilterPill('Priority: ' + priorityFilter.options[priorityFilter.selectedIndex].text, () => {
+                priorityFilter.value = '';
+                applyFilters();
+            });
+        }
+        
+        if (statusFilter.value) {
+            addFilterPill('Status: ' + statusFilter.value, () => {
+                statusFilter.value = '';
+                applyFilters();
+            });
+        }
+        
+        if (taskSearch.value) {
+            addFilterPill('Search: ' + taskSearch.value, () => {
+                taskSearch.value = '';
+                applyFilters();
+            });
+        }
+    }
+    
+    // Helper to add filter pill
+    function addFilterPill(text, removeCallback) {
+        const pill = document.createElement('div');
+        pill.className = 'flex items-center bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm';
+        pill.innerHTML = `
+            <span>${text}</span>
+            <button class="ml-1 focus:outline-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                </svg>
+            </button>
+        `;
+        
+        pill.querySelector('button').addEventListener('click', removeCallback);
+        activeFiltersContainer.appendChild(pill);
+    }
+    
+    // Clear all filters
+    function clearFilters() {
+        taskSearch.value = '';
+        userFilter.value = '';
+        startDateFilter.value = '';
+        endDateFilter.value = '';
+        difficultyFilter.value = '';
+        priorityFilter.value = '';
+        statusFilter.value = '';
+        
+        // Show all tasks
+        allTasks.forEach(task => {
+            task.style.display = '';
+        });
+        
+        // Clear active filters display
+        activeFiltersContainer.innerHTML = '';
+    }
+    
+    // Helper to format date as DD MMM YYYY
+    function formatDate(date) {
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+    }
+    
+    // Observer to re-capture tasks when new ones are added
+    const taskListObserver = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                // Reinitialize filtering when tasks change
+                setTimeout(() => {
+                    initializeFiltering();
+                    applyFilters();
+                }, 100);
+            }
+        });
+    });
+    
+    // Observe each task list
+    document.querySelectorAll('.task-list').forEach(list => {
+        taskListObserver.observe(list, { childList: true });
     });
 });
     </script>

@@ -153,4 +153,34 @@ public function removeMember(Project $project, User $user)
     return redirect()->route('projects.team', $project)
         ->with('success', $user->name . ' has been removed from the team.');
 }
+
+/**
+ * Show user profile in the project context.
+ *
+ * @param  \App\Models\Project  $project
+ * @param  \App\Models\User  $user
+ * @return \Illuminate\Http\Response
+ */
+public function viewProfile(Project $project, User $user)
+{
+    // Check if the user is part of the project
+    $projectUser = ProjectUser::where('project_id', $project->id)
+        ->where('user_id', $user->id)
+        ->first();
+    
+    if (!$projectUser && $user->id !== $project->owner_id) {
+        return redirect()->route('projects.team', $project)
+            ->with('error', 'User not found in this project.');
+    }
+    
+    // Get user's education data
+    $educations = $user->educations ?? collect([]);
+    
+    // Get user's documents
+    $cv = $user->documents()->where('type', 'cv')->first();
+    $portfolio = $user->documents()->where('type', 'portfolio')->first();
+    $certificates = $user->documents()->where('type', 'certificate')->get();
+    
+    return view('projects.user-profile', compact('project', 'user', 'projectUser', 'educations', 'cv', 'portfolio', 'certificates'));
+}
 }

@@ -52,6 +52,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/team', [ProjectController::class, 'teamMembers'])->name('projects.team');
         Route::patch('/team/{user}/update-status', [ProjectApplicationController::class, 'updateStatus'])->name('projects.application.updateStatus');
         Route::delete('/team/{user}/remove', [ProjectApplicationController::class, 'removeMember'])->name('projects.team.remove');
+        Route::get('/team/user/{user}', [ProjectApplicationController::class, 'viewProfile'])->name('projects.user.profile');
 
         // Activity Log Route
         Route::get('/aktivitas', [ActivityController::class, 'index'])->name('projects.activity');
@@ -75,6 +76,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.updateStatus');
     Route::patch('/tasks/order', [TaskController::class, 'updateOrder'])->name('tasks.updateOrder');
     Route::post('/tasks/batch-update', [TaskController::class, 'batchUpdate'])->name('tasks.batchUpdate');
+    Route::post('/tasks/search', [TaskController::class, 'search'])->name('tasks.search');
 
     // Rute untuk Penggajian
     Route::get('/penggajian', [PaymentController::class, 'index'])->name('penggajian.index');

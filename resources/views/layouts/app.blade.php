@@ -60,11 +60,64 @@
             </div>
         @endif
         <!-- Scrollable Main Content -->
-        <div class="flex-1 overflow-y-auto" style="height: calc(100vh - 4rem);">
-            <main>
-                {{ $slot }}
-            </main>
+<div class="flex-1 overflow-y-auto" style="height: calc(100vh - 4rem);">
+    <!-- Add breadcrumbs here for project pages -->
+    @if(request()->segment(1) === 'projects' && is_numeric(request()->segment(2)) && request()->segment(3) && request()->segment(3) !== 'apply')
+        <div class="px-4 pt-2">
+            @php
+                $project = App\Models\Project::find(request()->segment(2));
+                $projectName = $project ? $project->name : 'Project';
+                
+                $breadcrumbs = [
+                    ['name' => 'Projects', 'url' => route('projects.my-projects')],
+                    ['name' => $projectName, 'url' => route('projects.dashboard', request()->segment(2))],
+                ];
+                
+                // Add the current page to breadcrumb
+                switch(request()->segment(3)) {
+                    case 'dashboard':
+                        $breadcrumbs[] = ['name' => 'Dashboard'];
+                        break;
+                    case 'kanban':
+                        $breadcrumbs[] = ['name' => 'Kanban'];
+                        break;
+                    case 'penggajian':
+                        $breadcrumbs[] = ['name' => 'Payroll'];
+                        break;
+                    case 'pembayaran':
+                        $breadcrumbs[] = ['name' => 'Payments'];
+                        break;
+                    case 'pengaturan':
+                        $breadcrumbs[] = ['name' => 'Settings'];
+                        break;
+                    case 'team':
+                        $breadcrumbs[] = ['name' => 'Team'];
+                        break;
+                    case 'aktivitas':
+                        $breadcrumbs[] = ['name' => 'Activities'];
+                        break;
+                    case 'wage-standards':
+                        $breadcrumbs[] = ['name' => 'Wage Standards'];
+                        break;
+                    default:
+                        if (request()->segment(4) === 'create' && request()->segment(3) === 'wage-standards') {
+                            $breadcrumbs[] = ['name' => 'Wage Standards', 'url' => route('projects.wage-standards.index', request()->segment(2))];
+                            $breadcrumbs[] = ['name' => 'Create New'];
+                        } elseif (request()->segment(4) === 'edit' && request()->segment(3) === 'wage-standards') {
+                            $breadcrumbs[] = ['name' => 'Wage Standards', 'url' => route('projects.wage-standards.index', request()->segment(2))];
+                            $breadcrumbs[] = ['name' => 'Edit'];
+                        }
+                        break;
+                }
+            @endphp
+            
+            <x-breadcrumb :breadcrumbs="$breadcrumbs" />
         </div>
+    @endif
+    <main>
+        {{ $slot }}
+    </main>
+</div>
     </div>
 </div>
 <!-- Panggil Alpine.js -->

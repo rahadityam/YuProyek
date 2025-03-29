@@ -23,6 +23,67 @@ class TaskController extends Controller
         return view('kanban.index', compact('tasks', 'project', 'users'));
     }
 
+    // Add this method to your TaskController to handle AJAX search and filter requests
+public function search(Request $request)
+{
+    $query = Task::query()->where('project_id', $request->project_id);
+
+    // Apply filters if provided
+    if ($request->filled('search')) {
+        $searchTerm = $request->search;
+        $query->where(function($q) use ($searchTerm) {
+            $q->where('title', 'like', "%{$searchTerm}%")
+              ->orWhere('description', 'like', "%{$searchTerm}%");
+        });
+    }
+
+    if ($request->filled('user_id')) {
+        $query->where('assigned_to', $request->user_id);
+    }
+
+    if ($request->filled('start_date')) {
+        $query->whereDate('start_time', '>=', $request->start_date);
+    }
+
+    if ($request->filled('end_date')) {
+        $query->whereDate('end_time', '<=', $request->end_date);
+    }
+
+    if ($request->filled('difficulty')) {
+        $query->where('difficulty_level', $request->difficulty);
+    }
+
+    if ($request->filled('priority')) {
+        $query->where('priority_level', $request->priority);
+    }
+
+    if ($request->filled('status')) {
+        $query->where('status', $request->status);
+    }
+
+    // Get filtered tasks
+    $tasks = $query->orderBy('order')->get();
+    
+    // Group tasks by status
+    $tasksByStatus = $tasks->groupBy('status');
+    
+    // Prepare HTML for each task
+    $html = [];
+    foreach ($tasksByStatus as $status => $statusTasks) {
+        $html[$status] = '';
+        foreach ($statusTasks as $task) {
+            $task->load('assignedUser');
+            $color = $this->getColorForStatus($status);
+            $html[$status] .= view('tasks.partials.task_card', ['task' => $task, 'color' => $color])->render();
+        }
+    }
+    
+    return response()->json([
+        'success' => true,
+        'data' => $html
+    ]);
+}
+
     /**
      * Show the form for creating a new task.
      */
