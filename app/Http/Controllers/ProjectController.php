@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Project;
 use App\Models\Category;
+use App\Models\User;
+use App\Models\WageStandard;
 use App\Models\ActivityLog;
 
 class ProjectController extends Controller
@@ -253,25 +255,60 @@ class ProjectController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function teamMembers(Project $project)
-    {
-        // Check if user is authorized to view team members
-        // $this->authorize('view', $project);
+{
+    // Check if user is authorized to view team members
+    // $this->authorize('view', $project);
 
-        // Get the project owner
-        $owner = $project->owner;
+    // Get the project owner
+    $owner = $project->owner;
 
-        // Get active project members (accepted status)
-        $members = $project->workers()
-            ->wherePivot('status', 'accepted')
-            ->withPivot('position')
-            ->get();
+    // Get active project members (accepted status)
+    $members = $project->workers()
+        ->wherePivot('status', 'accepted')
+        ->withPivot('position', 'wage_standard_id')
+        ->get();
 
-        // Get applicants (applied status)
-        $applicants = $project->workers()
-            ->wherePivot('status', 'applied')
-            ->withPivot('position')
-            ->get();
+    // Get applicants (applied status)
+    $applicants = $project->workers()
+        ->wherePivot('status', 'applied')
+        ->withPivot('position')
+        ->get();
+        
+    // Get wage standards for this project
+    $wageStandards = $project->wageStandards()->orderBy('job_category')->get();
 
-        return view('projects.team', compact('project', 'owner', 'members', 'applicants'));
+    return view('projects.team', compact('project', 'owner', 'members', 'applicants', 'wageStandards'));
+}
+
+/**
+ * Update team member's wage standard
+ */
+/**
+ * Update team member's wage standard
+ */
+public function updateMemberWage(Request $request, Project $project, User $user)
+{
+    $request->validate([
+        'wage_standard_id' => 'required|exists:wage_standards,id',
+    ]);
+    
+    // Check if the wage standard belongs to this project
+    $wageStandard = WageStandard::findOrFail($request->wage_standard_id);
+    if ($wageStandard->project_id !== $project->id) {
+        return response()->json(['error' => 'The selected wage standard does not belong to this project.'], 400);
     }
+    
+    // Update the wage standard for this team member
+    $project->workers()->updateExistingPivot($user->id, [
+        'wage_standard_id' => $request->wage_standard_id,
+    ]);
+    
+    // If this is an AJAX request, return JSON response
+    if ($request->ajax()) {
+        return response()->json(['success' => true, 'message' => 'Wage standard updated successfully.']);
+    }
+    
+    // For non-AJAX requests, redirect back with success message
+    return back()->with('success', 'Wage standard updated successfully.');
+}
 }

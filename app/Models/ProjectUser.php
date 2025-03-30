@@ -16,5 +16,11 @@ class ProjectUser extends Model
         'status',
         'salary',
         'position',
+        'wage_standard_id',
     ];
+
+    public function wageStandard()
+    {
+        return $this->belongsTo(WageStandard::class);
+    }
 }

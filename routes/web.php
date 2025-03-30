@@ -86,6 +86,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/pembayaran', [PaymentController::class, 'payment'])->name('pembayaran.index');
     Route::post('/pembayaran/upload', [PaymentController::class, 'uploadProof'])->name('pembayaran.upload');
 
+    Route::patch('/projects/{project}/team/{user}/wage', [ProjectController::class, 'updateMemberWage'])
+    ->name('projects.team.updateWage');
+    
     // Rute untuk Pengaturan
     Route::get('/pengaturan', [SettingController::class, 'index'])->name('pengaturan.index');
     Route::post('/pengaturan/update', [SettingController::class, 'update'])->name('pengaturan.update');
