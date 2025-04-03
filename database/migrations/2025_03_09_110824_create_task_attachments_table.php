@@ -6,24 +6,20 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('task_attachments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('task_id')->constrained()->onDelete('cascade');
-            $table->string('file_path');
-            $table->string('file_name');
-            $table->string('file_type');
+            $table->foreignId('user_id')->constrained()->onDelete('cascade'); // User yang upload
+            $table->string('file_path'); // Path relatif di storage
+            $table->string('file_name'); // Nama asli file
+            $table->string('file_type')->nullable(); // MIME type
+            $table->unsignedBigInteger('size')->nullable(); // Ukuran file dalam bytes
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('task_attachments');

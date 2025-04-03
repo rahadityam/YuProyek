@@ -83,4 +83,20 @@ class User extends Authenticatable
     {
         return $this->documents()->where('type', 'certificate')->get();
     }
+
+     /**
+         * Komentar yang dibuat oleh user ini.
+         */
+        public function taskComments()
+        {
+            return $this->hasMany(TaskComment::class);
+        }
+
+        /**
+         * Attachment yang diupload oleh user ini.
+         */
+        public function taskAttachments()
+        {
+            return $this->hasMany(TaskAttachment::class);
+        }
 }

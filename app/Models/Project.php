@@ -19,6 +19,8 @@ class Project extends Model
         'status',
         'owner_id',
         'wip_limits',
+        'difficulty_weight', // Add this
+        'priority_weight',   // Add this
     ];
 
     // Relasi ke User (pemilik proyek)
@@ -55,4 +57,31 @@ class Project extends Model
 {
     return $this->hasMany(ActivityLog::class)->orderBy('created_at', 'desc');
 }
+public function difficultyLevels()
+{
+    return $this->hasMany(DifficultyLevel::class);
+}
+
+public function priorityLevels()
+{
+    return $this->hasMany(PriorityLevel::class);
+}
+
+// Add relationship to payments made within this project
+public function payments()
+{
+    return $this->hasMany(Payment::class);
+}
+
+ // Method to get default weights if needed
+public function getDifficultyWeightAttribute($value)
+{
+    return $value ?? 65; // Return default if null
+}
+
+public function getPriorityWeightAttribute($value)
+{
+    return $value ?? 35; // Return default if null
+}
+
 }

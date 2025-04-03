@@ -12,12 +12,13 @@ class Payment extends Model
     protected $fillable = [
         'project_id',
         'user_id',
+        'payment_type',
         'payment_name',
         'bank_account',
         'amount',
         'proof_image',
         'notes',
-        'status'
+        'status',
     ];
 
     public function project()
@@ -28,5 +29,10 @@ class Payment extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function tasks()
+    {
+        return $this->hasMany(Task::class);
     }
 }

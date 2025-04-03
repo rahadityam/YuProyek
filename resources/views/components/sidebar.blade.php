@@ -96,7 +96,7 @@
             <div class="overflow-hidden transition-all duration-300 w-full"
         x-bind:class="{ 'ml-6': !{{ $isCollapsed }}, 'ml-0': {{ $isCollapsed }} }"
         x-bind:style="openDropdown ? 'max-height: 100px' : 'max-height: 0px'">
-        <a href="/projects/{{ $currentProjectId }}/penggajian" class="flex items-center pr-l pl-2 pb-1 pt-1 rounded-md cursor-pointer group w-full"
+        <a href="#" class="flex items-center pr-l pl-2 pb-1 pt-1 rounded-md cursor-pointer group w-full"
             :class="{ 'bg-[#E2EBFD]': activeMenu.includes('/projects/{{ $currentProjectId }}/penggajian') || activeMenu.includes('/projects/{{ $currentProjectId }}/wage-standards') }"
             :style="(activeMenu.includes('/projects/{{ $currentProjectId }}/penggajian') || activeMenu.includes('/projects/{{ $currentProjectId }}/wage-standards')) ? 'box-shadow: inset 4px 0 0 0 #5F65DB; color: #5F65DB;' : ''">
             <div class="flex-shrink-0 flex justify-center items-center w-8 h-8" :class="{ 'ml-0': {{ $isCollapsed }}, 'ml-0': !{{ $isCollapsed }} }">
@@ -139,7 +139,7 @@
 
         <!-- Aktivitas -->
         <div class="mt-2 flex flex-col items-center" :class="{ 'items-start': !{{ $isCollapsed }} }">
-    <a href="/projects/{{ $currentProjectId }}/aktivitas" class="flex items-center pl-2 pr-2 pt-1 pb-1 rounded-md cursor-pointer group w-full"
+    <a href="/projects/{{ $currentProjectId }}/activity" class="flex items-center pl-2 pr-2 pt-1 pb-1 rounded-md cursor-pointer group w-full"
         :class="{ 'bg-[#E2EBFD]': activeMenu.includes('/projects/{{ $currentProjectId }}/aktivitas') }"
         :style="activeMenu.includes('/projects/{{ $currentProjectId }}/aktivitas') ? 'box-shadow: inset 4px 0 0 0 #5F65DB; color: #5F65DB;' : ''">
         <div class="flex-shrink-0 flex justify-center items-center w-8 h-8">
@@ -153,7 +153,7 @@
 </div>
 
 <div class="mt-2 flex flex-col items-center" :class="{ 'items-start': !{{ $isCollapsed }} }">
-    <a href="/projects/{{ $currentProjectId }}/pengaturan" class="flex items-center pl-2 pr-2 pt-1 pb-1 rounded-md cursor-pointer group w-full"
+    <a href="/projects/{{ $currentProjectId }}/settings" class="flex items-center pl-2 pr-2 pt-1 pb-1 rounded-md cursor-pointer group w-full"
         :class="{ 'bg-[#E2EBFD]': activeMenu.includes('/projects/{{ $currentProjectId }}/pengaturan') }"
         :style="activeMenu.includes('/projects/{{ $currentProjectId }}/pengaturan') ? 'box-shadow: inset 4px 0 0 0 #5F65DB; color: #5F65DB;' : ''">
         <div class="flex-shrink-0 flex justify-center items-center w-8 h-8">
