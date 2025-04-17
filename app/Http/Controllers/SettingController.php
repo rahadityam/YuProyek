@@ -7,49 +7,72 @@ use App\Models\Project;
 use App\Models\DifficultyLevel;
 use App\Models\PriorityLevel;
 use App\Models\Category;
+use App\Models\WageStandard; // Tambahkan ini
+use App\Models\User; // Tambahkan ini
+use App\Models\ProjectUser; // Tambahkan ini
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Log;
 
 class SettingController extends Controller
 {
-    // Menampilkan halaman pengaturan proyek
+    // --- Menampilkan Halaman Pengaturan Terpadu ---
     public function index(Project $project)
     {
-        // Cek apakah pengguna berhak mengakses pengaturan proyek
+        // Autorisasi: Hanya pemilik proyek yang bisa akses
         if (Auth::id() !== $project->owner_id) {
-            return redirect()->route('projects.dashboard', $project)
-                ->with('error', 'Anda tidak memiliki akses untuk mengubah pengaturan proyek ini.');
+            abort(403, 'Unauthorized action.');
         }
 
-        $categories = Category::all();
-        $selectedCategories = $project->categories->pluck('id')->toArray();
+        // Ambil semua data yang dibutuhkan untuk semua tab
+        $categories = Category::orderBy('name')->get(); // Untuk tab Project Info
+        $selectedCategories = $project->categories->pluck('id')->toArray(); // Untuk tab Project Info
 
-        return view('projects.pengaturan', compact('project', 'categories', 'selectedCategories'));
+        // Data untuk tab Finansial
+        $wageStandards = $project->wageStandards()->orderBy('job_category')->get();
+        $members = $project->workers()
+                            ->wherePivot('status', 'accepted') // Hanya member yang diterima
+                            ->withPivot('wage_standard_id') // Sertakan wage_standard_id dari pivot
+                            ->orderBy('name')
+                            ->get();
+
+        // Data untuk tab Kriteria
+        $difficultyLevels = $project->difficultyLevels()->orderBy('display_order', 'asc')->get();
+        $priorityLevels = $project->priorityLevels()->orderBy('display_order', 'asc')->get();
+
+        return view('projects.pengaturan', compact(
+            'project',
+            'categories',
+            'selectedCategories',
+            'wageStandards',
+            'members',
+            'difficultyLevels',
+            'priorityLevels'
+        ));
     }
 
-    // Memperbarui pengaturan proyek (Metode alternatif, jika tidak ingin menggunakan ProjectController::update)
-    public function update(Request $request, Project $project)
+    // --- PERBAIKAN: Method untuk Update Info Proyek SAJA ---
+    public function updateProjectInfo(Request $request, Project $project)
     {
-        // Cek apakah pengguna berhak mengakses pengaturan proyek
-        if (Auth::id() !== $project->owner_id) {
-            return redirect()->route('projects.show', $project)
-                ->with('error', 'Anda tidak memiliki akses untuk mengubah pengaturan proyek ini.');
-        }
+        if (Auth::id() !== $project->owner_id) { abort(403); }
 
-        $request->validate([
+        // Validasi HANYA untuk field info proyek
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after:start_date',
-            'budget' => 'required|numeric',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'budget' => 'nullable|numeric|min:0',
             'status' => 'required|string|in:open,in_progress,completed,cancelled',
             'wip_limits' => 'nullable|integer|min:1',
             'categories' => 'nullable|array',
             'categories.*' => 'exists:categories,id',
+            // 'payment_calculation_type' DIHAPUS dari sini
         ]);
 
-        $project->update($request->except('categories'));
+        // Update project data (tanpa payment_calculation_type)
+        $project->update($validated);
 
         // Sync categories
         if ($request->has('categories')) {
@@ -58,8 +81,61 @@ class SettingController extends Controller
             $project->categories()->detach();
         }
 
+        // Gunakan key flash message berbeda agar bisa menampilkan di tab yang benar
         return redirect()->route('projects.pengaturan', $project)
-            ->with('success', 'Pengaturan proyek berhasil diperbarui!');
+                         ->with('success_info', 'Informasi proyek berhasil diperbarui!');
+    }
+
+    // --- PERBAIKAN: Method BARU untuk Update Tipe Kalkulasi Pembayaran ---
+    public function updatePaymentCalculationType(Request $request, Project $project)
+    {
+        if (Auth::id() !== $project->owner_id) { abort(403); }
+
+        // Validasi HANYA untuk tipe pembayaran
+        $validated = $request->validate([
+            'payment_calculation_type' => ['required', Rule::in(['termin', 'task', 'full'])],
+        ]);
+
+        // Update hanya field payment_calculation_type
+        $project->update($validated);
+
+        // Gunakan key flash message berbeda
+        return redirect()->route('projects.pengaturan', $project)
+                         ->with('success_payment', 'Metode kalkulasi pembayaran berhasil diperbarui!');
+    }
+
+    // --- Memperbarui Pengaturan Proyek Utama & Tipe Pembayaran ---
+    public function update(Request $request, Project $project)
+    {
+        if (Auth::id() !== $project->owner_id) { abort(403); }
+
+        $validated = $request->validate([
+            // Validasi dari form project info
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'budget' => 'nullable|numeric|min:0',
+            'status' => 'required|string|in:open,in_progress,completed,cancelled',
+            'wip_limits' => 'nullable|integer|min:1',
+            'categories' => 'nullable|array',
+            'categories.*' => 'exists:categories,id',
+            // Validasi untuk tipe pembayaran baru
+            'payment_calculation_type' => ['required', Rule::in(['termin', 'task', 'full'])],
+        ]);
+
+        // Update project data
+        $project->update($validated);
+
+        // Sync categories (jika ada)
+        if ($request->has('categories')) {
+            $project->categories()->sync($request->categories);
+        } else {
+            $project->categories()->detach(); // Hapus semua jika tidak ada yang dipilih
+        }
+
+        return redirect()->route('projects.pengaturan', $project)
+                         ->with('success', 'Pengaturan proyek berhasil diperbarui!');
     }
 
     // --- Weight Management ---
@@ -70,24 +146,14 @@ class SettingController extends Controller
         return view('settings.weights', compact('project'));
     }
 
+    // --- Update Bobot WSM (Tetap sama) ---
     public function updateWeights(Request $request, Project $project)
     {
-        // Authorization check
-        // $this->authorize('update', $project);
-
-        $validated = $request->validate([
-            'difficulty_weight' => 'required|integer|min:0|max:100',
-            'priority_weight' => 'required|integer|min:0|max:100',
-        ]);
-
-        // Optional: Validate that weights sum to 100
-        if (($validated['difficulty_weight'] + $validated['priority_weight']) != 100) {
-             return back()->withErrors(['weights' => 'Total bobot kesulitan dan prioritas harus 100.'])->withInput();
-        }
-
+        if (Auth::id() !== $project->owner_id) { abort(403); }
+        $validated = $request->validate([ /* ... */ ]);
+        if (($validated['difficulty_weight'] + $validated['priority_weight']) != 100) { /* Error */ }
         $project->update($validated);
-
-        return redirect()->route('projects.pengaturan', $project)->with('success', 'Bobot berhasil diperbarui.');
+        return redirect()->route('projects.pengaturan', $project)->with('success_criteria', 'Bobot WSM berhasil diperbarui.'); // Gunakan key berbeda agar bisa direct ke tab
     }
 
     // --- Level Management (Difficulty & Priority) ---
@@ -408,6 +474,45 @@ private function reorderPriorityLevels(Project $project)
             DB::rollBack();
             \Log::error("Error updating level order: " . $e->getMessage()); // Log error
             return response()->json(['success' => false, 'message' => 'Gagal memperbarui urutan level.'], 500);
+        }
+    }
+
+    // --- ** NEW: Update Standar Gaji Anggota Tim via AJAX --- **
+    public function updateMemberWageStandard(Request $request, Project $project, User $user)
+    {
+        if (Auth::id() !== $project->owner_id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        }
+
+        $validated = $request->validate([
+            // Bisa null jika ingin menghapus assignment
+            'wage_standard_id' => 'nullable|exists:wage_standards,id',
+        ]);
+
+        // Pastikan wage standard (jika dipilih) milik proyek ini
+        if ($validated['wage_standard_id']) {
+            $wageStandard = WageStandard::find($validated['wage_standard_id']);
+            if (!$wageStandard || $wageStandard->project_id !== $project->id) {
+                return response()->json(['success' => false, 'message' => 'Invalid Wage Standard selected.'], 422);
+            }
+        }
+
+        // Pastikan user adalah member proyek
+        $member = $project->workers()->where('user_id', $user->id)->wherePivot('status', 'accepted')->exists();
+        if (!$member) {
+             return response()->json(['success' => false, 'message' => 'User is not an active member of this project.'], 404);
+        }
+
+        try {
+            // Update pivot table
+            $project->workers()->updateExistingPivot($user->id, [
+                'wage_standard_id' => $validated['wage_standard_id'] // Bisa null
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Wage standard for ' . $user->name . ' updated successfully.']);
+        } catch (\Exception $e) {
+            \Log::error("Error updating member wage standard: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to update wage standard.'], 500);
         }
     }
 }

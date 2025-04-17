@@ -88,6 +88,7 @@ Route::middleware('auth')->group(function () {
         // --- Pengaturan Proyek ---
         // [LAMA/DIPERTAHANKAN] Halaman utama pengaturan
         Route::get('/settings', [SettingController::class, 'index'])->name('pengaturan');
+        Route::patch('/settings', [SettingController::class, 'update'])->name('pengaturan.update');
         // [BARU] 1. Pengaturan Bobot WSM
         Route::get('/settings/weights', [SettingController::class, 'editWeights'])->name('settings.weights.edit');
         Route::patch('/settings/weights', [SettingController::class, 'updateWeights'])->name('settings.weights.update');
@@ -103,6 +104,15 @@ Route::middleware('auth')->group(function () {
         Route::patch('/settings/levels/priority/{priorityLevel}', [SettingController::class, 'updatePriorityLevel'])->name('settings.levels.priority.update');
         Route::delete('/settings/levels/priority/{priorityLevel}', [SettingController::class, 'destroyPriorityLevel'])->name('settings.levels.priority.destroy');
         Route::patch('/settings/levels/order', [SettingController::class, 'updateOrder'])->name('settings.levels.order');
+
+        Route::patch('/settings/team/{user}/wage', [SettingController::class, 'updateMemberWageStandard'])->name('settings.team.wage.update');
+        Route::patch('/settings/info', [SettingController::class, 'updateProjectInfo'])->name('pengaturan.info.update');
+        Route::patch('/settings/payment-type', [SettingController::class, 'updatePaymentCalculationType'])->name('pengaturan.payment.update');
+
+        // Rute untuk Wage Standards CRUD (Ini link ke controller WageStandard, bukan SettingController)
+        Route::resource('/wage-standards', App\Http\Controllers\WageStandardController::class)
+             ->except(['show'])
+             ->names('wage-standards'); // Pastikan ini mengarah ke controller yang benar
 
         // --- Manajemen Tim ---
         // [LAMA/DIPERTAHANKAN] Rute-rute manajemen tim

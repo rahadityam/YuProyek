@@ -76,11 +76,23 @@
             </div>
             <span class="ml-3 group-hover:text-[#5F65DB] transition-opacity duration-200" x-bind:class="{ 'hidden': {{ $isCollapsed }} }">Papan Kanban</span>
         </a>
+
+        <a href="/projects/{{ $currentProjectId }}/pembayaran" class="flex items-center pr-l pl-2 pb-1 pt-1  rounded-md cursor-pointer group w-full"
+                    :class="{ 'bg-[#E2EBFD]': activeMenu.includes('/projects/{{ $currentProjectId }}/pembayaran') }"
+                    :style="activeMenu.includes('/projects/{{ $currentProjectId }}/pembayaran') ? 'box-shadow: inset 4px 0 0 0 #5F65DB; color: #5F65DB;' : ''">
+                    <div class="flex-shrink-0 flex justify-center items-center w-8 h-8" :class="{ 'ml-0': {{ $isCollapsed }}, 'ml-0': !{{ $isCollapsed }} }">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 group-hover:text-[#5F65DB]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                            <line x1="1" y1="10" x2="23" y2="10"></line>
+                        </svg>
+                    </div>
+                    <span class="ml-3 group-hover:text-[#5F65DB] transition-opacity duration-200" x-bind:class="{ 'hidden': {{ $isCollapsed }} }">Pembayaran</span>
+                </a>
     </div>
 </div>
 
         <!-- Keuangan -->
-        <div x-data class="flex flex-col items-center mt-2" :class="{ 'items-start': !{{ $isCollapsed }} }">
+        <!-- <div x-data class="flex flex-col items-center mt-2" :class="{ 'items-start': !{{ $isCollapsed }} }">
             <div class="flex items-center pr-l pl-2 pb-1 pt-1 rounded-md cursor-pointer group w-full" @click="toggleDropdown">
                 <div class="flex-shrink-0 flex justify-center items-center w-8 h-8">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 group-hover:text-[#5F65DB]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -94,33 +106,33 @@
             </div>
 
             <div class="overflow-hidden transition-all duration-300 w-full"
-        x-bind:class="{ 'ml-6': !{{ $isCollapsed }}, 'ml-0': {{ $isCollapsed }} }"
-        x-bind:style="openDropdown ? 'max-height: 100px' : 'max-height: 0px'">
-        <a href="#" class="flex items-center pr-l pl-2 pb-1 pt-1 rounded-md cursor-pointer group w-full"
-            :class="{ 'bg-[#E2EBFD]': activeMenu.includes('/projects/{{ $currentProjectId }}/penggajian') || activeMenu.includes('/projects/{{ $currentProjectId }}/wage-standards') }"
-            :style="(activeMenu.includes('/projects/{{ $currentProjectId }}/penggajian') || activeMenu.includes('/projects/{{ $currentProjectId }}/wage-standards')) ? 'box-shadow: inset 4px 0 0 0 #5F65DB; color: #5F65DB;' : ''">
-            <div class="flex-shrink-0 flex justify-center items-center w-8 h-8" :class="{ 'ml-0': {{ $isCollapsed }}, 'ml-0': !{{ $isCollapsed }} }">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 group-hover:text-[#5F65DB]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="12" y1="1" x2="12" y2="23"></line>
-                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-                </svg>
-            </div>
-            <span class="ml-3 group-hover:text-[#5F65DB] transition-opacity duration-200" x-bind:class="{ 'hidden': {{ $isCollapsed }} }">Penggajian</span>
-        </a>
+                x-bind:class="{ 'ml-6': !{{ $isCollapsed }}, 'ml-0': {{ $isCollapsed }} }"
+                x-bind:style="openDropdown ? 'max-height: 100px' : 'max-height: 0px'">
+                <a href="#" class="flex items-center pr-l pl-2 pb-1 pt-1 rounded-md cursor-pointer group w-full"
+                    :class="{ 'bg-[#E2EBFD]': activeMenu.includes('/projects/{{ $currentProjectId }}/penggajian') || activeMenu.includes('/projects/{{ $currentProjectId }}/wage-standards') }"
+                    :style="(activeMenu.includes('/projects/{{ $currentProjectId }}/penggajian') || activeMenu.includes('/projects/{{ $currentProjectId }}/wage-standards')) ? 'box-shadow: inset 4px 0 0 0 #5F65DB; color: #5F65DB;' : ''">
+                    <div class="flex-shrink-0 flex justify-center items-center w-8 h-8" :class="{ 'ml-0': {{ $isCollapsed }}, 'ml-0': !{{ $isCollapsed }} }">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 group-hover:text-[#5F65DB]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="1" x2="12" y2="23"></line>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                        </svg>
+                    </div>
+                    <span class="ml-3 group-hover:text-[#5F65DB] transition-opacity duration-200" x-bind:class="{ 'hidden': {{ $isCollapsed }} }">Penggajian</span>
+                </a>
 
-        <a href="/projects/{{ $currentProjectId }}/pembayaran" class="flex items-center pr-l pl-2 pb-1 pt-1  rounded-md cursor-pointer group w-full"
-            :class="{ 'bg-[#E2EBFD]': activeMenu.includes('/projects/{{ $currentProjectId }}/pembayaran') }"
-            :style="activeMenu.includes('/projects/{{ $currentProjectId }}/pembayaran') ? 'box-shadow: inset 4px 0 0 0 #5F65DB; color: #5F65DB;' : ''">
-            <div class="flex-shrink-0 flex justify-center items-center w-8 h-8" :class="{ 'ml-0': {{ $isCollapsed }}, 'ml-0': !{{ $isCollapsed }} }">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 group-hover:text-[#5F65DB]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
-                    <line x1="1" y1="10" x2="23" y2="10"></line>
-                </svg>
+                <a href="/projects/{{ $currentProjectId }}/pembayaran" class="flex items-center pr-l pl-2 pb-1 pt-1  rounded-md cursor-pointer group w-full"
+                    :class="{ 'bg-[#E2EBFD]': activeMenu.includes('/projects/{{ $currentProjectId }}/pembayaran') }"
+                    :style="activeMenu.includes('/projects/{{ $currentProjectId }}/pembayaran') ? 'box-shadow: inset 4px 0 0 0 #5F65DB; color: #5F65DB;' : ''">
+                    <div class="flex-shrink-0 flex justify-center items-center w-8 h-8" :class="{ 'ml-0': {{ $isCollapsed }}, 'ml-0': !{{ $isCollapsed }} }">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 group-hover:text-[#5F65DB]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                            <line x1="1" y1="10" x2="23" y2="10"></line>
+                        </svg>
+                    </div>
+                    <span class="ml-3 group-hover:text-[#5F65DB] transition-opacity duration-200" x-bind:class="{ 'hidden': {{ $isCollapsed }} }">Pembayaran</span>
+                </a>
             </div>
-            <span class="ml-3 group-hover:text-[#5F65DB] transition-opacity duration-200" x-bind:class="{ 'hidden': {{ $isCollapsed }} }">Pembayaran</span>
-        </a>
-    </div>
-</div>
+        </div> -->
 
         <!-- Team Members -->
         <div class="mt-2 flex flex-col items-center" :class="{ 'items-start': !{{ $isCollapsed }} }">
@@ -154,8 +166,8 @@
 
 <div class="mt-2 flex flex-col items-center" :class="{ 'items-start': !{{ $isCollapsed }} }">
     <a href="/projects/{{ $currentProjectId }}/settings" class="flex items-center pl-2 pr-2 pt-1 pb-1 rounded-md cursor-pointer group w-full"
-        :class="{ 'bg-[#E2EBFD]': activeMenu.includes('/projects/{{ $currentProjectId }}/pengaturan') }"
-        :style="activeMenu.includes('/projects/{{ $currentProjectId }}/pengaturan') ? 'box-shadow: inset 4px 0 0 0 #5F65DB; color: #5F65DB;' : ''">
+        :class="{ 'bg-[#E2EBFD]': activeMenu.includes('/projects/{{ $currentProjectId }}/settings') }"
+        :style="activeMenu.includes('/projects/{{ $currentProjectId }}/settings') ? 'box-shadow: inset 4px 0 0 0 #5F65DB; color: #5F65DB;' : ''">
         <div class="flex-shrink-0 flex justify-center items-center w-8 h-8">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 group-hover:text-[#5F65DB]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="3"></circle>

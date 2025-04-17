@@ -19,8 +19,21 @@ class Project extends Model
         'status',
         'owner_id',
         'wip_limits',
-        'difficulty_weight', // Add this
-        'priority_weight',   // Add this
+        'difficulty_weight',
+        'priority_weight',
+        'payment_calculation_type',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'start_date' => 'date', // <-- Tambahkan ini
+        'end_date' => 'date',   // <-- Tambahkan ini
+        'budget' => 'decimal:2', // Casting budget jika perlu
+        // Tambahkan cast lain jika ada (misal: created_at, updated_at sudah otomatis)
     ];
 
     // Relasi ke User (pemilik proyek)
