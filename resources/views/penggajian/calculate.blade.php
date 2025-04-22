@@ -125,7 +125,7 @@
 
     <div class="py-6 px-4 sm:px-6 lg:px-8"
          x-data="payrollCalculator(
-                '{{ route('projects.pembayaran.calculate', $project) }}',
+                '{{ route('projects.payroll.calculate', $project) }}',
                 '{{ old('worker_id', $request->input('worker_id', 'all')) }}',
                 '{{ old('payment_status', $request->input('payment_status', 'all')) }}',
                 '{{ old('search', $request->input('search', '')) }}',
@@ -170,17 +170,28 @@
             </div>
         </div>
 
-        <!-- Tabs -->
-        <div class="border-b border-gray-200 mb-6 no-print">
+                <!-- Tabs -->
+                <div class="border-b border-gray-200 mb-6 no-print">
             <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-                <a href="{{ route('projects.pembayaran.calculate', $project) }}"
-                   class="border-indigo-500 text-indigo-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" aria-current="page">
-                    Perhitungan Penggajian
+                {{-- 1. Perhitungan Gaji --}}
+                <a href="{{ route('projects.payroll.calculate', $project) }}"
+                   class="{{ request()->routeIs('projects.payroll.calculate') ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
+                   @if(request()->routeIs('projects.payroll.calculate')) aria-current="page" @endif>
+                    Perhitungan Gaji
                 </a>
-                <a href="{{ route('projects.pembayaran', $project) }}"
-                   class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                    Pembayaran & Riwayat
+                {{-- 2. Buat & Sahkan Slip --}}
+                 {{-- Cek juga route detail payslip karena mungkin berada di bawah "Buat & Sahkan" secara logis --}}
+                <a href="{{ route('projects.payslips.create', $project) }}"
+                   class="{{ (request()->routeIs('projects.payslips.create') || request()->routeIs('projects.payslips.show')) ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
+                    @if(request()->routeIs('projects.payslips.create') || request()->routeIs('projects.payslips.show')) aria-current="page" @endif>
+                     Pembuatan Slip Gaij
                 </a>
+                {{-- 3. Riwayat Slip Gaji --}}
+                 <a href="{{ route('projects.payslips.history', $project) }}"
+                    class="{{ request()->routeIs('projects.payslips.history') ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
+                    @if(request()->routeIs('projects.payslips.history')) aria-current="page" @endif>
+                     Riwayat Slip Gaji
+                 </a>
             </nav>
         </div>
 
@@ -390,7 +401,7 @@
 
         {{-- Link to Payment Page (disembunyikan saat print) --}}
         <div class="mt-6 text-center text-sm text-gray-600 no-print">
-             Pergi ke halaman <a href="{{ route('projects.pembayaran', $project) }}" class="text-indigo-600 hover:underline font-medium">Pembayaran & Riwayat</a> untuk mengunggah bukti bayar atau membayar bonus/lainnya.
+             Pergi ke halaman <a href="{{ route('projects.payslips.create', $project) }}" class="text-indigo-600 hover:underline font-medium">Pembuatan Slip Gaji</a> untuk membuat slip gaji atau membayar bonus/lainnya.
          </div>
 
     </div>

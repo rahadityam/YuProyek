@@ -76,33 +76,35 @@ class Task extends Model
     // --- Accessor ---
 
     // Skor WSM (Weighted Sum Model)
-    public function getWsmScoreAttribute(): float
-    {
-        $difficultyValue = $this->difficultyLevel->value ?? 0;
-        $priorityValue = $this->priorityLevel->value ?? 0;
-        // Default achievement to 100 if null or 0 to avoid division by zero / incorrect calc
-        $achievement = ($this->achievement_percentage > 0) ? $this->achievement_percentage : 100;
+    // Skor WSM (Weighted Sum Model)
+public function getWsmScoreAttribute(): float
+{
+    $difficultyValue = $this->difficultyLevel->value ?? 0;
+    $priorityValue = $this->priorityLevel->value ?? 0;
+    
+    // Get achievement percentage - only default to 100 if NULL, not if 0
+    $achievement = $this->achievement_percentage !== null ? $this->achievement_percentage : 100;
 
-        $project = $this->project; // Load relasi project
-        if (!$project) {
-            return 0; // Handle jika task tidak punya project
-        }
-
-        $difficultyWeight = $project->difficulty_weight; // Accessor di Project akan handle default
-        $priorityWeight = $project->priority_weight;     // Accessor di Project akan handle default
-
-        // Normalisasi bobot (asumsi 0-100)
-        $wDifficulty = $difficultyWeight / 100;
-        $wPriority = $priorityWeight / 100;
-
-        // Hitung skor mentah berdasarkan level
-        $rawScore = ($difficultyValue * $wDifficulty) + ($priorityValue * $wPriority);
-
-        // Terapkan persentase pencapaian
-        $finalScore = $rawScore * ($achievement / 100);
-
-        return round($finalScore, 2); // Bulatkan 2 desimal
+    $project = $this->project; // Load relasi project
+    if (!$project) {
+        return 0; // Handle jika task tidak punya project
     }
+
+    $difficultyWeight = $project->difficulty_weight; // Accessor di Project akan handle default
+    $priorityWeight = $project->priority_weight;     // Accessor di Project akan handle default
+
+    // Normalisasi bobot (asumsi 0-100)
+    $wDifficulty = $difficultyWeight / 100;
+    $wPriority = $priorityWeight / 100;
+
+    // Hitung skor mentah berdasarkan level
+    $rawScore = ($difficultyValue * $wDifficulty) + ($priorityValue * $wPriority);
+
+    // Terapkan persentase pencapaian
+    $finalScore = $rawScore * ($achievement / 100);
+
+    return round($finalScore, 2); // Bulatkan 2 desimal
+}
 
     // Nilai Dasar (dari Wage Standard yang terhubung ke User di Project ini)
     public function getBaseValueAttribute(): float

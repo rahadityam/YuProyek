@@ -21,7 +21,7 @@ class Project extends Model
         'wip_limits',
         'difficulty_weight',
         'priority_weight',
-        'payment_calculation_type',
+        'payment_calculation_type', // Pastikan ini ada
     ];
 
     /**
@@ -33,6 +33,9 @@ class Project extends Model
         'start_date' => 'date', // <-- Tambahkan ini
         'end_date' => 'date',   // <-- Tambahkan ini
         'budget' => 'decimal:2', // Casting budget jika perlu
+        'wip_limits' => 'integer',
+        'difficulty_weight' => 'integer',
+        'priority_weight' => 'integer',
         // Tambahkan cast lain jika ada (misal: created_at, updated_at sudah otomatis)
     ];
 
@@ -45,9 +48,11 @@ class Project extends Model
     // Relasi ke User (pekerja proyek)
     public function workers()
     {
+        // Sertakan pivot wage_standard_id yang baru
         return $this->belongsToMany(User::class, 'project_users')
-                    ->withPivot('status', 'salary', 'position');
+                    ->withPivot('status', 'salary', 'position', 'wage_standard_id'); // Tambah wage_standard_id
     }
+
 
     // Relasi ke Task
     public function tasks()
@@ -65,36 +70,48 @@ class Project extends Model
     {
         return $this->hasMany(WageStandard::class);
     }
-    
+
     public function activityLogs()
-{
-    return $this->hasMany(ActivityLog::class)->orderBy('created_at', 'desc');
-}
-public function difficultyLevels()
-{
-    return $this->hasMany(DifficultyLevel::class);
-}
+    {
+        return $this->hasMany(ActivityLog::class)->orderBy('created_at', 'desc');
+    }
+    public function difficultyLevels()
+    {
+        return $this->hasMany(DifficultyLevel::class);
+    }
 
-public function priorityLevels()
-{
-    return $this->hasMany(PriorityLevel::class);
-}
+    public function priorityLevels()
+    {
+        return $this->hasMany(PriorityLevel::class);
+    }
 
-// Add relationship to payments made within this project
-public function payments()
-{
-    return $this->hasMany(Payment::class);
-}
+    // Add relationship to payments made within this project
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
 
- // Method to get default weights if needed
-public function getDifficultyWeightAttribute($value)
-{
-    return $value ?? 65; // Return default if null
-}
+    // --- BARU: Relasi ke Payment Terms ---
+    /**
+     * Get the payment terms defined for this project.
+     */
+    public function paymentTerms()
+    {
+        return $this->hasMany(PaymentTerm::class)->orderBy('start_date'); // Urutkan berdasarkan tanggal mulai
+    }
+    // --- END BARU ---
 
-public function getPriorityWeightAttribute($value)
-{
-    return $value ?? 35; // Return default if null
-}
+     // Method to get default weights if needed
+    public function getDifficultyWeightAttribute($value)
+    {
+        // Default to 65 if null or 0, but allow 0 if explicitly set
+        return ($value === null || $value === 0) ? ($this->attributes['difficulty_weight'] ?? 65) : $value;
+    }
+
+    public function getPriorityWeightAttribute($value)
+    {
+         // Default to 35 if null or 0, but allow 0 if explicitly set
+        return ($value === null || $value === 0) ? ($this->attributes['priority_weight'] ?? 35) : $value;
+    }
 
 }
