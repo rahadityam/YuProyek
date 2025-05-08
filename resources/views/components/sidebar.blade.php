@@ -74,6 +74,10 @@
                 </a>
             </div>
         </div>
+<!-- Separator horizontal sebelum Team Members -->
+<div class="w-full px-2 mt-2" :class="{ 'pl-2': !{{ $isCollapsed }}, 'pl-0': {{ $isCollapsed }} }">
+    <hr class="border-t border-gray-300">
+</div>
 
         {{-- Menu Lainnya (Team, Aktivitas, Pengaturan) Tetap Sama --}}
         <!-- Team Members -->

@@ -13,8 +13,11 @@ use App\Http\Controllers\ActivityController;
 /* ... Route::get('/', ...), Route::get('/projects', ...) */
 
 // Halaman Utama
+// Route::get('/', function () {
+//     return view('welcome');
+// });
 Route::get('/', function () {
-    return view('welcome');
+    return view('auth.login');
 });
 
 // Daftar Proyek Publik (jika ada)
@@ -22,9 +25,13 @@ Route::get('/projects', [ProjectController::class, 'index'])->name('projects.ind
 
 
 // Dashboard Global
-Route::get('/dashboard', [ProjectController::class, 'dashboard'])
-    ->middleware(['auth', 'verified'])
-    ->name('dashboard');
+// Route::get('/dashboard', [ProjectController::class, 'dashboard'])
+//     ->middleware(['auth', 'verified'])
+//     ->name('dashboard');
+Route::get('/dashboard', function () {
+    return redirect()->route('projects.my-projects');
+})->middleware(['auth', 'verified'])->name('dashboard');
+
 
 // Grup Rute untuk Pengguna yang Terautentikasi
 Route::middleware('auth')->group(function () {

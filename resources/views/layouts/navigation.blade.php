@@ -12,24 +12,24 @@
                 </div>
 
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex items-end h-16">
-                    <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+                <x-nav-link :href="route('projects.my-projects')" :active="request()->routeIs(['projects.my-projects', 'dashboard'])">
                         {{ __('Home') }}
                     </x-nav-link>
                 </div>
 
                 <!-- Navigation Links - Positioned to align with bottom border -->
-                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex items-end h-16">
+                <!-- <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex items-end h-16">
                     <x-nav-link :href="route('projects.index')" :active="request()->routeIs('projects.index')">
                         {{ __('Eksplor Proyek') }}
                     </x-nav-link>
-                </div>
+                </div> -->
 
                 <!-- Navigation Links -->
-                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex items-end h-16">
+                <!-- <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex items-end h-16">
                     <x-nav-link :href="route('projects.my-projects')" :active="request()->routeIs('projects.my-projects')">
                         {{ __('Proyek Saya') }}
                     </x-nav-link>
-                </div>
+                </div> -->
             </div>
 
             <!-- Item di Kanan -->
@@ -58,7 +58,7 @@
     </x-slot>
 
     <x-slot name="content">
-        @if(Auth::user()->role === 'worker')
+        <!-- @if(Auth::user()->role === 'worker')
             <x-dropdown-link :href="route('user.switch-role', ['role' => 'project_owner'])">
                 {{ __('Beralih ke Project Manager') }}
             </x-dropdown-link>
@@ -66,7 +66,7 @@
             <x-dropdown-link :href="route('user.switch-role', ['role' => 'worker'])">
                 {{ __('Beralih ke Pekerja Proyek') }}
             </x-dropdown-link>
-        @endif
+        @endif -->
 
         <x-dropdown-link :href="route('profile.edit')">
             {{ __('Profile') }}

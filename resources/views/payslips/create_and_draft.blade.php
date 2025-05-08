@@ -167,8 +167,8 @@
                                             <div class="ml-3 flex-1">
                                                 <label :for="'task_'+task.id" class="block text-sm font-medium text-gray-900 cursor-pointer" x-text="task.title"></label>
                                                 <div class="text-xs text-gray-500 mt-1 space-x-2">
-                                                    <span>WSM: <strong x-text="task.wsm_score?.toFixed(2) || 'N/A'"></strong></span>|
-                                                    <span>Achv: <strong x-text="(task.achievement_percentage ?? 100) + '%'"></strong></span>|
+                                                    <span>WSM: <strong x-text="task.wsm_score?.toFixed(2) || 'N/A'"></strong></span> |
+                                                    <span>Achv: <strong x-text="(task.achievement_percentage ?? 100) + '%'"></strong></span> |
                                                     {{-- Tampilkan tanggal selesai --}}
                                                     <span>Selesai: <strong x-text="formatDisplayDate(task.finished_date)"></strong></span> |
                                                     <span>Nilai: <strong class="text-indigo-700" x-text="formatCurrency(task.calculated_value || 0)"></strong></span>

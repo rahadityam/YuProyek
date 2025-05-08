@@ -48,12 +48,12 @@
                      </th>
                      {{-- Columns NOT sortable by DB query --}}
                      <th scope="col" class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider" title="Weighted Sum Model Score">
-                         Skor WSM
+                         Skor
                      </th>
                       <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" title="Nilai dasar dari standar upah pekerja">
                          Nilai Dasar (Rp)
                      </th>
-                     <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" title="Nilai Akhir = Skor WSM * Nilai Dasar * Persentase Achievement">
+                     <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider" title="Nilai Akhir = Skor * Nilai Dasar * Persentase Achievement">
                          Nilai Akhir (Rp)
                      </th>
                      {{-- End non-sortable columns --}}
