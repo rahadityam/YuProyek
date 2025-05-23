@@ -45,7 +45,7 @@
                 x-bind:class="{ 'ml-6': !{{ $isCollapsed }}, 'ml-0': {{ $isCollapsed }} }"
                 x-bind:style="openManageProjectDropdown ? 'max-height: 200px' : 'max-height: 0px'">
                 {{-- Dashboard --}}
-                <a href="{{ route('projects.dashboard', $currentProjectId) }}" class="flex items-center pr-l pl-2 pb-1 pt-1 rounded-md cursor-pointer group w-full"
+                <a href="{{ route('projects.dashboard', $currentProjectId) }}" wire:navigate class="flex items-center pr-l pl-2 pb-1 pt-1 rounded-md cursor-pointer group w-full"
                     :class="{ 'bg-[#E2EBFD]': activeMenu.includes('/projects/{{ $currentProjectId }}/dashboard') }"
                     :style="activeMenu.includes('/projects/{{ $currentProjectId }}/dashboard') ? 'box-shadow: inset 4px 0 0 0 #5F65DB; color: #5F65DB;' : ''">
                     <div class="flex-shrink-0 flex justify-center items-center w-8 h-8" :class="{ 'ml-0': {{ $isCollapsed }}, 'ml-0': !{{ $isCollapsed }} }">
@@ -54,7 +54,7 @@
                     <span class="ml-3 group-hover:text-[#5F65DB] transition-opacity duration-200" x-bind:class="{ 'hidden': {{ $isCollapsed }} }">Dashboard</span>
                 </a>
                  {{-- Papan Kanban --}}
-                <a href="{{ route('projects.kanban', $currentProjectId) }}" class="flex items-center pr-l pl-2 pb-1 pt-1 rounded-md cursor-pointer group w-full"
+                <a href="{{ route('projects.kanban', $currentProjectId) }}" wire:navigate class="flex items-center pr-l pl-2 pb-1 pt-1 rounded-md cursor-pointer group w-full"
                     :class="{ 'bg-[#E2EBFD]': activeMenu.includes('/projects/{{ $currentProjectId }}/kanban') }"
                     :style="activeMenu.includes('/projects/{{ $currentProjectId }}/kanban') ? 'box-shadow: inset 4px 0 0 0 #5F65DB; color: #5F65DB;' : ''">
                     <div class="flex-shrink-0 flex justify-center items-center w-8 h-8" :class="{ 'ml-0': {{ $isCollapsed }}, 'ml-0': !{{ $isCollapsed }} }">
@@ -63,7 +63,7 @@
                     <span class="ml-3 group-hover:text-[#5F65DB] transition-opacity duration-200" x-bind:class="{ 'hidden': {{ $isCollapsed }} }">Papan Kanban</span>
                 </a>
                 
-                <a href="{{ route('projects.payroll.calculate', $currentProjectId) }}" class="flex items-center pr-l pl-2 pb-1 pt-1 rounded-md cursor-pointer group w-full"
+                <a href="{{ route('projects.payroll.calculate', $currentProjectId) }}" wire:navigate class="flex items-center pr-l pl-2 pb-1 pt-1 rounded-md cursor-pointer group w-full"
                      :class="{ 'bg-[#E2EBFD]': activeMenu.includes('/projects/{{ $currentProjectId }}/payroll/calculate') }"
                      :style="activeMenu.includes('/projects/{{ $currentProjectId }}/payroll/calculate') ? 'box-shadow: inset 4px 0 0 0 #5F65DB; color: #5F65DB;' : ''">
                     <div class="flex-shrink-0 flex justify-center items-center w-8 h-8" :class="{ 'ml-0': {{ $isCollapsed }}, 'ml-0': !{{ $isCollapsed }} }">
@@ -82,7 +82,7 @@
         {{-- Menu Lainnya (Team, Aktivitas, Pengaturan) Tetap Sama --}}
         <!-- Team Members -->
         <div class="mt-2 flex flex-col items-center" :class="{ 'items-start': !{{ $isCollapsed }} }">
-            <a href="{{ route('projects.team', $projectId) }}" class="flex items-center pl-2 pr-2 pt-1 pb-1 rounded-md cursor-pointer group w-full"
+            <a href="{{ route('projects.team', $projectId) }}" wire:navigate class="flex items-center pl-2 pr-2 pt-1 pb-1 rounded-md cursor-pointer group w-full"
                 :class="{ 'bg-[#E2EBFD]': activeMenu.includes('/projects/{{ $currentProjectId }}/team') }"
                 :style="activeMenu.includes('/projects/{{ $currentProjectId }}/team') ? 'box-shadow: inset 4px 0 0 0 #5F65DB; color: #5F65DB;' : ''">
                 <div class="flex-shrink-0 flex justify-center items-center w-8 h-8">
@@ -94,7 +94,7 @@
 
         <!-- Aktivitas -->
         <div class="mt-2 flex flex-col items-center" :class="{ 'items-start': !{{ $isCollapsed }} }">
-            <a href="{{ route('projects.activity', $currentProjectId) }}" class="flex items-center pl-2 pr-2 pt-1 pb-1 rounded-md cursor-pointer group w-full"
+            <a href="{{ route('projects.activity', $currentProjectId) }}" wire:navigate class="flex items-center pl-2 pr-2 pt-1 pb-1 rounded-md cursor-pointer group w-full"
                 :class="{ 'bg-[#E2EBFD]': activeMenu.includes('/projects/{{ $currentProjectId }}/activity') }" {{-- Ubah dari aktivitas ke activity --}}
                 :style="activeMenu.includes('/projects/{{ $currentProjectId }}/activity') ? 'box-shadow: inset 4px 0 0 0 #5F65DB; color: #5F65DB;' : ''">
                 <div class="flex-shrink-0 flex justify-center items-center w-8 h-8">
@@ -106,7 +106,7 @@
 
         <!-- Pengaturan -->
         <div class="mt-2 flex flex-col items-center" :class="{ 'items-start': !{{ $isCollapsed }} }">
-            <a href="{{ route('projects.pengaturan', $currentProjectId) }}" class="flex items-center pl-2 pr-2 pt-1 pb-1 rounded-md cursor-pointer group w-full"
+            <a href="{{ route('projects.pengaturan', $currentProjectId) }}" wire:navigate class="flex items-center pl-2 pr-2 pt-1 pb-1 rounded-md cursor-pointer group w-full"
                 :class="{ 'bg-[#E2EBFD]': activeMenu.includes('/projects/{{ $currentProjectId }}/settings') || activeMenu.includes('/projects/{{ $currentProjectId }}/wage-standards') }"
                 :style="(activeMenu.includes('/projects/{{ $currentProjectId }}/settings') || activeMenu.includes('/projects/{{ $currentProjectId }}/wage-standards')) ? 'box-shadow: inset 4px 0 0 0 #5F65DB; color: #5F65DB;' : ''">
                 <div class="flex-shrink-0 flex justify-center items-center w-8 h-8">
