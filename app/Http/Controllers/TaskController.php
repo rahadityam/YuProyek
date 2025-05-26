@@ -12,15 +12,19 @@ use App\Models\TaskComment;      // Add this
 use App\Models\TaskAttachment;  // Add this
 use App\Models\ActivityLog;     // Add this
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log; 
 use Illuminate\Support\Facades\Storage; // Add this
 use Illuminate\Support\Facades\Auth;    // Add this
 use App\Services\ActivityLogger;
+use Illuminate\Auth\Access\AuthorizationException;
+
 class TaskController extends Controller
 {
     // Kanban View (Load necessary data)
     // Update this method in TaskController.php
 public function kanban(Project $project)
 {
+    $this->authorize('viewKanban', $project);
     // Eager load relationships needed for cards and modals + counts
     $tasks = $project->tasks()
                     ->with([
@@ -51,7 +55,7 @@ public function kanban(Project $project)
     public function show(Task $task)
     {
          // Authorization: Check if user can view this task (e.g., part of project)
-         // $this->authorize('view', $task); // Example policy check
+         $this->authorize('view', $task); // Example policy check
 
          $task->load([
              'comments.user:id,name', // Load comments and the user who made them
@@ -90,10 +94,12 @@ public function kanban(Project $project)
             'achievement_percentage' => 'sometimes|integer|min:0|max:100|nullable', // Updated
              // No need for order initially, handled by batch update
         ]);
+        
 
          // Authorization: Check if user can create tasks in this project
          $project = Project::find($validated['project_id']);
          // $this->authorize('createTask', $project); // Example policy check
+        $this->authorize('create', [Task::class, $project]);
 
          // Additional validation for levels belonging to project (optional but recommended)
          if ($request->filled('difficulty_level_id') && !DifficultyLevel::where('id', $request->difficulty_level_id)->where('project_id', $project->id)->exists()) {
@@ -136,7 +142,7 @@ public function kanban(Project $project)
     public function update(Request $request, Task $task)
     {
          // Authorization check
-         // $this->authorize('update', $task);
+         $this->authorize('update', $task);
 
          $validated = $request->validate([
              'title' => 'required|string|max:255',
@@ -198,7 +204,7 @@ public function kanban(Project $project)
     public function destroy(Task $task, Request $request)
     {
         // Authorization check
-        // $this->authorize('delete', $task);
+        $this->authorize('delete', $task);
 
         DB::beginTransaction();
         try {
@@ -249,6 +255,7 @@ public function kanban(Project $project)
     {
         // Authorization
         // $this->authorize('comment', $task);
+        $this->authorize('createComment', $task);
 
         $validated = $request->validate(['comment' => 'required|string|max:2000']);
 
@@ -271,6 +278,7 @@ public function kanban(Project $project)
     {
          // Authorization
          // $this->authorize('attach', $task);
+        $this->authorize('manageAttachments', $task);
 
         $validated = $request->validate([
             'attachments' => 'required|array',
@@ -324,6 +332,7 @@ public function kanban(Project $project)
              abort(403, 'You cannot delete this attachment.');
          }
         // $this->authorize('delete', $attachment); // Example policy
+        $this->authorize('manageAttachments', $task);
 
         DB::beginTransaction();
         try {
@@ -389,47 +398,116 @@ public function kanban(Project $project)
     public function batchUpdate(Request $request)
     {
         $orderData = $request->input('data');
-        $projectId = $request->input('project_id');
-        
+        $projectId = $request->input('project_id'); // Pastikan project_id selalu dikirim dari frontend
+
+        // Validasi dasar input
+        if (!$projectId || !is_numeric($projectId)) {
+            return response()->json(['success' => false, 'message' => 'Project ID is required and must be valid.'], 400);
+        }
+        if (!$orderData || !is_array($orderData)) {
+            return response()->json(['success' => false, 'message' => 'Task data is malformed.'], 400);
+        }
+
+        // Dapatkan project instance untuk pengecekan owner
+        $project = Project::find($projectId);
+        if (!$project) {
+            return response()->json(['success' => false, 'message' => 'Project not found.'], 404);
+        }
+
+        $currentUser = Auth::user();
+
         DB::beginTransaction();
-        
-        try {
-            foreach ($orderData as $status => $tasks) {
-                foreach ($tasks as $taskData) {
-                    $task = Task::findOrFail($taskData['id']);
-                    $oldStatus = $task->status;
-                    
-                    // Ensure the task belongs to the correct project
-                    if ($task->project_id != $projectId) {
-                        throw new \Exception("Task does not belong to this project");
-                    }
-                    
-                    $task->update([
-                        'status' => $status,
-                        'order' => $taskData['order']
-                    ]);
-                    
-                    // Log status change if status changed
-                    if ($oldStatus !== $status) {
-                        ActivityLogger::log(
-                            'status_changed',
-                            $task,
-                            $projectId,
-                            'has updated task "' . $task->title . '" to "' . $status . '"',
-                            [
-                                'old_status' => $oldStatus,
-                                'new_status' => $status
-                            ]
-                        );
-                    }
+try {
+    // Dapatkan ID task yang di-drag dari request (jika dikirim dari frontend)
+    // Misal, frontend mengirim ID task yang di-drag:
+    $draggedTaskId = $request->input('dragged_task_id', null); // Tambahkan ini di JS onEnd
+
+    foreach ($orderData as $newStatus => $tasksInStatus) {
+        if (!is_array($tasksInStatus)) continue;
+
+        foreach ($tasksInStatus as $taskData) {
+            if (!isset($taskData['id']) || !isset($taskData['order'])) continue;
+
+            $task = Task::with('project')->find($taskData['id']);
+            if (!$task) {
+                Log::warning("TaskController@batchUpdate: Task with ID {$taskData['id']} not found.");
+                continue;
+            }
+
+            if ($task->project_id != $projectId) {
+                throw new \Exception("Task ID {$task->id} does not belong to project ID {$projectId}.");
+            }
+
+            $oldStatus = $task->status;
+            $statusChanged = ($oldStatus !== $newStatus);
+            $isDraggedTask = ($draggedTaskId && $task->id == $draggedTaskId);
+
+            // OTORISASI:
+            // Hanya lakukan otorisasi ketat 'updateStatus' jika:
+            // 1. Status task ini berubah, ATAU
+            // 2. Ini adalah task yang secara eksplisit di-drag oleh pengguna.
+            // Untuk task lain yang hanya berubah urutannya karena ada task lain yang disisipkan/dihapus,
+            // dan task tersebut bukan milik worker, kita skip otorisasi 'updateStatus' yang ketat.
+            // Project Owner akan selalu lolos karena TaskPolicy@before.
+            if ($statusChanged || $isDraggedTask) {
+                $this->authorize('updateStatus', $task);
+            } else {
+                // Jika ini worker, dan task bukan miliknya, dan statusnya tidak berubah,
+                // kita mungkin tetap ingin mencegah perubahan order task orang lain.
+                // Ini tergantung seberapa ketat Anda ingin.
+                // Pilihan 1: Biarkan order berubah (lebih sederhana)
+                // Pilihan 2: Tambah policy baru 'updateOrder' yang dicek di sini
+                //            jika !currentUser->isProjectOwner($project) && $task->assigned_to !== $currentUser->id
+                //            maka $this->authorize('updateOrder', $task) -> ini akan gagal jika tidak ada permission.
+                // Untuk sekarang, kita biarkan worker bisa mengubah order task lain
+                // HANYA JIKA task yang di-drag adalah miliknya dan status task lain tidak berubah.
+                if (!$currentUser->isProjectOwner($project) && $task->assigned_to !== $currentUser->id) {
+                    // Jika worker mencoba mengubah order task orang lain (yang statusnya tidak berubah)
+                    // ini adalah efek samping dari memindahkan task miliknya.
+                    // Jika ini tidak diinginkan, Anda perlu logic yang lebih kompleks.
+                    // Untuk sekarang, kita log saja.
+                    Log::info("TaskController@batchUpdate: User {$currentUser->id} (worker) indirectly changed order of task {$task->id} (assigned to {$task->assigned_to}) which they do not own, because status did not change.");
                 }
             }
-            
+
+
+            $task->status = $newStatus;
+            $task->order = $taskData['order'];
+            $task->save();
+
+            if ($statusChanged) {
+                ActivityLogger::log(
+                    'status_changed',
+                    $task,
+                    $projectId,
+                    $currentUser->name . ' updated task "' . $task->title . '" to status "' . $newStatus . '"',
+                    [
+                        'old_status' => $oldStatus,
+                        'new_status' => $newStatus,
+                        'updated_by_id' => $currentUser->id,
+                        'updated_by_name' => $currentUser->name
+                    ]
+                );
+            }
+        }
+    }
+
             DB::commit();
-            return response()->json(['success' => true]);
+            return response()->json(['success' => true, 'message' => 'Task order and statuses updated successfully.']);
+
+        } catch (AuthorizationException $e) {
+            DB::rollBack();
+            Log::warning("AuthorizationException in TaskController@batchUpdate for project {$projectId} by user {$currentUser->id}: " . $e->getMessage(), [
+                'request_data' => $request->all()
+            ]);
+            return response()->json(['success' => false, 'message' => 'You are not authorized to update one or more of these tasks.'], 403);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            Log::error("Error in TaskController@batchUpdate for project {$projectId}: " . $e->getMessage(), [
+                'request_data' => $request->all(),
+                'trace' => $e->getTraceAsString() // Untuk debugging lebih detail jika perlu
+            ]);
+            return response()->json(['success' => false, 'message' => 'An error occurred while updating tasks: ' . $e->getMessage()], 500);
         }
     }
 

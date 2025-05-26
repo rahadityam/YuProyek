@@ -20,7 +20,7 @@
                     {{-- Tambahkan tombol Export PDF jika diperlukan --}}
                  @endif
                  {{-- Tombol Kembali --}}
-                <a href="{{ $payslip->isApproved() ? route('projects.payslips.history', $project) : route('projects.payslips.create', $project) }}" class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                <a href="{{ $payslip->isApproved() ? route('projects.payslips.history', $project) : route('projects.payslips.history', $project) }}" class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                     <svg class="-ml-0.5 mr-1.5 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"> <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" /> </svg>
                     Kembali ke {{ $payslip->isApproved() ? 'Riwayat' : 'Draft' }}
                 </a>
@@ -147,53 +147,51 @@
 
                           {{-- 4. Total & Tanda Tangan --}}
                           <div class="px-6 py-5 bg-gray-50 border-t border-gray-200">
-                 {{-- Total Penerimaan --}}
-                 <div class="text-right mb-8">
-                      <p class="text-sm font-medium text-gray-500 uppercase">Total Diterima</p>
-                      <p class="text-2xl font-bold text-indigo-700">Rp {{ number_format($payslip->amount, 0, ',', '.') }}</p>
-                 </div>
+    {{-- Total Penerimaan --}}
+    <div class="text-right mb-8">
+        <p class="text-sm font-medium text-gray-500 uppercase">Total Diterima</p>
+        <p class="text-2xl font-bold text-indigo-700">Rp {{ number_format($payslip->amount, 0, ',', '.') }}</p>
+    </div>
 
-                  {{-- Area Tanda Tangan --}}
-                  {{-- !! UBAH BAGIAN INI: Hapus atau komentari grid dan TTD Karyawan !! --}}
-                  {{-- <div class="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-dashed border-gray-300"> --}}
-                  <div class="grid grid-cols-1 pt-6 border-t border-dashed border-gray-300"> {{-- Ubah jadi 1 kolom --}}
-
-                      {{-- Tanda Tangan Karyawan (HAPUS ATAU KOMENTARI BLOK INI) --}}
-                      {{--
-                      <div class="text-center">
-                           <p class="text-sm text-gray-600 mb-12">Diterima Oleh,</p>
-                           <p class="text-sm font-medium text-gray-800 mt-2 border-t border-gray-400 pt-1 inline-block">({{ $payslip->user->name ?? '....................' }})</p>
-                           <p class="text-xs text-gray-500">Karyawan</p>
-                      </div>
-                      --}}
-
-                      {{-- Tanda Tangan Approval (PM) - Pindahkan ke tengah jika hanya 1 kolom --}}
-                       {{-- <div class="text-center"> --}}
-                       <div class="text-center md:text-right"> {{-- Atau tetap di kanan --}}
-                            <p class="text-sm text-gray-600 mb-2">Disetujui Oleh,</p>
-                            <div class="h-16 w-full flex items-center justify-center md:justify-end"> {{-- Sesuaikan justify --}}
-                                @if($payslip->isApproved())
-                                     @if($payslip->signature_type == 'digital' && $payslip->signature_url)
-                                         {{-- Tampilkan Gambar TTD Digital --}}
-                                         <img src="{{ $payslip->signature_url }}" alt="Tanda Tangan Digital" class="max-h-16 object-contain">
-                                     @elseif($payslip->signature_type == 'scanned' && $payslip->signature_url)
-                                          {{-- Tampilkan Link ke PDF/Gambar Scan --}}
-                                          <a href="{{ $payslip->signature_url }}" target="_blank" class="text-blue-600 hover:underline text-sm">Lihat Tanda Tangan (Scan)</a>
-                                     @else
-                                         {{-- Tanda Tangan Kosong (Approved tapi tidak ada file?) --}}
-                                         <span class="text-gray-400 italic text-sm">(Tanda Tangan Digital/Scan)</span>
-                                     @endif
-                                @else
-                                     {{-- Tanda Tangan Kosong (Draft) --}}
-                                     <span class="text-gray-400 italic text-sm">(Belum Disetujui)</span>
-                                @endif
-                            </div>
-                            <p class="text-sm font-medium text-gray-800 mt-2 border-t border-gray-400 pt-1 inline-block">({{ $payslip->approver->name ?? $ownerName }})</p>
-                            <p class="text-xs text-gray-500">Project Manager</p>
-                       </div>
-                  </div> {{-- Akhir Grid --}}
-             </div>
-         </div> {{-- End Slip Gaji Container --}}
+    {{-- Area Tanda Tangan --}}
+    <div class="grid grid-cols-1 pt-6 border-t border-dashed border-gray-300">
+        <div class="text-center md:text-right">
+            <p class="text-sm text-gray-600 mb-2">Disetujui Oleh,</p>
+            <div class="h-16 w-full flex items-center justify-center md:justify-end">
+                @if($payslip->isApproved())
+                    @if($payslip->signature_type == 'digital' && $payslip->signature_url)
+                        {{-- Fixed URL handling to prevent double storage/ paths --}}
+                        @php
+                            $signatureUrl = $payslip->signature_url;
+                            // Remove any absolute URLs
+                            $signatureUrl = preg_replace('#^https?://[^/]+#', '', $signatureUrl);
+                            // Remove any storage/ prefix as asset('storage/') will add it
+                            $signatureUrl = str_replace('storage/', '', $signatureUrl);
+                            // Make sure we don't have double slashes
+                            $signatureUrl = ltrim($signatureUrl, '/');
+                        @endphp
+                        <img src="{{ asset('storage/'.$signatureUrl) }}" alt="Tanda Tangan Digital" class="max-h-16 object-contain">
+                    @elseif($payslip->signature_type == 'scanned' && $payslip->signature_url)
+                        {{-- Same fix for scanned signature --}}
+                        @php
+                            $signatureUrl = $payslip->signature_url;
+                            $signatureUrl = preg_replace('#^https?://[^/]+#', '', $signatureUrl);
+                            $signatureUrl = str_replace('storage/', '', $signatureUrl);
+                            $signatureUrl = ltrim($signatureUrl, '/');
+                        @endphp
+                        <a href="{{ asset('storage/'.$signatureUrl) }}" target="_blank" class="text-blue-600 hover:underline text-sm">Lihat Tanda Tangan (Scan)</a>
+                    @else
+                        <span class="text-gray-400 italic text-sm">(Tanda Tangan Digital/Scan)</span>
+                    @endif
+                @else
+                    <span class="text-gray-400 italic text-sm">(Belum Disetujui)</span>
+                @endif
+            </div>
+            <p class="text-sm font-medium text-gray-800 mt-2 border-t border-gray-400 pt-1 inline-block">({{ $payslip->approver->name ?? $ownerName }})</p>
+            <p class="text-xs text-gray-500">Project Manager</p>
+        </div>
+    </div>
+</div>
 
          {{-- Approval Form (Hanya tampil jika draft & user adalah PM) --}}
           @if(!$payslip->isApproved() && $project->owner_id === Auth::id())
@@ -410,5 +408,5 @@
              }
         </script>
      @endpush
-    @stack('scripts') {{-- Pastikan ini ada jika script Alpine di atas menggunakan @push --}}
+    @stack('scripts')
 </x-app-layout>

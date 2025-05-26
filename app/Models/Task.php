@@ -5,6 +5,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 
 class Task extends Model
 {
@@ -201,4 +202,28 @@ public function getWsmScoreAttribute(): float
             }
             return $this->attachments()->count();
         }
+
+        /**
+     * Accessor untuk menentukan apakah user saat ini bisa memindahkan (update status) task ini.
+     * Akan otomatis ditambahkan jika model di-serialize ke array/JSON
+     * dengan nama atribut 'can_move'.
+     */
+    public function getCanMoveAttribute(): bool
+    {
+        // Pastikan ada user yang login
+        if (Auth::check()) {
+            // Menggunakan policy 'updateStatus' yang sudah kita definisikan
+            return Auth::user()->can('updateStatus', $this);
+        }
+        return false; // Jika tidak ada user login, defaultnya tidak bisa
+    }
+
+    protected $appends = [
+        'wsm_score',
+        'base_value',
+        'calculated_value',
+        'payment_status_text',
+        // 'attachments_count', // Jika Anda menggunakan withCount, ini tidak perlu di appends
+        'can_move' // Tambahkan ini!
+    ];
 }

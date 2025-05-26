@@ -99,4 +99,27 @@ class User extends Authenticatable
         {
             return $this->hasMany(TaskAttachment::class);
         }
+
+        // app/Models/User.php
+public function isProjectOwner(Project $project = null): bool
+{
+    if ($project) {
+        return $this->id === $project->owner_id;
+    }
+    return false; // Jika hanya cek peran umum
+}
+
+public function isWorker(): bool
+{
+    return $this->role === 'worker';
+}
+
+public function isProjectMember(Project $project): bool
+{
+    // Cek apakah user adalah owner ATAU worker yang diterima di proyek tersebut
+    if ($this->id === $project->owner_id) {
+        return true;
+    }
+    return $project->workers()->where('user_id', $this->id)->wherePivot('status', 'accepted')->exists();
+}
 }

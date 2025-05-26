@@ -596,58 +596,78 @@
                 this.isLoading = true;
                 this.formErrors = {};
                 let url = this.isEditMode ? `/tasks/${this.task.id}` : '/tasks';
-                let method = this.isEditMode ? 'POST' : 'POST'; // Use POST for both, PUT via _method
+                let method = 'POST'; // Selalu POST, _method akan menangani PUT
 
-                // Create FormData from the form
                 let formData = new FormData(this.$refs.taskForm);
-
-                // Append _method for PUT request if editing
                 if (this.isEditMode) {
                     formData.append('_method', 'PUT');
                 }
 
-                // Append potentially missing data not directly in form inputs if needed
-                // Example: if status dropdown was added: formData.append('status', this.task.status);
-
                 fetch(url, {
                     method: method,
-                    body: formData, // Send FormData
+                    body: formData,
                     headers: {
                         'Accept': 'application/json',
                         'X-CSRF-TOKEN': this.csrfToken,
-                         // 'Content-Type' is set automatically by browser for FormData
-                        'X-Requested-With': 'XMLHttpRequest' // Important for Laravel request()->ajax()
+                        'X-Requested-With': 'XMLHttpRequest'
                     }
                 })
                 .then(response => response.json().then(data => ({ status: response.status, body: data })))
                 .then(({ status, body }) => {
                     if (status === 200 && body.success) {
-                        // Use the existing event dispatch from the original code
-                         window.dispatchEvent(new CustomEvent('task-form-success', {
-                             detail: {
-                                 isEdit: this.isEditMode,
-                                 task: body.task, // Send back the full task object
-                                 taskHtml: body.taskHtml // Send back the rendered HTML
-                             }
-                         }));
+                        console.log('[Modal] Task submit success. Body:', body);
+
+                        // LANGSUNG COBA PANGGIL KanbanApp JIKA ADA DAN SIAP
+                        if (window.KanbanApp && window.KanbanApp.isInitialized && typeof window.KanbanApp.handleTaskFormSuccess === 'function') {
+                            console.log('[Modal] Calling KanbanApp.handleTaskFormSuccess directly.');
+                            window.KanbanApp.handleTaskFormSuccess({
+                                isEdit: this.isEditMode,
+                                task: body.task,
+                                taskHtml: body.taskHtml
+                            });
+                        } else {
+                            // FALLBACK KE EVENT GLOBAL
+                            console.warn('[Modal] KanbanApp not ready or not found. Falling back to global event dispatch.');
+                            window.dispatchEvent(new CustomEvent('task-form-success', {
+                                detail: {
+                                    isEdit: this.isEditMode,
+                                    task: body.task,
+                                    taskHtml: body.taskHtml
+                                }
+                            }));
+                        }
+
                         this.closeModal();
-                        window.dispatchEvent(new CustomEvent('show-status-message', { detail: { message: body.message || `Task ${this.isEditMode ? 'updated' : 'created'}!`, success: true } }));
+
+                        // Untuk status message, bisa juga langsung panggil jika ada, atau fallback ke event
+                        if (window.KanbanApp && window.KanbanApp.isInitialized && typeof window.KanbanApp.showStatusMessage === 'function') {
+                            window.KanbanApp.showStatusMessage(body.message || `Task ${this.isEditMode ? 'updated' : 'created'}!`, true);
+                        } else {
+                            window.dispatchEvent(new CustomEvent('show-status-message', { detail: { message: body.message || `Task ${this.isEditMode ? 'updated' : 'created'}!`, success: true } }));
+                        }
 
                     } else {
-                        console.error('Task Submit Error Response:', body);
+                        console.error('[Modal] Task Submit Error Response:', body);
                         if (status === 422 && body.errors) {
                             this.formErrors = body.errors;
-                            window.dispatchEvent(new CustomEvent('show-status-message', { detail: { message: body.message || 'Validation errors.', success: false } }));
+                        }
+                        // Tampilkan pesan error universal
+                        const errorMsg = body.message || `Failed to ${this.isEditMode ? 'update' : 'create'} task.`;
+                        if (window.KanbanApp && window.KanbanApp.isInitialized && typeof window.KanbanApp.showStatusMessage === 'function') {
+                            window.KanbanApp.showStatusMessage(errorMsg, false);
                         } else {
-                             alert(`Failed to ${this.isEditMode ? 'update' : 'create'} task: ` + (body.message || 'Server error'));
-                            window.dispatchEvent(new CustomEvent('show-status-message', { detail: { message: body.message || `Failed to ${this.isEditMode ? 'update' : 'create'} task.`, success: false } }));
+                            window.dispatchEvent(new CustomEvent('show-status-message', { detail: { message: errorMsg, success: false } }));
                         }
                     }
                 })
                 .catch(error => {
-                    console.error('Fetch Error:', error);
-                    alert('An error occurred: ' + error.message);
-                     window.dispatchEvent(new CustomEvent('show-status-message', { detail: { message: `Network error ${this.isEditMode ? 'updating' : 'creating'} task.`, success: false } }));
+                    console.error('[Modal] Fetch Error:', error);
+                    const errorMsg = `Network error ${this.isEditMode ? 'updating' : 'creating'} task.`;
+                    if (window.KanbanApp && window.KanbanApp.isInitialized && typeof window.KanbanApp.showStatusMessage === 'function') {
+                        window.KanbanApp.showStatusMessage(errorMsg, false);
+                    } else {
+                        window.dispatchEvent(new CustomEvent('show-status-message', { detail: { message: errorMsg, success: false } }));
+                    }
                 })
                 .finally(() => {
                     this.isLoading = false;

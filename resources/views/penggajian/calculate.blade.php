@@ -1,3 +1,4 @@
+{{-- resources/views/penggajian/calculate.blade.php --}}
 <x-app-layout>
     {{-- Include AlpineJS if not globally included --}}
     {{--
@@ -172,145 +173,110 @@
 
     <div class="py-6 px-4 sm:px-6 lg:px-8" x-data="payrollCalculator(
                 '{{ route('projects.payroll.calculate', $project) }}',
-                '{{ old('worker_id', $request->input('worker_id', 'all')) }}',
+                '{{ old('worker_id', $request->input('worker_id', ($isProjectOwner ? 'all' : auth()->id()))) }}',
                 '{{ old('payment_status', $request->input('payment_status', 'all')) }}',
                 '{{ old('search', $request->input('search', '')) }}',
                 {{ old('per_page', $request->input('per_page', 10)) }},
                 '{{ old('sort', $request->input('sort', 'updated_at')) }}',
                 '{{ old('direction', $request->input('direction', 'desc')) }}',
-                {{-- Pass ALL initial totals from Controller --}}
-                {{ $totalFilteredTaskPayroll ?? 0 }},      // Filtered Hak Gaji Task
-                {{ $totalFilteredOtherPayments ?? 0 }},   // Filtered Hak Gaji Other
-                {{ $totalOverallTaskPayroll ?? 0 }},      // Overall Hak Gaji Task
-                {{ $totalOverallOtherPayments ?? 0 }},    // Overall Hak Gaji Other
-                {{ $totalFilteredPaidTaskAmount ?? 0 }},   // Filtered Paid Task
-                {{ $totalFilteredPaidOtherAmount ?? 0 }},  // Filtered Paid Other
-                {{ $totalOverallPaidTaskAmount ?? 0 }},    // Overall Paid Task
-                {{ $totalOverallPaidOtherAmount ?? 0 }}   // Overall Paid Other
+                {{ $totalFilteredTaskPayroll ?? 0 }},
+                {{ $totalFilteredOtherPayments ?? 0 }},
+                {{ $totalOverallTaskPayroll ?? 0 }},
+                {{ $totalOverallOtherPayments ?? 0 }},
+                {{ $totalFilteredPaidTaskAmount ?? 0 }},
+                {{ $totalFilteredPaidOtherAmount ?? 0 }},
+                {{ $totalOverallPaidTaskAmount ?? 0 }},
+                {{ $totalOverallPaidOtherAmount ?? 0 }}
             )" x-init="init()">
 
         {{-- Header Halaman & Tombol Aksi --}}
         <div class="mb-6 flex justify-between items-center no-print">
             <h2 class="text-2xl font-semibold text-gray-900">Perhitungan Penggajian - {{ $project->name }}</h2>
-            {{-- Tombol Print & Export --}}
             <div class="flex space-x-2">
                 <button @click="printReport()" title="Cetak Laporan"
                     class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /> </svg>
                     Print
                 </button>
                 <button @click="exportToPdf()" :disabled="isExportingPdf" title="Ekspor ke PDF"
-                    class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-indigo-500 hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
-                    {{-- Ikon PDF --}}
-                    <svg x-show="!isExportingPdf" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none"
-                        viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round"
-                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    {{-- Ikon Loading --}}
-                    <svg x-show="isExportingPdf" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
-                        xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
-                        </circle>
-                        <path class="opacity-75" fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                        </path>
-                    </svg>
+                    class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-gray-700 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50">
+                    <svg x-show="!isExportingPdf" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /> </svg>
+                    <svg x-show="isExportingPdf" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"> <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"> </circle> <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"> </path> </svg>
                     <span x-text="isExportingPdf ? 'Mengekspor...' : 'Export PDF'"></span>
                 </button>
+                @can('create', [App\Models\Payment::class, $project]) {{-- Pastikan policy create Payment ada --}}
+                <button @click="$dispatch('open-create-payslip-modal')"
+                        class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /> </svg>
+                    Buat Slip Gaji
+                </button>
+                @endcan
             </div>
         </div>
 
         <!-- Tabs -->
         <div class="border-b border-gray-200 mb-6 no-print">
             <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-                {{-- 1. Perhitungan Gaji --}}
                 <a href="{{ route('projects.payroll.calculate', $project) }}"
-                    class="{{ request()->routeIs('projects.payroll.calculate') ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
-                    @if(request()->routeIs('projects.payroll.calculate')) aria-current="page" @endif>
+                    class="border-indigo-500 text-indigo-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
+                    aria-current="page">
                     Perhitungan Gaji
                 </a>
-                {{-- 2. Buat & Sahkan Slip --}}
-                {{-- Cek juga route detail payslip karena mungkin berada di bawah "Buat & Sahkan" secara logis --}}
-                <a href="{{ route('projects.payslips.create', $project) }}"
-                    class="{{ (request()->routeIs('projects.payslips.create') || request()->routeIs('projects.payslips.show')) ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
-                    @if(request()->routeIs('projects.payslips.create') || request()->routeIs('projects.payslips.show'))
-                    aria-current="page" @endif>
-                    Pembuatan Slip Gaij
-                </a>
-                {{-- 3. Riwayat Slip Gaji --}}
                 <a href="{{ route('projects.payslips.history', $project) }}"
-                    class="{{ request()->routeIs('projects.payslips.history') ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }} whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
-                    @if(request()->routeIs('projects.payslips.history')) aria-current="page" @endif>
-                    Riwayat Slip Gaji
+                    class="border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
+                    Daftar Slip Gaji
                 </a>
             </nav>
         </div>
 
-        <!-- Weight Info -->
-        <!-- <div class="mb-6 p-4 bg-indigo-50 border border-indigo-200 rounded-md text-sm text-indigo-700 flex justify-between items-center no-print">
-             <span>
-                 Bobot Aktif: Kesulitan = <strong>{{ $project->difficulty_weight }}%</strong>, Prioritas = <strong>{{ $project->priority_weight }}%</strong>.
-             </span>
-             <div>
-                  <a href="{{ route('projects.settings.weights.edit', $project) }}" class="ml-2 font-medium hover:underline">(Ubah Bobot)</a>
-                  <a href="{{ route('projects.settings.levels.manage', $project) }}" class="ml-4 font-medium hover:underline">(Kelola Level)</a>
-                  <a href="{{ route('projects.wage-standards.index', $project) }}" class="ml-4 font-medium hover:underline">(Kelola Standar Upah)</a>
-             </div>
-         </div> -->
-
-        <!-- Filters, Search, and Controls -->
+        {{-- Filters, Search, and Controls (Tidak Berubah) ... --}}
         <div class="mb-6 bg-gray-50 p-4 rounded-md border border-gray-200 no-print">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {{-- Worker Filter --}}
                 <div>
                     <label for="worker_id" class="block text-sm font-medium text-gray-700">Pekerja</label>
                     <select name="worker_id" id="worker_id" x-model="filters.worker_id" @change="applyFilters()"
-                        class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                        <option value="all">Semua Pekerja</option>
-                        @foreach ($workers as $worker)
-                            <option value="{{ $worker->id }}" {{ old('worker_id', $request->input('worker_id')) == $worker->id ? 'selected' : '' }}>
+                        class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                        {{ !$isProjectOwner ? 'disabled' : '' }}> {{-- Disable jika bukan owner --}}
+                        @if($isProjectOwner)
+                            <option value="all">Semua Pekerja</option>
+                        @endif
+                        @foreach ($workersForFilter as $worker)
+                            <option value="{{ $worker->id }}">
                                 {{ $worker->name }}
                             </option>
                         @endforeach
                     </select>
+                    @if(!$isProjectOwner)
+                        <p class="text-xs text-gray-500 mt-1 italic">Menampilkan data untuk Anda.</p>
+                    @endif
                 </div>
 
                 {{-- Task Payment Status Filter --}}
                 <div>
-                    <label for="payment_status" class="block text-sm font-medium text-gray-700">Status Pembayaran
-                        Task</label>
-                    <select name="payment_status" id="payment_status" x-model="filters.payment_status"
-                        @change="applyFilters()"
+                    <label for="payment_status" class="block text-sm font-medium text-gray-700">Status Pembayaran Task</label>
+                    <select name="payment_status" id="payment_status" x-model="filters.payment_status" @change="applyFilters()"
                         class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
                         <option value="all">Semua Status</option>
-                        <option value="unpaid" {{ old('payment_status', $request->input('payment_status')) == 'unpaid' ? 'selected' : '' }}>Belum Dibayar</option>
-                        <option value="paid" {{ old('payment_status', $request->input('payment_status')) == 'paid' ? 'selected' : '' }}>Sudah Dibayar</option>
+                        <option value="unpaid">Belum Dibayar</option>
+                        <option value="paid">Sudah Dibayar</option>
                     </select>
                 </div>
 
                 {{-- Search Input --}}
                 <div>
-                    <label for="search" class="block text-sm font-medium text-gray-700">Cari Task / Pekerja /
-                        Bonus</label>
-                    <input type="text" name="search" id="search" x-model="filters.search"
-                        @input.debounce.500ms="applyFilters()" placeholder="Masukkan kata kunci..."
-                        value="{{ old('search', $request->input('search', '')) }}"
+                    <label for="search" class="block text-sm font-medium text-gray-700">Cari Task / Pekerja / Bonus</label>
+                    <input type="text" name="search" id="search" x-model="filters.search" @input.debounce.500ms="applyFilters()" placeholder="Masukkan kata kunci..."
                         class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
                 </div>
 
                 {{-- Per Page Selector --}}
                 <div>
-                    <label for="per_page" class="block text-sm font-medium text-gray-700">Item per Halaman
-                        (Task)</label>
+                    <label for="per_page" class="block text-sm font-medium text-gray-700">Item per Halaman (Task)</label>
                     <select name="per_page" id="per_page" x-model="filters.per_page" @change="applyFilters()"
                         class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
                         @foreach ($perPageOptions as $option)
-                            <option value="{{ $option }}" {{ old('per_page', $request->input('per_page', 10)) == $option ? 'selected' : '' }}>{{ $option }}</option>
+                            <option value="{{ $option }}">{{ $option }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -323,20 +289,76 @@
             </div>
         </div>
 
-        {{-- Wrapper untuk Area Cetak/Export --}}
         <div id="printable-content">
-
-            {{-- Judul Report (Hanya untuk cetak/pdf) --}}
-            <div class="hidden print:block mb-4"> {{-- print:block membuatnya hanya tampil saat print --}}
+            
+            {{-- Ringkasan Penggajian (Tidak Berubah) ... --}}
+            <div id="summary-section" class="mt-8 bg-white shadow-none print:shadow-none print:border print:border-gray-300 overflow-hidden sm:rounded-md p-6 print:p-4">
+                <h3 class="text-lg font-medium text-gray-900 mb-4 print:text-base">Ringkasan Penggajian</h3>
+                <div class="mb-6 pb-4 print:mb-4 print:pb-2 border-b border-gray-200">
+                    <h4 class="text-md font-semibold text-gray-700 mb-3 print:text-sm">
+                        Ringkasan Gaji
+                        @if(!$isProjectOwner && Auth::user())
+                            untuk {{ Auth::user()->name }}
+                        @elseif($isProjectOwner && $request->input('worker_id') && $request->input('worker_id') !== 'all')
+                            untuk {{ $workersForFilter->firstWhere('id', $request->input('worker_id'))->name ?? 'Pekerja Terpilih' }}
+                        @elseif($isProjectOwner)
+                            (Berdasarkan Filter Aktif)
+                        @endif
+                    </h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm summary-grid">
+                        <div class="border border-gray-200 rounded-md p-3">
+                            <dt class="text-gray-500 truncate">Total Nilai Task</dt>
+                            <dd class="mt-1 text-xl print:text-base font-semibold text-blue-600" x-text="formatCurrency(totals.filteredTask)"></dd>
+                        </div>
+                        <div class="border border-gray-200 rounded-md p-3">
+                            <dt class="text-gray-500 truncate">Total Bonus/Lainnya</dt>
+                            <dd class="mt-1 text-xl print:text-base font-semibold text-purple-600" x-text="formatCurrency(totals.filteredOther)"></dd>
+                        </div>
+                        <div class="border border-green-200 bg-green-50 rounded-md p-3">
+                            <dt class="text-green-800 truncate font-medium">Total Sudah Dibayar</dt>
+                            <dd class="mt-1 text-xl print:text-base font-bold text-green-700" x-text="formatCurrency(totals.filteredPaidTask + totals.filteredPaidOther)"></dd>
+                            <p class="text-xs text-green-600 mt-1">
+                                Task: <span x-text="formatCurrency(totals.filteredPaidTask)"></span><br>
+                                Bonus/Lain: <span x-text="formatCurrency(totals.filteredPaidOther)"></span>
+                            </p>
+                        </div>
+                        @if($isProjectOwner) {{-- Budget Difference hanya relevan untuk owner --}}
+                            <div class="border rounded-md p-3 {{ $budgetDifference >= 0 ? 'border-yellow-300 bg-yellow-50' : 'border-red-300 bg-red-50' }}">
+                                <dt class="text-gray-500 truncate">Sisa / Lebih Budget Proyek</dt>
+                                <dd class="mt-1 text-lg font-semibold {{ $budgetDifference >= 0 ? 'text-yellow-700' : 'text-red-700' }}">
+                                    Rp {{ number_format(abs($budgetDifference), 0, ',', '.') }}
+                                    ({{ $budgetDifference >= 0 ? 'Sisa' : 'Melebihi' }})
+                                </dd>
+                                <p class="text-xs {{ $budgetDifference >= 0 ? 'text-yellow-600' : 'text-red-600' }} mt-1">
+                                    Dibandingkan total estimasi hak gaji keseluruhan proyek.
+                                </p>
+                            </div>
+                        @else
+                             <div class="border border-transparent rounded-md p-3"> </div>
+                        @endif
+                    </div>
+                    @if($isProjectOwner)
+                        <p class="text-xs text-gray-500 italic mt-2 no-print">
+                            @if($request->input('worker_id') && $request->input('worker_id') !== 'all')
+                                Menampilkan ringkasan filter untuk pekerja:
+                                <strong>{{ $workersForFilter->firstWhere('id', $request->input('worker_id'))->name ?? 'N/A' }}</strong>.
+                            @else
+                                Menampilkan ringkasan filter untuk semua pekerja.
+                            @endif
+                        </p>
+                    @endif
+                </div>
+            </div>
+            {{-- Header Cetak (Tidak Berubah) ... --}}
+             <div class="hidden print:block mb-4">
                 <h2 class="text-xl font-bold text-center">Laporan Perhitungan Penggajian</h2>
                 <p class="text-sm text-center">Proyek: {{ $project->name }}</p>
-                <p class="text-sm text-center">Tanggal Cetak/Export: {{ now()->format('d M Y H:i') }}</p>
-                {{-- Info Filter Aktif Saat Cetak (ambil dari Alpine state) --}}
+                <p class="text-sm text-center">Tanggal Cetak/Export: <span x-text="new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })"></span></p>
                 <div class="text-xs mt-2 text-gray-600 border-t border-b border-gray-300 py-1 my-2">
                     <p class="font-medium">Filter Aktif:</p>
                     <ul class="list-none pl-0">
                         <li>Pekerja: <span
-                                x-text="filters.worker_id === 'all' ? 'Semua' : (document.getElementById('worker_id')?.options[document.getElementById('worker_id')?.selectedIndex]?.text || filters.worker_id)"></span>
+                                x-text="filters.worker_id === 'all' || {{ Js::from(!$isProjectOwner) }} ? ({{ Js::from(!$isProjectOwner) }} ? '{{ Auth::user()->name }}' : 'Semua Pekerja') : (document.getElementById('worker_id')?.options[document.getElementById('worker_id')?.selectedIndex]?.text || filters.worker_id)"></span>
                         </li>
                         <li>Status Task: <span
                                 x-text="filters.payment_status === 'all' ? 'Semua' : (filters.payment_status === 'paid' ? 'Dibayar' : 'Belum Dibayar')"></span>
@@ -347,177 +369,46 @@
                 </div>
             </div>
 
-            <!-- Task Table Area -->
             <h3 class="text-lg font-medium text-gray-800 mb-3 print:text-base">Rekap Task</h3>
-            {{-- ID payroll-table-container tetap diperlukan untuk Alpine $ref --}}
             <div id="payroll-table-container" x-ref="tableContainer">
-                {{-- Loading Indicator (disembunyikan saat print) --}}
                 <div x-show="loading" class="text-center py-10 no-print">
-                    <svg class="animate-spin -ml-1 mr-3 h-8 w-8 text-indigo-600 inline-block"
-                        xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
-                        </circle>
-                        <path class="opacity-75" fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                        </path>
-                    </svg>
+                    <svg class="animate-spin -ml-1 mr-3 h-8 w-8 text-indigo-600 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"> <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"> </circle> <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"> </path> </svg>
                     <span class="text-gray-600">Memuat data task...</span>
                 </div>
-                {{-- Table Content Area (akan berisi tabel dari _payroll_table_content.blade.php) --}}
                 <div x-show="!loading" x-html="tableHtml">
-                    {{-- Initial server render --}}
                     @include('penggajian._payroll_table_content', ['tasks' => $tasks, 'project' => $project, 'request' => $request])
                 </div>
             </div>
-
-            <!-- Summary Section -->
-            <div id="summary-section"
-                class="mt-8 bg-white shadow-none print:shadow-none print:border print:border-gray-300 overflow-hidden sm:rounded-md p-6 print:p-4">
-                <h3 class="text-lg font-medium text-gray-900 mb-4 print:text-base">Ringkasan Penggajian</h3>
-
-                {{-- Section 1: Filtered Amounts --}}
-                <div class="mb-6 pb-4 print:mb-4 print:pb-2 border-b border-gray-200">
-                    <h4 class="text-md font-semibold text-gray-700 mb-3 print:text-sm">Ringkasan Berdasarkan Filter
-                        Aktif</h4>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm summary-grid">
-                        {{-- Filtered Task Value --}}
-                        <div class="border border-gray-200 rounded-md p-3">
-                            <dt class="text-gray-500 truncate">Total Nilai Task</dt>
-                            <dd class="mt-1 text-xl print:text-base font-semibold text-blue-600"
-                                x-text="formatCurrency(totals.filteredTask)"></dd>
-                        </div>
-                        {{-- Filtered Other Value --}}
-                        <div class="border border-gray-200 rounded-md p-3">
-                            <dt class="text-gray-500 truncate">Total Bonus/Lainnya</dt>
-                            <dd class="mt-1 text-xl print:text-base font-semibold text-purple-600"
-                                x-text="formatCurrency(totals.filteredOther)"></dd>
-                        </div>
-                        {{-- Filtered Total Paid --}}
-                        <div class="border border-green-200 bg-green-50 rounded-md p-3">
-                            <dt class="text-green-800 truncate font-medium">Total Sudah Dibayar</dt>
-                            <dd class="mt-1 text-xl print:text-base font-bold text-green-700"
-                                x-text="formatCurrency(totals.filteredPaidTask + totals.filteredPaidOther)"></dd>
-                            <p class="text-xs text-green-600 mt-1">
-                                Task: <span x-text="formatCurrency(totals.filteredPaidTask)"></span><br>
-                                Bonus/Lain: <span x-text="formatCurrency(totals.filteredPaidOther)"></span>
-                            </p>
-                        </div>
-
-                        {{-- Budget Difference --}}
-                        @php
-                            $totalOverallCombined = ($totalOverallTaskPayroll ?? 0) + ($totalOverallOtherPayments ?? 0);
-                            $budgetDifferenceCombined = ($project->budget ?? 0) - $totalOverallCombined;
-                          @endphp
-                        <div
-                            class="border rounded-md p-3 {{ $budgetDifferenceCombined >= 0 ? 'border-yellow-300 bg-yellow-50' : 'border-red-300 bg-red-50' }}">
-                            <dt class="text-gray-500 truncate">Sisa / Lebih Budget</dt>
-                            <dd
-                                class="mt-1 text-lg font-semibold {{ $budgetDifferenceCombined >= 0 ? 'text-yellow-700' : 'text-red-700' }}">
-                                Rp {{ number_format(abs($budgetDifferenceCombined), 0, ',', '.') }}
-                                ({{ $budgetDifferenceCombined >= 0 ? 'Sisa' : 'Melebihi' }})
-                            </dd>
-                            <p
-                                class="text-xs {{ $budgetDifferenceCombined >= 0 ? 'text-yellow-600' : 'text-red-600' }} mt-1">
-                                Dibandingkan total hak gaji.</p>
-                        </div>
-                    </div>
-                    {{-- Worker Filter Info (disembunyikan saat print) --}}
-                    <p class="text-xs text-gray-500 italic mt-2 no-print">
-                        @if($request->input('worker_id') && $request->input('worker_id') !== 'all')
-                            @php $selectedWorker = $workers->firstWhere('id', $request->input('worker_id')); @endphp
-                            Menampilkan ringkasan filter untuk pekerja:
-                            <strong>{{ $selectedWorker->name ?? 'N/A' }}</strong>.
-                        @else
-                            Menampilkan ringkasan filter untuk semua pekerja.
-                        @endif
-                    </p>
-                </div>
-
-                {{-- Section 2: Overall Amounts & Budget (Sembunyikan saat print sederhana) --}}
-                <!-- <div class="no-print">
-                    <h4 class="text-md font-semibold text-gray-700 mb-3">Ringkasan Keseluruhan Proyek</h4>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm summary-grid">
-                        {{-- Overall Task Value --}}
-                        <div class="border border-gray-200 rounded-md p-3">
-                            <dt class="text-gray-500 truncate">Total Nilai Task</dt>
-                            <dd class="mt-1 text-lg font-semibold text-gray-700"
-                                x-text="formatCurrency(totals.overallTask)"></dd>
-                        </div>
-                        {{-- Overall Other Value --}}
-                        <div class="border border-gray-200 rounded-md p-3">
-                            <dt class="text-gray-500 truncate">Total Bonus/Lainnya</dt>
-                            <dd class="mt-1 text-lg font-semibold text-gray-700"
-                                x-text="formatCurrency(totals.overallOther)"></dd>
-                        </div>
-                        {{-- Overall Total Hak Gaji --}}
-                        <div class="border border-gray-300 bg-gray-50 rounded-md p-3">
-                            <dt class="text-gray-600 truncate font-medium">Total Hak Gaji</dt>
-                            <dd class="mt-1 text-lg font-semibold text-gray-800"
-                                x-text="formatCurrency(totals.overallTask + totals.overallOther)"></dd>
-                        </div>
-                        {{-- Overall Total Paid --}}
-                        <div class="border border-green-300 bg-green-50 rounded-md p-3">
-                            <dt class="text-green-800 truncate font-medium">Total Sudah Dibayar</dt>
-                            <dd class="mt-1 text-lg font-semibold text-green-700"
-                                x-text="formatCurrency(totals.overallPaidTask + totals.overallPaidOther)"></dd>
-                            <p class="text-xs text-green-600 mt-1">
-                                Task: <span x-text="formatCurrency(totals.overallPaidTask)"></span><br>
-                                Bonus/Lain: <span x-text="formatCurrency(totals.overallPaidOther)"></span>
-                            </p>
-                        </div>
-                        {{-- Budget --}}
-                        <div class="border border-gray-200 rounded-md p-3">
-                            <dt class="text-gray-500 truncate">Estimasi Budget</dt>
-                            <dd class="mt-1 text-lg font-semibold text-gray-900">Rp
-                                {{ number_format($project->budget, 0, ',', '.') }}</dd>
-                        </div>
-                        {{-- Budget Difference --}}
-                        @php
-                            $totalOverallCombined = ($totalOverallTaskPayroll ?? 0) + ($totalOverallOtherPayments ?? 0);
-                            $budgetDifferenceCombined = ($project->budget ?? 0) - $totalOverallCombined;
-                          @endphp
-                        <div
-                            class="border rounded-md p-3 {{ $budgetDifferenceCombined >= 0 ? 'border-yellow-300 bg-yellow-50' : 'border-red-300 bg-red-50' }}">
-                            <dt class="text-gray-500 truncate">Sisa / Lebih Budget</dt>
-                            <dd
-                                class="mt-1 text-lg font-semibold {{ $budgetDifferenceCombined >= 0 ? 'text-yellow-700' : 'text-red-700' }}">
-                                Rp {{ number_format(abs($budgetDifferenceCombined), 0, ',', '.') }}
-                                ({{ $budgetDifferenceCombined >= 0 ? 'Sisa' : 'Melebihi' }})
-                            </dd>
-                            <p
-                                class="text-xs {{ $budgetDifferenceCombined >= 0 ? 'text-yellow-600' : 'text-red-600' }} mt-1">
-                                Dibandingkan total hak gaji.</p>
-                        </div>
-                    </div>
-                </div> -->
-            </div>
         </div>
-        {{-- Akhir Wrapper Area Cetak/Export --}}
-
-        {{-- Link to Payment Page (disembunyikan saat print) --}}
-        <div class="mt-6 text-center text-sm text-gray-600 no-print">
-            Pergi ke halaman <a href="{{ route('projects.payslips.create', $project) }}"
-                class="text-indigo-600 hover:underline font-medium">Pembuatan Slip Gaji</a> untuk membuat slip gaji atau
-            membayar bonus/lainnya.
-        </div>
-
+        {{-- Pesan link ke pembuatan slip gaji (hanya untuk owner) ditiadakan karena tombol sudah ada --}}
     </div>
 
-    {{-- Alpine.js Script & html2pdf Script --}}
+    {{-- Include Modal --}}
+     @include('payslips.partials._create_modal_content', [
+         'project' => $project,
+         'modalWorkers' => $modalWorkers, // Pastikan variabel ini di-pass dari controller
+         'modalPaymentCalculationType' => $modalPaymentCalculationType,
+         'modalPaymentTerms' => $modalPaymentTerms,
+         'modalUnpaidTasksGrouped' => $modalUnpaidTasksGrouped,
+         'modalDefaultTerminName' => $modalDefaultTerminName
+     ])
+
+
     @push('scripts')
-        {{-- CDN untuk html2pdf.js --}}
         <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"
             integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg=="
             crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+        {{-- JavaScript untuk Payroll Calculator --}}
         <script>
-            // Alpine component function
             function payrollCalculator(baseUrl, initialWorker, initialStatus, initialSearch, initialPerPage, initialSort, initialDirection,
                 initialTotalFilteredTask, initialTotalFilteredOther, initialTotalOverallTask, initialTotalOverallOther,
-                initialTotalFilteredPaidTask, initialTotalFilteredPaidOther, // Filtered paid params
-                initialTotalOverallPaidTask, initialTotalOverallPaidOther) // Overall paid params
+                initialTotalFilteredPaidTask, initialTotalFilteredPaidOther,
+                initialTotalOverallPaidTask, initialTotalOverallPaidOther)
             {
                 return {
-                    // State properties
+                    // ... (properti dan method yang ada di payrollCalculator tetap sama) ...
+                    // ... (seperti filters, loading, tableHtml, totals, init, buildUrl, fetchData, applyFilters, sortBy, goToPage, resetFilters, formatCurrency, printReport, exportToPdf)
                     baseUrl: baseUrl,
                     filters: {
                         worker_id: initialWorker,
@@ -529,7 +420,7 @@
                         page: 1,
                     },
                     loading: false,
-                    tableHtml: '', // Holds the HTML for the task table
+                    tableHtml: '', // Ini akan diisi oleh AJAX
                     totals: {
                         filteredTask: parseFloat(initialTotalFilteredTask) || 0,
                         filteredOther: parseFloat(initialTotalFilteredOther) || 0,
@@ -540,15 +431,16 @@
                         overallPaidTask: parseFloat(initialTotalOverallPaidTask) || 0,
                         overallPaidOther: parseFloat(initialTotalOverallPaidOther) || 0
                     },
-                    currentUrl: '', // Tracks the current URL for history management
-                    isExportingPdf: false, // State for PDF export loading indicator
+                    currentUrl: '',
+                    isExportingPdf: false,
+                    isProjectOwner: {{ Js::from($isProjectOwner) }},
 
-                    // Initialization logic
                     init() {
                         this.tableHtml = this.$refs.tableContainer.querySelector('[x-html="tableHtml"]').innerHTML;
+                         if (!this.isProjectOwner) { this.filters.worker_id = '{{ auth()->id() }}'; }
                         this.currentUrl = this.buildUrl();
                         history.replaceState({ ...this.filters }, '', this.currentUrl);
-                        // Event listener for pagination
+
                         this.$refs.tableContainer.addEventListener('click', (e) => {
                             const paginationLink = e.target.closest('.pagination a, a.relative[href*="page="]');
                             if (paginationLink && paginationLink.href) {
@@ -556,10 +448,10 @@
                                 this.goToPage(paginationLink.href);
                             }
                         });
-                        // Event listener for browser navigation
                         window.addEventListener('popstate', (event) => {
                             if (event.state) {
                                 this.filters = { ...this.filters, ...event.state };
+                                if (!this.isProjectOwner) { this.filters.worker_id = '{{ auth()->id() }}'; }
                                 this.filters.per_page = parseInt(this.filters.per_page) || 10;
                                 this.filters.page = parseInt(this.filters.page) || 1;
                                 this.fetchData(false);
@@ -567,10 +459,10 @@
                         });
                     },
 
-                    // Builds the URL with current filters
                     buildUrl() {
                         const activeFilters = {};
                         for (const key in this.filters) {
+                            if (!this.isProjectOwner && key === 'worker_id') { activeFilters[key] = '{{ auth()->id() }}'; continue; }
                             if (this.filters[key] !== null && this.filters[key] !== '' && this.filters[key] !== 'all') {
                                 if (key === 'page' && this.filters[key] === 1) continue;
                                 activeFilters[key] = this.filters[key];
@@ -580,26 +472,12 @@
                         return `${this.baseUrl}${params ? '?' + params : ''}`;
                     },
 
-                    // Fetches data from the server via AJAX
                     fetchData(updateHistory = true) {
                         this.loading = true;
                         const fetchUrl = this.buildUrl();
-                        fetch(fetchUrl, {
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'Accept': 'application/json',
-                            }
-                        })
+                        fetch(fetchUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
                             .then(response => {
-                                if (!response.ok) {
-                                    return response.json().catch(() => response.text()).then(errData => {
-                                        let errMsg = `Error ${response.status}: ${response.statusText}`;
-                                        if (typeof errData === 'string' && errData.length < 500) errMsg += ` - ${errData}`;
-                                        else if (errData && errData.message) errMsg += ` - ${errData.message}`;
-                                        console.error("Fetch error details:", errData);
-                                        throw new Error(errMsg);
-                                    });
-                                }
+                                if (!response.ok) return response.json().catch(() => response.text()).then(errData => { /* ... error handling ... */ throw new Error('Fetch error'); });
                                 return response.json();
                             })
                             .then(data => {
@@ -608,131 +486,459 @@
                                 this.totals.filteredOther = parseFloat(data.totalFilteredOtherPayments) || 0;
                                 this.totals.filteredPaidTask = parseFloat(data.totalPaidTaskAmount) || 0;
                                 this.totals.filteredPaidOther = parseFloat(data.totalPaidOtherAmount) || 0;
-                                // Overall totals not updated by fetch
+                                // Update overall totals jika dikirim dari backend
+                                if (data.hasOwnProperty('totalOverallTaskPayroll')) this.totals.overallTask = parseFloat(data.totalOverallTaskPayroll) || 0;
+                                if (data.hasOwnProperty('totalOverallOtherPayments')) this.totals.overallOther = parseFloat(data.totalOverallOtherPayments) || 0;
+                                if (data.hasOwnProperty('totalOverallPaidTaskAmount')) this.totals.overallPaidTask = parseFloat(data.totalOverallPaidTaskAmount) || 0;
+                                if (data.hasOwnProperty('totalOverallPaidOtherAmount')) this.totals.overallPaidOther = parseFloat(data.totalOverallPaidOtherAmount) || 0;
+
                                 if (updateHistory && fetchUrl !== this.currentUrl) {
                                     history.pushState({ ...this.filters }, '', fetchUrl);
                                     this.currentUrl = fetchUrl;
                                 }
                             })
-                            .catch(error => {
-                                console.error('Error fetching payroll data:', error);
-                                this.tableHtml = `<div class="text-red-600 bg-red-100 p-4 rounded text-center">Gagal memuat data: ${error.message}. Silakan coba lagi atau cek log server.</div>`;
-                                this.totals.filteredTask = 0;
-                                this.totals.filteredOther = 0;
-                                this.totals.filteredPaidTask = 0;
-                                this.totals.filteredPaidOther = 0;
-                            })
-                            .finally(() => {
-                                this.loading = false;
-                            });
+                            .catch(error => { /* ... error handling ... */ this.tableHtml = `<div class="text-red-600 p-4">Error loading data.</div>`; })
+                            .finally(() => { this.loading = false; });
                     },
-
-                    // Applies filters and fetches data
-                    applyFilters() {
-                        this.filters.page = 1;
-                        this.fetchData();
-                    },
-
-                    // Handles sorting request
+                    applyFilters() { this.filters.page = 1; this.fetchData(); },
                     sortBy(field) {
-                        const validDbSortFields = [
-                            'title', 'assigned_user_name', 'difficulty_value', 'priority_value',
-                            'achievement_percentage', 'payment_status', 'updated_at'
-                        ];
-                        if (!validDbSortFields.includes(field)) {
-                            console.warn(`Sorting by field "${field}" is not implemented in the backend query.`);
-                            return;
-                        }
+                        const validDbSortFields = ['title', 'assigned_user_name', 'difficulty_value', 'priority_value', 'achievement_percentage', 'payment_status', 'updated_at'];
+                        if (!validDbSortFields.includes(field)) { console.warn(`Sorting by field "${field}" is not implemented.`); return; }
                         let newDirection = 'asc';
-                        if (this.filters.sort === field && this.filters.direction === 'asc') {
-                            newDirection = 'desc';
-                        }
-                        this.filters.sort = field;
-                        this.filters.direction = newDirection;
-                        this.filters.page = 1;
-                        this.fetchData();
+                        if (this.filters.sort === field && this.filters.direction === 'asc') { newDirection = 'desc'; }
+                        this.filters.sort = field; this.filters.direction = newDirection;
+                        this.filters.page = 1; this.fetchData();
                     },
-
-                    // Handles pagination link clicks
                     goToPage(url) {
-                        try {
-                            const targetUrl = new URL(url);
-                            const page = targetUrl.searchParams.get('page') || 1;
-                            this.filters.page = parseInt(page);
-                            this.fetchData();
-                        } catch (e) {
-                            console.error("Invalid URL for pagination:", url, e);
-                        }
+                        try { const targetUrl = new URL(url); const page = targetUrl.searchParams.get('page') || 1; this.filters.page = parseInt(page); this.fetchData(); }
+                        catch (e) { console.error("Invalid URL for pagination:", url, e); }
                     },
-
-                    // Resets all filters to default values
                     resetFilters() {
-                        const defaultPerPage = 10;
-                        const defaultSort = 'updated_at';
-                        const defaultDirection = 'desc';
-                        this.filters.worker_id = 'all';
-                        this.filters.payment_status = 'all';
-                        this.filters.search = '';
-                        this.filters.per_page = defaultPerPage;
-                        this.filters.sort = defaultSort;
-                        this.filters.direction = defaultDirection;
-                        this.filters.page = 1;
-                        this.fetchData();
+                        const defaultPerPage = 10; const defaultSort = 'updated_at'; const defaultDirection = 'desc';
+                        this.filters.worker_id = this.isProjectOwner ? 'all' : '{{ auth()->id() }}';
+                        this.filters.payment_status = 'all'; this.filters.search = '';
+                        this.filters.per_page = defaultPerPage; this.filters.sort = defaultSort;
+                        this.filters.direction = defaultDirection; this.filters.page = 1; this.fetchData();
                     },
-
-                    // Formats a number as Indonesian Rupiah currency
                     formatCurrency(value) {
                         if (value === null || value === undefined || isNaN(value)) return 'Rp 0';
-                        return new Intl.NumberFormat('id-ID', {
-                            style: 'currency',
-                            currency: 'IDR',
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 0
-                        }).format(value);
+                        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
                     },
-
-                    // --- Print & Export Functions ---
-                    printReport() {
-                        window.print(); // Trigger browser print dialog
-                    },
-
+                    printReport() { window.print(); },
                     exportToPdf() {
-                        if (this.isExportingPdf) return; // Prevent multiple clicks
-                        this.isExportingPdf = true;
+                        if (this.isExportingPdf) return; this.isExportingPdf = true;
                         const element = document.getElementById('printable-content');
-                        if (!element) {
-                            console.error("Element #printable-content not found!");
-                            this.isExportingPdf = false;
-                            return;
-                        }
-
-                        // Generate filename
+                        if (!element) { console.error("#printable-content not found!"); this.isExportingPdf = false; return; }
                         const workerSelect = document.getElementById('worker_id');
-                        const workerName = this.filters.worker_id === 'all' ? 'SemuaPekerja' : (workerSelect?.options[workerSelect?.selectedIndex]?.text.replace(/[^a-zA-Z0-9]/g, '-') || 'Pekerja');
+                        let workerNamePart = 'SemuaPekerja';
+                        if (this.filters.worker_id !== 'all') {
+                            if (this.isProjectOwner) workerNamePart = workerSelect?.options[workerSelect?.selectedIndex]?.text.replace(/[^a-zA-Z0-9]/g, '-') || 'Pekerja';
+                            else workerNamePart = '{{ Auth::user()->name }}'.replace(/[^a-zA-Z0-9]/g, '-');
+                        }
                         const date = new Date().toISOString().slice(0, 10);
-                        const filename = `Laporan-Penggajian-${workerName}-${date}.pdf`;
-
-                        // html2pdf options
-                        const opt = {
-                            margin: [10, 10, 15, 10], // top, left, bottom, right (mm)
-                            filename: filename,
-                            image: { type: 'jpeg', quality: 0.98 }, // Image settings
-                            html2canvas: { scale: 2, useCORS: true, logging: false }, // Canvas settings
-                            jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } // PDF settings
-                        };
-
-                        // Generate PDF
-                        html2pdf().set(opt).from(element).save().then(() => {
-                            console.log("PDF Exported Successfully");
-                            this.isExportingPdf = false;
-                        }).catch(err => {
-                            console.error("Error exporting PDF:", err);
-                            alert("Gagal mengekspor PDF. Silakan cek konsol browser untuk detail.");
-                            this.isExportingPdf = false;
-                        });
+                        const filename = `Laporan-Penggajian-${workerNamePart}-${date}.pdf`;
+                        const opt = { margin: [10, 10, 15, 10], filename: filename, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, logging: false }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } };
+                        html2pdf().set(opt).from(element).save().then(() => { this.isExportingPdf = false; }).catch(err => { console.error("PDF export error:", err); this.isExportingPdf = false; });
                     }
                 }
             }
         </script>
+
+        {{-- JavaScript untuk Modal Pembuatan Slip Gaji --}}
+        <script>
+// PERHATIKAN: Pastikan tidak ada error JS lain di console browser sebelum script ini dieksekusi.
+console.log('[MODAL SCRIPT] Script payslipFormModal.js mulai dieksekusi.');
+
+function payslipFormModal(config) {
+    // PENAMBAHAN LOG: Untuk memastikan fungsi dipanggil dan config diterima
+    console.log('[payslipFormModal] INITIALIZING with config:', JSON.parse(JSON.stringify(config)));
+
+    return {
+        // Config & Data
+        projectId: config.projectId,
+        paymentCalculationType: config.paymentCalculationType,
+        workers: config.workers,
+        paymentTerms: config.paymentTerms,
+        unpaidTasksGrouped: config.unpaidTasksGrouped,
+        csrfToken: config.csrfToken,
+        storePayslipUrl: config.storePayslipUrl,
+        payslipListUrl: config.payslipListUrl,
+        defaultTerminName: config.defaultTerminName,
+
+        // State
+        showCreatePayslipModal: false,
+        selectedWorkerId: '',
+        payslipType: '', // Akan di-set di init atau openModal
+        selectedTermId: '',
+        paymentName: '',
+        notes: '',
+        calculatedAmount: 0,
+        selectedTaskIds: [], // HARUS array agar x-model checkbox berfungsi
+        availableTasksForWorker: [],
+        isLoadingTasks: false,
+        isSubmitting: false,
+        formErrors: {},
+        generalError: '',
+
+        init() {
+            // PENAMBAHAN LOG:
+            console.log('[payslipFormModal init()] Component initialized. Default paymentCalculationType:', this.paymentCalculationType);
+            this.payslipType = this.paymentCalculationType; // Set default awal saat komponen dimuat
+            // Watcher akan diaktifkan saat modal dibuka untuk memastikan elemen DOM ada
+        },
+
+        openModal() {
+            // PENAMBAHAN LOG:
+            console.log('[payslipFormModal openModal()] Modal opening...');
+            this.resetForm();
+            // Selalu reset ke tipe default proyek saat buka, KECUALI JIKA MEMANG MAU TETAP
+            // this.payslipType = this.paymentCalculationType; // Ini sudah benar
+            this.handlePayslipTypeChange(this.payslipType, false); // Update nama pembayaran dll, jangan reset amount jika tipe task/termin
+            this.showCreatePayslipModal = true;
+
+            this.$nextTick(() => {
+                console.log('[payslipFormModal openModal() $nextTick] DOM updated. Initializing watchers and focus.');
+                this.initModalWatchers(); // Aktifkan watcher SETELAH modal dan elemennya ada
+                const firstFocusableElement = this.$refs.createPayslipModalForm.querySelector('select, input:not([type=hidden])');
+                if (firstFocusableElement) firstFocusableElement.focus();
+            });
+        },
+
+        closeModal() {
+            console.log('[payslipFormModal closeModal()] Modal closing.');
+            this.showCreatePayslipModal = false;
+            // Anda mungkin ingin membersihkan watcher di sini jika diperlukan, tapi biasanya tidak masalah
+        },
+
+        resetForm() {
+            console.log('[payslipFormModal resetForm()] Resetting form fields.');
+            this.selectedWorkerId = '';
+            this.payslipType = this.paymentCalculationType; // Reset ke tipe default proyek
+            this.selectedTermId = '';
+            this.paymentName = '';
+            this.notes = '';
+            this.calculatedAmount = 0;
+            this.selectedTaskIds = [];
+            this.availableTasksForWorker = [];
+            this.isLoadingTasks = false;
+            this.isSubmitting = false;
+            this.formErrors = {};
+            this.generalError = '';
+        },
+
+        getFieldName(fieldKey) {
+             const fieldMap = {
+                 'user_id': 'Pekerja',
+                 'payment_type': 'Tipe Slip Gaji',
+                 'payment_term_id': 'Termin Pembayaran',
+                 'payment_name': 'Nama Slip Gaji',
+                 'amount': 'Nominal',
+                 'notes': 'Catatan',
+                 'task_ids': 'Pilihan Task',
+                 'task_ids.*': 'Pilihan Task'
+             };
+             return fieldMap[fieldKey] || fieldKey.replace(/_/g, ' ').replace(/\.\*/g, '');
+        },
+
+        updateTasksForWorker() {
+            console.log('[payslipFormModal updateTasksForWorker()] Worker changed to:', this.selectedWorkerId);
+            this.selectedTaskIds = []; // Reset pilihan task saat pekerja berubah
+            if (this.payslipType === 'task' || this.payslipType === 'termin') {
+                this.filterTasksForSelectedTerm(); // Ini akan memanggil calculateTotalAmount
+            } else {
+                this.availableTasksForWorker = [];
+                this.calculateTotalAmount(); // Untuk tipe 'full' atau 'other', amount diinput manual, tapi panggil saja
+            }
+            // Update nama pembayaran jika tipe 'task'
+            if (this.payslipType === 'task') {
+                this.handlePayslipTypeChange('task', false); // Panggil ulang untuk update nama
+            }
+        },
+
+        filterTasksForSelectedTerm() {
+            console.log(`[payslipFormModal filterTasksForSelectedTerm()] Filtering tasks. Worker: ${this.selectedWorkerId}, Term: ${this.selectedTermId}, PayslipType: ${this.payslipType}`);
+            this.selectedTaskIds = []; // Reset pilihan task
+            this.isLoadingTasks = true;
+            this.availableTasksForWorker = [];
+
+            setTimeout(() => { // setTimeout kecil untuk UX
+                if (!this.selectedWorkerId) {
+                    console.log('[filterTasksForSelectedTerm] No worker selected.');
+                    this.isLoadingTasks = false;
+                    this.calculateTotalAmount(); // Hasilnya akan 0
+                    return;
+                }
+
+                const workerTasks = this.unpaidTasksGrouped[this.selectedWorkerId] || [];
+                console.log(`[filterTasksForSelectedTerm] Found ${workerTasks.length} raw tasks for worker ${this.selectedWorkerId}.`);
+
+                if (this.payslipType === 'termin') {
+                    if (!this.selectedTermId) {
+                        console.log('[filterTasksForSelectedTerm] Payslip type is TERMIN, but no term selected.');
+                        this.availableTasksForWorker = [];
+                    } else {
+                        const selectedTerm = this.paymentTerms.find(term => term.id == this.selectedTermId);
+                        if (!selectedTerm || !selectedTerm.start_date_formatted || !selectedTerm.end_date_formatted) {
+                            console.error('[filterTasksForSelectedTerm] Invalid term or missing dates:', selectedTerm);
+                            this.availableTasksForWorker = [];
+                        } else {
+                            try {
+                                const startDate = new Date(selectedTerm.start_date_formatted + 'T00:00:00Z');
+                                const endDate = new Date(selectedTerm.end_date_formatted + 'T23:59:59Z');
+                                if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+                                    throw new Error("Invalid term dates after parsing.");
+                                }
+                                console.log(`[filterTasksForSelectedTerm] Filtering for term: ${selectedTerm.name}, Start: ${startDate.toISOString()}, End: ${endDate.toISOString()}`);
+
+                                this.availableTasksForWorker = workerTasks.filter(task => {
+                                    if (!task.finished_date) return false;
+                                    try {
+                                        const finishedDate = new Date(task.finished_date + 'T12:00:00Z'); // UTC Midday
+                                        if(isNaN(finishedDate.getTime())) return false;
+                                        return finishedDate >= startDate && finishedDate <= endDate;
+                                    } catch (dateError) {
+                                        console.warn("[filterTasksForSelectedTerm] Error parsing task finished_date:", task.finished_date, dateError);
+                                        return false;
+                                    }
+                                });
+                            } catch (e) {
+                                console.error("[filterTasksForSelectedTerm] Error during date filtering for term:", e);
+                                this.availableTasksForWorker = [];
+                            }
+                        }
+                    }
+                } else if (this.payslipType === 'task') {
+                    console.log('[filterTasksForSelectedTerm] Payslip type is TASK. Using all unpaid tasks for worker.');
+                    this.availableTasksForWorker = workerTasks;
+                } else { // 'full' or 'other'
+                    console.log('[filterTasksForSelectedTerm] Payslip type is FULL or OTHER. No tasks to list.');
+                    this.availableTasksForWorker = [];
+                }
+                console.log(`[filterTasksForSelectedTerm] ${this.availableTasksForWorker.length} tasks available after filtering.`);
+                this.isLoadingTasks = false;
+                this.calculateTotalAmount(); // Hitung ulang jumlah, selectedTaskIds masih kosong di sini, jadi amount = 0
+            }, 50);
+        },
+
+        // logSelectedTasks() { // Fungsi ini ada di kode Anda, tapi tidak dipanggil. Mungkin untuk debug manual.
+        //     console.log('[payslipFormModal logSelectedTasks()] Current selectedTaskIds:', JSON.parse(JSON.stringify(this.selectedTaskIds)));
+        // },
+
+        calculateTotalAmount() {
+            // PENAMBAHAN LOG: Ini adalah log kunci
+            console.log(`[payslipFormModal calculateTotalAmount()] CALLED. PayslipType: ${this.payslipType}. SelectedTaskIds:`, JSON.parse(JSON.stringify(this.selectedTaskIds)));
+            console.log(`[calculateTotalAmount] Available tasks for calculation: ${this.availableTasksForWorker.length} tasks.`);
+            // PENAMBAHAN LOG: Tampilkan availableTasksForWorker jika ada task dipilih tapi availableTasksForWorker kosong
+            if (this.selectedTaskIds.length > 0 && this.availableTasksForWorker.length === 0) {
+                console.warn(`[calculateTotalAmount] WARNING: ${this.selectedTaskIds.length} tasks selected, but no tasks are available in 'availableTasksForWorker'. Amount will be 0.`);
+            }
+
+            if (this.payslipType === 'task' || this.payslipType === 'termin') {
+                let total = 0;
+                // Pastikan selectedTaskIds adalah array string untuk perbandingan yang konsisten
+                const selectedIdsSet = new Set(this.selectedTaskIds.map(id => String(id)));
+
+                this.availableTasksForWorker.forEach(task => {
+                    // Pastikan task.id dikonversi ke string untuk dicocokkan dengan Set
+                    if (selectedIdsSet.has(String(task.id))) {
+                        const value = parseFloat(task.calculated_value || 0);
+                        // PENAMBAHAN LOG: Untuk setiap task yang dijumlahkan
+                        console.log(`[calculateTotalAmount] Task ID ${task.id} (value: ${task.calculated_value}, parsed: ${value}) IS SELECTED and being added to total.`);
+                        if (!isNaN(value)) {
+                            total += value;
+                        } else {
+                            console.warn(`[calculateTotalAmount] Task ID ${task.id} has a non-numeric calculated_value: ${task.calculated_value}`);
+                        }
+                    }
+                });
+                console.log('[calculateTotalAmount] Total calculated for task/termin:', total);
+                this.calculatedAmount = total;
+            } else {
+                // Untuk tipe 'full' atau 'other', calculatedAmount di-bind ke input manual.
+                // Jika perlu, Anda bisa me-resetnya di sini atau membiarkannya.
+                // Saat ini, nilai tidak diubah di sini untuk tipe 'full'/'other', yang sepertinya benar.
+                console.log(`[calculateTotalAmount] PayslipType is ${this.payslipType}. Amount is manually entered or pre-set. Current calculatedAmount: ${this.calculatedAmount}`);
+            }
+        },
+
+        handlePayslipTypeChange(newType, resetAmountAndFocus = true) {
+            console.log(`[payslipFormModal handlePayslipTypeChange()] Type changed to: ${newType}. ResetAmountAndFocus: ${resetAmountAndFocus}`);
+            // Set default payment name
+            if (newType === 'termin') {
+                this.paymentName = this.defaultTerminName;
+            } else if (newType === 'task') {
+                const worker = this.workers.find(w => w.id == this.selectedWorkerId);
+                const workerName = worker ? worker.name : 'Pekerja';
+                this.paymentName = `Pembayaran Task ${workerName} (${new Date().toLocaleDateString('id-ID')})`;
+            } else if (newType === 'full') {
+                this.paymentName = `Pembayaran Penuh (${new Date().toLocaleDateString('id-ID')})`;
+            } else if (newType === 'other') {
+                this.paymentName = ''; // Kosongkan untuk diisi manual
+            }
+
+            // Reset related fields
+            if (newType !== 'termin') {
+                this.selectedTermId = ''; // Reset pilihan termin jika bukan tipe termin
+            }
+
+            if (newType !== 'task' && newType !== 'termin') {
+                this.selectedTaskIds = []; // Jika bukan task/termin, kosongkan task yg dipilih
+                this.availableTasksForWorker = []; // dan list task yg tersedia
+            }
+
+            // Reset amount atau recalculate
+            if (resetAmountAndFocus && (newType === 'full' || newType === 'other')) {
+                console.log('[handlePayslipTypeChange] Type is FULL or OTHER. Resetting amount to 0 for manual input.');
+                this.calculatedAmount = 0; // Reset untuk input manual
+                this.$nextTick(() => {
+                    const amountInput = document.getElementById("modal_amount");
+                    if (amountInput) amountInput.focus();
+                });
+            } else if (newType === 'task' || newType === 'termin') {
+                console.log('[handlePayslipTypeChange] Type is TASK or TERMIN. Filtering tasks (which will call calculateTotalAmount).');
+                // Trigger filter/calculation jika pekerja sudah dipilih
+                if (this.selectedWorkerId) {
+                    this.filterTasksForSelectedTerm(); // Ini akan memanggil calculateTotalAmount
+                } else {
+                    this.calculatedAmount = 0; // Jika belum ada pekerja, amount 0
+                    this.availableTasksForWorker = [];
+                }
+            }
+            // else: Untuk tipe full/other, jika resetAmountAndFocus false (misal saat load old input), biarkan amount apa adanya.
+        },
+
+        formatTermDate(dateString) {
+            if (!dateString) return 'Invalid Date';
+            try {
+                const date = new Date(dateString + 'T00:00:00Z');
+                if (isNaN(date.getTime())) return 'Invalid Date';
+                return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', timeZone: 'UTC' });
+            } catch (e) { return 'Invalid Date'; }
+        },
+        formatDisplayDate(dateString) {
+             if (!dateString) return 'N/A';
+             try {
+                 const date = new Date(dateString + 'T00:00:00Z');
+                 if (isNaN(date.getTime())) return 'N/A';
+                 return date.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
+             } catch (e) { return 'N/A'; }
+         },
+        formatCurrency(value) {
+            if (value === null || value === undefined || isNaN(value)) return "Rp 0";
+            return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+        },
+
+        submitForm() {
+            console.log('[payslipFormModal submitForm()] Submitting form...');
+            this.isSubmitting = true;
+            this.formErrors = {};
+            this.generalError = '';
+
+            const formElement = this.$refs.createPayslipModalForm;
+            const formData = new FormData(formElement); // Ambil semua data form asli
+            const dataToSend = {};
+
+            // Konversi FormData ke objek, kecuali task_ids (akan diambil dari Alpine state)
+            for (let [key, value] of formData.entries()) {
+                if (key !== 'task_ids[]') { // Jangan ambil task_ids[] dari FormData
+                    dataToSend[key] = value;
+                }
+            }
+
+            // Ambil task_ids dari Alpine state (selectedTaskIds)
+            // Backend Laravel biasanya mengharapkan task_ids sebagai array.
+            dataToSend.task_ids = this.selectedTaskIds.map(String); // Pastikan array of strings
+
+            // Jika tipe task atau termin, pastikan amount adalah yang dihitung
+            if (this.payslipType === 'task' || this.payslipType === 'termin') {
+                dataToSend.amount = this.calculatedAmount;
+            } else { // Untuk 'full' atau 'other', amount diambil dari input (x-model="calculatedAmount")
+                 dataToSend.amount = this.calculatedAmount; // Ini sudah di-bind ke input `modal_amount`
+            }
+            // Hapus _token karena kita akan kirim via X-CSRF-TOKEN header
+            delete dataToSend._token;
+
+            console.log('[submitForm] Data to send to backend:', JSON.parse(JSON.stringify(dataToSend)));
+
+            fetch(this.storePayslipUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': this.csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify(dataToSend)
+            })
+            .then(response => response.json().then(data => ({ status: response.status, ok: response.ok, body: data })))
+            .then(({ status, ok, body }) => {
+                if (ok && body.success) {
+                    console.log('[submitForm] Success:', body.message);
+                    this.closeModal();
+                    if (typeof Turbo !== 'undefined' && body.redirect_url) {
+                        Turbo.visit(`${body.redirect_url}?success_message=${encodeURIComponent(body.message)}`);
+                    } else if (body.redirect_url) {
+                        window.location.href = `${body.redirect_url}?success_message=${encodeURIComponent(body.message)}`;
+                    } else {
+                        // Fallback jika tidak ada redirect_url, mungkin refresh atau emit event
+                        // window.location.reload();
+                        // Atau emit event untuk memberitahu komponen lain
+                         window.dispatchEvent(new CustomEvent('payslip-created-successfully', { detail: { message: body.message } }));
+                    }
+                } else {
+                    console.error("[submitForm] Server Response Error. Status:", status, "Body:", body);
+                    if (status === 422 && body.errors) {
+                        this.formErrors = body.errors;
+                        this.generalError = body.message || 'Terjadi kesalahan validasi. Periksa inputan Anda.';
+                    } else {
+                         this.generalError = body.message || 'Terjadi kesalahan saat menyimpan.';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('[submitForm] Fetch error:', error);
+                this.generalError = 'Kesalahan jaringan atau server. Silakan coba lagi.';
+            })
+            .finally(() => {
+                this.isSubmitting = false;
+            });
+        },
+
+        initModalWatchers() {
+            // PENAMBAHAN LOG:
+            console.log('[payslipFormModal initModalWatchers()] Initializing watchers...');
+
+            this.$watch('selectedWorkerId', (newWorkerId, oldWorkerId) => {
+                console.log(`[WATCHER selectedWorkerId] Changed from ${oldWorkerId} to ${newWorkerId}`);
+                this.updateTasksForWorker();
+            });
+
+            this.$watch('payslipType', (newType, oldType) => {
+                console.log(`[WATCHER payslipType] Changed from ${oldType} to ${newType}`);
+                // Hanya trigger full change handler jika benar-benar berubah oleh interaksi pengguna
+                const userInitiatedChange = oldType !== undefined && newType !== oldType;
+                this.handlePayslipTypeChange(newType, userInitiatedChange);
+            });
+
+            this.$watch('selectedTermId', (newTermId, oldTermId) => {
+                console.log(`[WATCHER selectedTermId] Changed from ${oldTermId} to ${newTermId}`);
+                this.filterTasksForSelectedTerm();
+            });
+
+            // PERHATIKAN: Watcher untuk selectedTaskIds
+            this.$watch('selectedTaskIds', (newValue, oldValue) => {
+                // PENAMBAHAN LOG: Ini adalah watcher kunci untuk masalah Anda
+                console.log('[WATCHER selectedTaskIds] Task selection changed.');
+                console.log('[WATCHER selectedTaskIds] Old value:', JSON.parse(JSON.stringify(oldValue)));
+                console.log('[WATCHER selectedTaskIds] New value:', JSON.parse(JSON.stringify(newValue)));
+                this.calculateTotalAmount(); // Panggil kalkulasi saat task dipilih/dihilangkan
+            });
+            console.log('[initModalWatchers] Watchers initialized.');
+        }
+    }
+}
+// PERHATIKAN: Pastikan tidak ada error JS lain di console browser SETELAH script ini dieksekusi.
+console.log('[MODAL SCRIPT] Script payslipFormModal.js selesai dieksekusi.');
+</script>
     @endpush
 </x-app-layout>

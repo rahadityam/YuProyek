@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Project;
+use App\Models\ProjectUser;
 use App\Models\Category;
 use App\Models\User;
 use App\Models\WageStandard;
@@ -236,25 +237,43 @@ class ProjectController extends Controller
         $recentActivities = ActivityLog::where('project_id', $project->id)
             ->with('user')
             ->orderBy('created_at', 'desc')
-            ->take(5)
+            ->take(5) // Ambil 5 aktivitas terakhir
             ->get();
 
         // --- 2. Data Tugas (Statistik & Grafik) ---
-        $tasks = $project->tasks()
-                      ->with(['assignedUser', 'difficultyLevel', 'priorityLevel'])
-                      ->get();
+        $allProjectTasks = $project->tasks()
+                                ->with(['assignedUser', 'difficultyLevel', 'priorityLevel']) // Eager load relasi yang dibutuhkan
+                                ->get();
 
         $taskStats = [
-            'total'       => $tasks->count(),
-            'todo'        => $tasks->where('status', 'To Do')->count(),
-            'in_progress' => $tasks->where('status', 'In Progress')->count(),
-            'review'      => $tasks->where('status', 'Review')->count(),
-            'done'        => $tasks->where('status', 'Done')->count(),
+            'total'       => $allProjectTasks->count(),
+            'todo'        => $allProjectTasks->where('status', 'To Do')->count(),
+            'in_progress' => $allProjectTasks->where('status', 'In Progress')->count(),
+            'review'      => $allProjectTasks->where('status', 'Review')->count(),
+            'done'        => $allProjectTasks->where('status', 'Done')->count(),
         ];
-        $inProgressTasks = $tasks->where('status', 'In Progress')->take(5);
 
-        // Data untuk Grafik Tugas per Anggota (Stacked Bar)
-        $tasksByAssigneeGrouped = $tasks->groupBy('assigned_to');
+        // Untuk card "Tugas Sedang Dikerjakan" di tab Ringkasan Tugas
+        $inProgressTasksLimit = 4; // Batas tampilan item
+        $inProgressTasks = $allProjectTasks
+            ->where('status', 'In Progress')
+            ->sortByDesc('updated_at') // Tampilkan yang terbaru diupdate
+            ->take($inProgressTasksLimit);
+
+        // Untuk card "Rekap Task Selesai (Kalkulasi)" di tab Ringkasan Keuangan
+        $completedTasksForCalcLimit = 4; // Batas tampilan item
+        $completedTasksForCalc = $allProjectTasks
+            ->where('status', 'Done')
+            // Tambahkan eager load untuk 'assignedUser' jika belum ada di $allProjectTasks dan dibutuhkan di view
+            // ->loadMissing('assignedUser') // Contoh jika assignedUser tidak selalu di-load
+            ->sortByDesc(function ($task) { // Urutkan berdasarkan tanggal selesai, fallback ke updated_at
+                return $task->end_date ?? $task->updated_at;
+            })
+            ->take($completedTasksForCalcLimit);
+        // Pastikan $task->calculated_value ada dan bisa diakses di view
+
+        // Data untuk Grafik Tugas per Anggota (Stacked Bar) - tidak diubah
+        $tasksByAssigneeGrouped = $allProjectTasks->groupBy('assigned_to');
         $assigneeIds = $tasksByAssigneeGrouped->keys()->filter(fn($id) => !is_null($id) && $id > 0)->values()->all();
         $assignees = User::whereIn('id', $assigneeIds)->pluck('name', 'id');
         $statusOrder = ['To Do', 'In Progress', 'Review', 'Done'];
@@ -268,82 +287,70 @@ class ProjectController extends Controller
         foreach ($statusOrder as $status) {
             $dataCounts = [];
             foreach ($assigneeIds as $id) $dataCounts[] = optional($tasksByAssigneeGrouped->get($id))->where('status', $status)->count() ?? 0;
-            if ($hasUnassigned) $dataCounts[] = $unassignedTasks->where('status', $status)->count();
+            if ($hasUnassigned) $dataCounts[] = $unassignedTasks->where('status', $status)->count(); // Perbaikan: 'status', $status
             $datasets[] = [ 'label' => $status, 'data' => $dataCounts, 'backgroundColor' => $statusColors[array_search($status, $statusOrder)], 'borderColor' => $statusBorderColors[array_search($status, $statusOrder)], 'borderWidth' => 1 ];
         }
         $tasksByAssigneeStatusChartData = [ 'labels' => $assigneeLabels, 'datasets' => $datasets ];
 
-        // --- 3. Data Tim ---
+        // --- 3. Data Tim --- (tidak diubah)
         $acceptedWorkers = $project->workers()->wherePivot('status', 'accepted')->get();
 
-        // --- 4. Data Finansial (Statistik & Grafik) --- (REVISI PERHITUNGAN PAID)
+        // --- 4. Data Finansial (Statistik & Grafik) --- (tidak diubah)
         $budget = $project->budget ?? 0;
+        $allDoneTasksValue = $allProjectTasks->where('status', 'Done')->sum('calculated_value'); // Gunakan data yang sudah ada
 
-        // Hak Gaji Task (Total nilai semua task 'Done', terlepas sudah dibayar/belum)
-        $allDoneTasks = Task::where('project_id', $project->id)
-                            ->where('status', 'Done')
-                            ->with(['difficultyLevel', 'priorityLevel', 'projectUserMembership.wageStandard', 'project']) // Eager load needed for calculation
-                            ->get();
-        $totalTaskHakGaji = $allDoneTasks->sum('calculated_value'); // Use accessor
+        $totalTaskHakGaji = $allDoneTasksValue; // Sudah dihitung dari $allProjectTasks
 
-        // Hak Gaji Other/Full (Total amount semua payment tipe 'other'/'full', terlepas sudah dibayar/belum)
-        // Ini dihitung dari tabel Payment, bukan Task
         $totalOtherFullHakGaji = Payment::where('project_id', $project->id)
-                                 ->whereIn('payment_type', ['other', 'full']) // Include 'full'
+                                 ->whereIn('payment_type', ['other', 'full'])
                                  ->sum('amount');
-
-        // Total Dibayar Task/Termin (Hanya yang statusnya 'approved')
         $totalPaidTaskTermin = Payment::where('project_id', $project->id)
-                                ->whereIn('payment_type', ['task', 'termin']) // Include 'termin'
-                                ->where('status', Payment::STATUS_APPROVED) // <-- FIX: Gunakan status 'approved'
+                                ->whereIn('payment_type', ['task', 'termin'])
+                                ->where('status', Payment::STATUS_APPROVED)
                                 ->sum('amount');
-
-        // Total Dibayar Other/Full (Hanya yang statusnya 'approved')
         $totalPaidOtherFull = Payment::where('project_id', $project->id)
-                                 ->whereIn('payment_type', ['other', 'full']) // Include 'full'
-                                 ->where('status', Payment::STATUS_APPROVED) // <-- FIX: Gunakan status 'approved'
+                                 ->whereIn('payment_type', ['other', 'full'])
+                                 ->where('status', Payment::STATUS_APPROVED)
                                  ->sum('amount');
-
-        // Kalkulasi Total Keseluruhan
-        $totalHakGaji = $totalTaskHakGaji + $totalOtherFullHakGaji; // Total estimasi gaji
-        $totalPaid = $totalPaidTaskTermin + $totalPaidOtherFull;     // Total yang *benar-benar* sudah dibayar (approved)
-        $remainingUnpaid = max(0, $totalHakGaji - $totalPaid);      // Sisa yang belum dibayar (estimasi)
-        $budgetDifference = $budget - $totalHakGaji;                // Selisih budget vs *estimasi* total gaji
+        $totalHakGaji = $totalTaskHakGaji + $totalOtherFullHakGaji;
+        $totalPaid = $totalPaidTaskTermin + $totalPaidOtherFull;
+        $remainingUnpaid = max(0, $totalHakGaji - $totalPaid);
+        $budgetDifference = $budget - $totalHakGaji;
 
         $financialStats = [
             'budget' => $budget,
             'totalTaskHakGaji' => $totalTaskHakGaji,
-            'totalOtherFullHakGaji' => $totalOtherFullHakGaji, // Ganti nama variabel agar jelas
+            'totalOtherFullHakGaji' => $totalOtherFullHakGaji,
             'totalHakGaji' => $totalHakGaji,
-            'totalPaidTaskTermin' => $totalPaidTaskTermin,     // Ganti nama variabel agar jelas
-            'totalPaidOtherFull' => $totalPaidOtherFull,     // Ganti nama variabel agar jelas
-            'totalPaid' => $totalPaid, // Ini total semua yang sudah approved
+            'totalPaidTaskTermin' => $totalPaidTaskTermin,
+            'totalPaidOtherFull' => $totalPaidOtherFull,
+            'totalPaid' => $totalPaid,
             'remainingUnpaid' => $remainingUnpaid,
             'budgetDifference' => $budgetDifference,
-            // --- REVISI: Sesuaikan data untuk chart ---
             'overviewChartData' => [
-                'paidTaskTermin' => $totalPaidTaskTermin,   // Data task/termin yg sudah dibayar
-                'paidOtherFull' => $totalPaidOtherFull,    // Data other/full yg sudah dibayar
-                'remainingUnpaid' => $remainingUnpaid,     // Sisa estimasi
+                'paidTaskTermin' => $totalPaidTaskTermin,
+                'paidOtherFull' => $totalPaidOtherFull,
+                'remainingUnpaid' => $remainingUnpaid,
             ],
             'spendingVsBudgetChartData' => [
                 'budget' => $budget,
-                'hakGaji' => $totalHakGaji, // Total estimasi gaji
-                'paid' => $totalPaid,       // Total yang sudah dibayar (approved)
+                'hakGaji' => $totalHakGaji,
+                'paid' => $totalPaid,
             ]
         ];
-        // --- END REVISI PERHITUNGAN PAID ---
-
 
         // --- 5. Kirim Data ke View ---
         return view('projects.dashboard', compact(
             'project',
             'taskStats',
             'tasksByAssigneeStatusChartData',
-            'inProgressTasks',
+            'inProgressTasks',                  // Untuk Tab Tugas
+            'inProgressTasksLimit',             // Untuk Tab Tugas
+            'completedTasksForCalc',            // Untuk Tab Keuangan
+            'completedTasksForCalcLimit',       // Untuk Tab Keuangan
             'acceptedWorkers',
             'recentActivities',
-            'financialStats' // Kirim data finansial yang sudah diperbaiki
+            'financialStats'
         ));
     }
 
@@ -355,28 +362,25 @@ class ProjectController extends Controller
      */
     public function teamMembers(Project $project)
 {
-    // Check if user is authorized to view team members
-    // $this->authorize('view', $project);
+    $this->authorize('view', $project); // Pastikan ada policy untuk view project team
 
-    // Get the project owner
     $owner = $project->owner;
 
-    // Get active project members (accepted status)
+    // Anggota tim yang sudah diterima
     $members = $project->workers()
         ->wherePivot('status', 'accepted')
-        ->withPivot('position', 'wage_standard_id')
+        ->withPivot('position', 'wage_standard_id') // Sertakan wage_standard_id
         ->get();
 
-    // Get applicants (applied status)
-    $applicants = $project->workers()
-        ->wherePivot('status', 'applied')
-        ->withPivot('position')
+    // Undangan yang tertunda (status 'invited')
+    $pendingInvitations = $project->workers()
+        ->wherePivot('status', 'invited') // Ganti 'applied' menjadi 'invited'
+        ->withPivot('position') // Asumsi 'position' juga diisi saat invite
         ->get();
-        
-    // Get wage standards for this project
+
     $wageStandards = $project->wageStandards()->orderBy('job_category')->get();
 
-    return view('projects.team', compact('project', 'owner', 'members', 'applicants', 'wageStandards'));
+    return view('projects.team', compact('project', 'owner', 'members', 'pendingInvitations', 'wageStandards'));
 }
 
 /**

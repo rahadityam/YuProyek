@@ -53,16 +53,8 @@ Route::middleware('auth')->group(function () {
     // ---------------------------------------------------------------------
     Route::prefix('projects/{project}')->name('projects.')->group(function () {
 
-        // ... (Route dashboard, kanban, payroll, payslips, wage-standards, team, activity TIDAK BERUBAH) ...
         Route::get('/dashboard', [ProjectController::class, 'projectDashboard'])->name('dashboard');
         Route::get('/kanban', [TaskController::class, 'kanban'])->name('kanban');
-        Route::get('/payroll/calculate', [PaymentController::class, 'showPayrollCalculation'])->name('payroll.calculate');
-        Route::get('/payslips/create', [PaymentController::class, 'createAndDraftPayslip'])->name('payslips.create');
-        Route::post('/payslips', [PaymentController::class, 'storePayslip'])->name('payslips.store');
-        Route::get('/payslips/history', [PaymentController::class, 'payslipHistory'])->name('payslips.history');
-        Route::get('/payslips/{payslip}', [PaymentController::class, 'showPayslipDetail'])->name('payslips.show');
-        Route::patch('/payslips/{payslip}/approve', [PaymentController::class, 'approvePayslip'])->name('payslips.approve');
-        Route::delete('/payslips/{payslip}', [PaymentController::class, 'destroy'])->name('payslips.destroy');
         Route::resource('/wage-standards', WageStandardController::class)->except(['show'])->names('wage-standards');
         Route::get('/team', [ProjectController::class, 'teamMembers'])->name('team');
         Route::patch('/team/{user}/update-status', [ProjectApplicationController::class, 'updateStatus'])->name('application.updateStatus');
@@ -71,6 +63,22 @@ Route::middleware('auth')->group(function () {
         Route::patch('/team/{user}/wage', [ProjectController::class, 'updateMemberWage'])->name('team.updateWage');
         Route::get('/activity', [ActivityController::class, 'index'])->name('activity');
         Route::get('/activity/filter', [ActivityController::class, 'filter'])->name('activity.filter');
+
+
+        // Penggajian & Slip Gaji
+        Route::get('/payroll/calculate', [PaymentController::class, 'showPayrollCalculation'])->name('payroll.calculate');
+
+        // Route untuk form pembuatan slip gaji (jika masih ada halaman terpisah, jika tidak, ini bisa dihapus/redirect)
+        // Route::get('/payslips/create', [PaymentController::class, 'createAndDraftPayslip'])->name('payslips.create');
+        // Sekarang, route 'payslips.create' mungkin tidak lagi relevan sebagai halaman terpisah.
+        // Jika ada link yang masih mengarah ke sana, pastikan PaymentController@createAndDraftPayslip
+        // me-redirect ke halaman yang sesuai (misal, payroll.calculate).
+
+        Route::post('/payslips', [PaymentController::class, 'storePayslip'])->name('payslips.store'); // Untuk submit dari modal
+        Route::get('/payslips', [PaymentController::class, 'payslipList'])->name('payslips.history'); // Menggantikan history, menampilkan list gabungan
+        Route::get('/payslips/{payslip}', [PaymentController::class, 'showPayslipDetail'])->name('payslips.show');
+        Route::patch('/payslips/{payslip}/approve', [PaymentController::class, 'approvePayslip'])->name('payslips.approve');
+        Route::delete('/payslips/{payslip}', [PaymentController::class, 'destroy'])->name('payslips.destroy');
 
        // Pengaturan Proyek
        Route::get('/settings', [SettingController::class, 'index'])->name('pengaturan');
@@ -94,6 +102,9 @@ Route::middleware('auth')->group(function () {
        Route::patch('/settings/levels/order', [SettingController::class, 'updateOrder'])->name('settings.levels.order');
        Route::patch('/settings/team/{user}/wage', [SettingController::class, 'updateMemberWageStandard'])->name('settings.team.wage.update'); // Ajax update
 
+       Route::post('/team/invite', [App\Http\Controllers\ProjectApplicationController::class, 'inviteWorker'])->name('team.invite');
+        // Route untuk PM membatalkan undangan atau worker menerima/menolak
+        Route::patch('/team/invitations/{user}/status', [App\Http\Controllers\ProjectApplicationController::class, 'updateInvitationStatus'])->name('invitations.updateStatus');
     }); // Akhir dari prefix projects/{project}
 
     // ---------------------------------------------------------------------

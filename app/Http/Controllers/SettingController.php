@@ -9,6 +9,7 @@ use App\Models\PriorityLevel;
 use App\Models\Category;
 use App\Models\WageStandard;
 use App\Models\PaymentTerm; // <-- BARU: Import PaymentTerm
+use App\Models\Task;
 use App\Models\User;
 use App\Models\ProjectUser;
 use Illuminate\Support\Facades\Auth;
@@ -23,9 +24,10 @@ class SettingController extends Controller
     public function index(Project $project)
     {
         // Autorisasi: Hanya pemilik proyek yang bisa akses
-        if (Auth::id() !== $project->owner_id) {
-            abort(403, 'Unauthorized action.');
-        }
+        // if (Auth::id() !== $project->owner_id) {
+        //     abort(403, 'Unauthorized action.');
+        // }
+        $this->authorize('viewSettings', $project);
 
         // Ambil semua data yang dibutuhkan untuk semua tab
         $categories = Category::orderBy('name')->get(); // Untuk tab Project Info

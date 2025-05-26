@@ -26,28 +26,32 @@
      data-id="{{ $task->id }}"
      data-status="{{ $task->status }}"
      data-order="{{ $task->order ?? 0 }}"
+     data-title-lower="{{ strtolower($task->title) }}"
+     data-desc-lower="{{ strtolower(Str::limit($task->description ?? '', 1000)) }}"
      data-assigned-user-id="{{ $task->assigned_to ?? '' }}"
      data-difficulty-id="{{ $task->difficulty_level_id ?? '' }}"
      data-priority-id="{{ $task->priority_level_id ?? '' }}"
      data-start-date="{{ $task->start_time ? date('Y-m-d', strtotime($task->start_time)) : '' }}"
      data-end-date="{{ $task->end_time ? date('Y-m-d', strtotime($task->end_time)) : '' }}"
-     @click="$dispatch('open-task-modal', { taskId: {{ $task->id }} })" {{-- Open modal on click --}}
-     >
-    <div class="flex justify-between items-start mb-2">
+     data-can-move="{{ $task->can_move ? 'true' : 'false' }}"
+     @click.stop="$dispatch('open-task-modal', { taskId: {{ $task->id }} })">
+    {{-- ... (Konten task card lainnya tetap sama) ... --}}
+     <div class="flex justify-between items-start mb-2">
         {{-- Task Title with Percentage --}}
-        <div class="flex items-center">
+        <div class="flex items-center min-w-0"> {{-- Tambahkan min-w-0 untuk handle overflow title --}}
             {{-- Percentage Display with Dynamic Color --}}
-            <span class="text-xs font-medium px-1.5 py-0.5 rounded {{ $percentageColor }} mr-2">
+            <span class="text-xs font-medium px-1.5 py-0.5 rounded {{ $percentageColor }} mr-2 flex-shrink-0">
                 {{ $percentage }}%
             </span>
             
             {{-- Task Title --}}
-            <h4 class="font-semibold text-gray-800 text-sm break-words pr-5">
+            <h4 class="font-semibold text-gray-800 text-sm break-words pr-5 truncate"> {{-- truncate untuk judul panjang --}}
                 {{ $task->title }}
             </h4>
         </div>
 
         <!-- Three dot menu (stop propagation to prevent opening modal) -->
+         @if(Auth::user()->can('delete', $task)) 
         <div class="relative flex-shrink-0">
             <button @click.stop="showMenu = !showMenu" class="text-gray-400 hover:text-gray-600 focus:outline-none p-1 -mr-1 -mt-1 rounded hover:bg-gray-100">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"> 
@@ -63,19 +67,28 @@
                  class="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-30"
                  style="display: none;">
                 <div class="py-1" role="menu" aria-orientation="vertical">
+                    {{-- Edit (jika mau dari sini juga) --}}
+                    {{-- <button @click.stop="$dispatch('open-task-modal', { taskId: {{ $task->id }} }); showMenu = false;"
+                            class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            role="menuitem">
+                        Edit Task
+                    </button> --}}
                     {{-- Delete Form --}}
+                    @can('delete', $task)
                     <form action="{{ route('tasks.destroy', $task->id) }}" method="POST" class="block" data-task-id="{{ $task->id }}">
                         @csrf
                         @method('DELETE')
-                        <button type="button" @click.stop {{-- Stop propagation --}}
+                        <button type="button" @click.stop {{-- Penting: .stop di sini agar tidak memicu @click utama card --}}
                                 class="delete-task-btn w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 hover:text-red-800"
                                 role="menuitem">
                             Delete Task
                         </button>
                     </form>
+                    @endcan
                 </div>
             </div>
         </div>
+        @endif
     </div>
 
     <!-- Task description (optional preview) -->
