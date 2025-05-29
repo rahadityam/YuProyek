@@ -46,6 +46,8 @@
                     Pekerja Proyek
                     @elseif(Auth::user()->role === 'project_owner')
                     Project Manager
+                    @elseif(Auth::user()->role === 'admin')
+                    Admin
                     @endif
                 </div>
             </div>
@@ -57,33 +59,33 @@
         </button>
     </x-slot>
 
-    <x-slot name="content">
-        <!-- @if(Auth::user()->role === 'worker')
-            <x-dropdown-link :href="route('user.switch-role', ['role' => 'project_owner'])">
-                {{ __('Beralih ke Project Manager') }}
-            </x-dropdown-link>
-        @elseif(Auth::user()->role === 'project_owner')
-            <x-dropdown-link :href="route('user.switch-role', ['role' => 'worker'])">
-                {{ __('Beralih ke Pekerja Proyek') }}
-            </x-dropdown-link>
-        @endif -->
+                        <x-slot name="content">
+                            <!-- @if(Auth::user()->role === 'worker')
+                                <x-dropdown-link :href="route('user.switch-role', ['role' => 'project_owner'])">
+                                    {{ __('Beralih ke Project Manager') }}
+                                </x-dropdown-link>
+                            @elseif(Auth::user()->role === 'project_owner')
+                                <x-dropdown-link :href="route('user.switch-role', ['role' => 'worker'])">
+                                    {{ __('Beralih ke Pekerja Proyek') }}
+                                </x-dropdown-link>
+                            @endif -->
 
-        <x-dropdown-link :href="route('profile.edit')">
-            {{ __('Profile') }}
-        </x-dropdown-link>
+                            @if(Auth::user()->role !== 'admin')
+                                <x-dropdown-link :href="route('profile.edit')">
+                                    {{ __('Profile') }}
+                                </x-dropdown-link>
+                            @endif
 
-        <!-- Authentication -->
-        <form method="POST" action="{{ route('logout') }}">
-            @csrf
-
-            <x-dropdown-link :href="route('logout')"
-                    onclick="event.preventDefault();
-                                this.closest('form').submit();">
-                {{ __('Log Out') }}
-            </x-dropdown-link>
-        </form>
-    </x-slot>
-</x-dropdown>
+                            <!-- Authentication -->
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <x-dropdown-link :href="route('logout')"
+                                    onclick="event.preventDefault(); this.closest('form').submit();">
+                                    {{ __('Log Out') }}
+                                </x-dropdown-link>
+                            </form>
+                        </x-slot>
+                    </x-dropdown>
                 </div>
 
                 <!-- Hamburger -->
@@ -131,5 +133,14 @@
                 </form>
             </div>
         </div>
+         <!-- Responsive Settings -->
+        <div class="pt-4 pb-1 border-t border-gray-200">
+            <div class="px-4">
+                <div class="font-medium text-base text-gray-800">{{ Auth::user()->name }}</div>
+                <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
+            </div>
+
+    
     </div>
+    
 </nav>

@@ -137,7 +137,10 @@
                     <!-- Footer dengan tombol -->
                     <div class="px-5 py-4 bg-gray-50 flex justify-end">
                         <a href="{{ route('projects.dashboard', $project->id) }}" 
-                           class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition duration-200 shadow">
+                        onclick="@if($project->status === 'blocked') event.preventDefault();  @endif"
+                         class="inline-flex items-center px-4 py-2 
+                        {{ $project->status === 'blocked' ? 'bg-blue-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700' }} 
+                        text-white rounded-lg transition duration-200 shadow">
                             <span>Lihat Detail</span>
                         </a>
                     </div>
