@@ -15,7 +15,7 @@
     {{-- Kanban Board Layout --}}
     {{-- ========================== --}}
     {{-- Main container: flex column, viewport height minus navbar, light background --}}
-    <div class="container mx-auto flex flex-col" style="height: calc(100vh - 4rem);"> {{-- Adjust '4rem' if navbar/header height is different --}}
+    <div class="container mx-auto flex flex-col" style="height: calc(100vh - 8rem);"> {{-- Adjust '4rem' if navbar/header height is different --}}
 
         {{-- Header: Filter & Search (Fixed Top Area) --}}
         <div class="px-4 pb-1 flex-shrink-0 border-b border-gray-200"> {{-- White header --}}
@@ -399,25 +399,40 @@
         }
 
         const sortable = new Sortable(list, {
-            group: 'shared',
-            animation: 150,
-            ghostClass: 'sortable-ghost',
-            chosenClass: 'sortable-chosen',
-            dragClass: 'sortable-drag',
-            draggable: '.task',
+                    group: 'shared',
+                    animation: 150,
+                    ghostClass: 'sortable-ghost',
+                    chosenClass: 'sortable-chosen',
+                    dragClass: 'sortable-drag',
+                    draggable: '.task',
 
-            filter: function (/**Event*/evt, /**HTMLElement*/target) {
-                if (target && target.classList.contains('task')) {
-                    const canMove = target.dataset.canMove === 'true';
-                    if (!canMove) {
-                        console.log(`Task ${target.dataset.id} cannot be moved by this user.`);
-                        target.style.cursor = 'not-allowed';
-                        setTimeout(() => { target.style.cursor = 'grab'; }, 1000);
-                        return true; // Filter out (cegah drag)
-                    }
-                }
-                return false; // Allow drag
-            },
+                    filter: function (/**Event*/evt, /**HTMLElement*/target) {
+                        if (target && target.classList.contains('task')) {
+                            const canMove = target.dataset.canMove === 'true';
+                            const taskId = target.dataset.id; // Ambil ID task untuk logging
+                            if (!canMove) {
+                                // Logika yang sudah ada, sekarang akan ter-trigger jika task sudah paid
+                                console.log(`Task ${taskId} (canMove: ${target.dataset.canMove}) cannot be moved by this user.`);
+                                target.style.cursor = 'not-allowed'; // Sudah ada
+                                // Tambahkan notifikasi toast sederhana jika task tidak bisa dipindah karena sudah dibayar
+                                if (target.dataset.paymentId && target.dataset.paymentId !== '') { // Cek apakah ada payment_id (meski canMove juga cek ini)
+                                    if (window.KanbanApp && typeof window.KanbanApp.showStatusMessage === 'function') {
+                                        // Cek apakah showStatusMessage ada di KanbanApp
+                                        // Anda bisa buat pesan lebih spesifik jika mau
+                                        // Untuk sementara, kita tampilkan pesan umum.
+                                        // Mungkin perlu atribut data-payment-status-text di task card jika ingin lebih spesifik.
+                                        window.KanbanApp.showStatusMessage('This task cannot be moved as it has been processed for payment.', false);
+                                    } else {
+                                         // Fallback jika KanbanApp.showStatusMessage tidak ada (seharusnya ada)
+                                        console.warn("Cannot show status message: KanbanApp.showStatusMessage not found.")
+                                    }
+                                }
+                                setTimeout(() => { target.style.cursor = 'grab'; }, 1500); // Naikkan sedikit durasi agar pesan sempat terlihat
+                                return true; // Filter out (cegah drag)
+                            }
+                        }
+                        return false; // Allow drag
+                    },
 
             onStart: (evt) => {
                 const item = evt.item;
@@ -434,66 +449,68 @@
                 });
             },
 
-            // --- INI BAGIAN YANG ANDA MINTA ---
-            onEnd: (evt) => {
-                console.log('[KanbanApp onEnd] Drag ended. Event details:', evt);
+            onEnd: (evt) => { // onEnd sudah ada dan seharusnya OK
+                        console.log('[KanbanApp onEnd] Drag ended. Event details:', evt);
 
-                document.querySelectorAll('.task-list-empty-template').forEach(el => {
-                    el.style.visibility = 'visible';
-                });
+                        document.querySelectorAll('.task-list-empty-template').forEach(el => {
+                            el.style.visibility = 'visible';
+                        });
 
-                const item = evt.item; // Ini adalah elemen task yang di-drag
-                if (!item || !item.classList.contains('task')) {
-                    console.warn('[KanbanApp onEnd] Dragged item is not a task element. Aborting.');
-                    return;
-                }
+                        const item = evt.item;
+                        if (!item || !item.classList.contains('task')) {
+                            console.warn('[KanbanApp onEnd] Dragged item is not a task element. Aborting.');
+                            return;
+                        }
 
-                const draggedTaskId = item.dataset.id; // Dapatkan ID task yang di-drag
+                        const draggedTaskId = item.dataset.id;
 
-                // Validasi tambahan: Pastikan item ini memang boleh dipindahkan
-                // Meskipun sudah ada 'filter', ini sebagai double check.
-                if (item.dataset.canMove !== 'true') {
-                    console.error(`[KanbanApp onEnd] Attempted to finalize move of a non-movable task (ID: ${draggedTaskId}). This should have been prevented by the 'filter' option or onStart.`);
-                    // Opsional: Coba kembalikan item ke posisi semula secara visual jika bisa
-                    // Ini bisa rumit dan mungkin tidak selalu mulus.
-                    // Contoh sederhana (mungkin perlu disesuaikan):
-                    if (evt.from && evt.oldIndex !== undefined) {
-                        // evt.from.insertBefore(item, evt.from.children[evt.oldIndex]);
-                        // Daripada mencoba memanipulasi DOM secara manual yang berisiko,
-                        // lebih baik reload atau membiarkan backend menolak perubahan
-                        // untuk menjaga konsistensi data.
-                        console.warn("[KanbanApp onEnd] Visual rollback of non-movable item might be complex. Relying on backend authorization.");
+                        // DOUBLE CHECK: Pastikan item ini memang boleh dipindahkan
+                        // Ini penting jika 'filter' atau 'onStart' gagal mencegah drag item yang tidak boleh dipindah
+                        if (item.dataset.canMove !== 'true') {
+                            console.error(`[KanbanApp onEnd] Attempted to finalize move of a non-movable task (ID: ${draggedTaskId}). CanMove: ${item.dataset.canMove}. This should have been prevented.`);
+                            
+                            // Tampilkan pesan error ke pengguna
+                            this.showStatusMessage(`Task "${item.querySelector('h4')?.textContent.trim() || draggedTaskId}" cannot be moved (e.g., already paid or not authorized). Reverting.`, false);
+
+                            // Coba kembalikan item ke posisi semula secara visual
+                            // Ini mungkin tidak selalu sempurna dan bisa rumit,
+                            // backend akan menjadi penentu akhir.
+                            // Jika item dipindah ke kolom lain:
+                            if (evt.to !== evt.from) {
+                                evt.from.insertBefore(item, evt.from.children[evt.oldDraggableIndex]);
+                            } else { // Jika item dipindah dalam kolom yang sama
+                                // Ini lebih sulit untuk dikembalikan secara visual tanpa state yang kompleks
+                                // Pilihan: reload kolom atau biarkan backend menangani (dan UI mungkin tidak konsisten sementara)
+                                // Untuk sekarang, kita akan membatalkan update ke backend saja.
+                                console.warn("[KanbanApp onEnd] Visual rollback within the same column for non-movable item is complex. Relying on backend. Frontend might be inconsistent until refresh/next update.");
+                            }
+                            
+                            // Yang paling penting: JANGAN kirim update ke backend
+                            this.updateTaskCounts(); // Perbarui hitungan karena DOM mungkin sudah berubah
+                            this.applyFilters();     // Terapkan filter
+                            return; 
+                        }
+
+                        const newStatus = evt.to.dataset.status;
+                        const oldStatus = evt.from.dataset.status;
+
+                        console.log(`[KanbanApp onEnd] Task ID: ${draggedTaskId}, Moved from status: ${oldStatus} (index: ${evt.oldDraggableIndex}) to status: ${newStatus} (index: ${evt.newDraggableIndex})`);
+
+                        if (item.dataset.status !== newStatus) {
+                            item.dataset.status = newStatus;
+                            console.log(`[KanbanApp onEnd] Updated data-status for task ${draggedTaskId} to ${newStatus}`);
+                        }
+
+                        this.debouncedUpdateTaskOrders(draggedTaskId);
+
+                        setTimeout(() => {
+                            this.updateTaskCounts();
+                            this.initializeFiltering();
+                            this.applyFilters();
+                            console.log('[KanbanApp onEnd] UI updates (counts, filters) scheduled.');
+                        }, 100);
                     }
-                    // Jangan panggil update ke backend jika item tidak boleh dipindah.
-                    return;
-                }
-
-                const newStatus = evt.to.dataset.status; // Kolom tujuan (status baru)
-                const oldStatus = evt.from.dataset.status; // Kolom asal (status lama)
-
-                console.log(`[KanbanApp onEnd] Task ID: ${draggedTaskId}, Moved from status: ${oldStatus} (index: ${evt.oldIndex}) to status: ${newStatus} (index: ${evt.newIndex})`);
-
-                // Update data-status pada elemen task jika berpindah kolom
-                if (item.dataset.status !== newStatus) {
-                    item.dataset.status = newStatus;
-                    console.log(`[KanbanApp onEnd] Updated data-status for task ${draggedTaskId} to ${newStatus}`);
-                }
-
-                // Panggil fungsi untuk mengirim update ke backend,
-                // sertakan ID task yang di-drag.
-                this.debouncedUpdateTaskOrders(draggedTaskId);
-
-                // Update UI setelah jeda singkat untuk memastikan DOM stabil
-                // dan data dari backend (jika ada) telah diproses.
-                setTimeout(() => {
-                    this.updateTaskCounts(); // Perbarui hitungan task di setiap kolom
-                    this.initializeFiltering(); // Cache ulang elemen task jika ada penambahan/penghapusan
-                    this.applyFilters(); // Terapkan filter yang ada
-                    console.log('[KanbanApp onEnd] UI updates (counts, filters) scheduled.');
-                }, 100); // Jeda sedikit lebih lama untuk memastikan
-            }
-            // --- AKHIR BAGIAN YANG ANDA MINTA ---
-        });
+                });
 
         list.sortableInstance = sortable;
         this.sortableInstances.push(sortable);

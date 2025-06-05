@@ -60,7 +60,7 @@ Route::middleware('auth')->group(function () {
         Route::patch('/team/{user}/update-status', [ProjectApplicationController::class, 'updateStatus'])->name('application.updateStatus');
         Route::delete('/team/{user}/remove', [ProjectApplicationController::class, 'removeMember'])->name('team.remove');
         Route::get('/team/user/{user}', [ProjectApplicationController::class, 'viewProfile'])->name('user.profile');
-        Route::patch('/team/{user}/wage', [ProjectController::class, 'updateMemberWage'])->name('team.updateWage');
+        // Route::patch('/team/{user}/wage', [ProjectController::class, 'updateMemberWage'])->name('team.updateWage');
         Route::get('/activity', [ActivityController::class, 'index'])->name('activity');
         Route::get('/activity/filter', [ActivityController::class, 'filter'])->name('activity.filter');
 
@@ -80,29 +80,33 @@ Route::middleware('auth')->group(function () {
         Route::patch('/payslips/{payslip}/approve', [PaymentController::class, 'approvePayslip'])->name('payslips.approve');
         Route::delete('/payslips/{payslip}', [PaymentController::class, 'destroy'])->name('payslips.destroy');
 
-       // Pengaturan Proyek
-       Route::get('/settings', [SettingController::class, 'index'])->name('pengaturan');
-       // Pisahkan update
-       Route::patch('/settings/info', [SettingController::class, 'updateProjectInfo'])->name('pengaturan.info.update');
-       Route::patch('/settings/payment-type', [SettingController::class, 'updatePaymentCalculationType'])->name('pengaturan.payment.update');
-       // --- BARU: Route untuk update terms ---
-       Route::patch('/settings/terms', [SettingController::class, 'updatePaymentTerms'])->name('settings.terms.update');
-       // --- END BARU ---
-       // Bobot WSM
-       Route::get('/settings/weights', [SettingController::class, 'editWeights'])->name('settings.weights.edit'); // Ganti nama view jika perlu
-       Route::patch('/settings/weights', [SettingController::class, 'updateWeights'])->name('settings.weights.update');
-       // Level Dinamis
-       Route::get('/settings/levels', [SettingController::class, 'manageLevels'])->name('settings.levels.manage'); // Ganti nama view jika perlu
-       Route::post('/settings/levels/difficulty', [SettingController::class, 'storeDifficultyLevel'])->name('settings.levels.difficulty.store');
-       Route::patch('/settings/levels/difficulty/{difficultyLevel}', [SettingController::class, 'updateDifficultyLevel'])->name('settings.levels.difficulty.update');
-       Route::delete('/settings/levels/difficulty/{difficultyLevel}', [SettingController::class, 'destroyDifficultyLevel'])->name('settings.levels.difficulty.destroy');
-       Route::post('/settings/levels/priority', [SettingController::class, 'storePriorityLevel'])->name('settings.levels.priority.store');
-       Route::patch('/settings/levels/priority/{priorityLevel}', [SettingController::class, 'updatePriorityLevel'])->name('settings.levels.priority.update');
-       Route::delete('/settings/levels/priority/{priorityLevel}', [SettingController::class, 'destroyPriorityLevel'])->name('settings.levels.priority.destroy');
-       Route::patch('/settings/levels/order', [SettingController::class, 'updateOrder'])->name('settings.levels.order');
-       Route::patch('/settings/team/{user}/wage', [SettingController::class, 'updateMemberWageStandard'])->name('settings.team.wage.update'); // Ajax update
+        // Pengaturan Proyek
+        Route::get('/settings', [SettingController::class, 'index'])->name('pengaturan');
+        // Pisahkan update
+        Route::patch('/settings/info', [SettingController::class, 'updateProjectInfo'])->name('pengaturan.info.update');
+        Route::patch('/settings/payment-type', [SettingController::class, 'updatePaymentCalculationType'])->name('pengaturan.payment.update');
+        // --- BARU: Route untuk update terms ---
+        Route::patch('/settings/terms', [SettingController::class, 'updatePaymentTerms'])->name('settings.terms.update');
+        // --- END BARU ---
+        // Bobot WSM
+        Route::get('/settings/weights', [SettingController::class, 'editWeights'])->name('settings.weights.edit'); // Ganti nama view jika perlu
+        Route::patch('/settings/weights', [SettingController::class, 'updateWeights'])->name('settings.weights.update');
+        // Level Dinamis
+        Route::get('/settings/levels', [SettingController::class, 'manageLevels'])->name('settings.levels.manage'); // Ganti nama view jika perlu
+        Route::post('/settings/levels/difficulty', [SettingController::class, 'storeDifficultyLevel'])->name('settings.levels.difficulty.store');
+        Route::patch('/settings/levels/difficulty/{difficultyLevel}', [SettingController::class, 'updateDifficultyLevel'])->name('settings.levels.difficulty.update');
+        Route::delete('/settings/levels/difficulty/{difficultyLevel}', [SettingController::class, 'destroyDifficultyLevel'])->name('settings.levels.difficulty.destroy');
+        Route::post('/settings/levels/priority', [SettingController::class, 'storePriorityLevel'])->name('settings.levels.priority.store');
+        Route::patch('/settings/levels/priority/{priorityLevel}', [SettingController::class, 'updatePriorityLevel'])->name('settings.levels.priority.update');
+        Route::delete('/settings/levels/priority/{priorityLevel}', [SettingController::class, 'destroyPriorityLevel'])->name('settings.levels.priority.destroy');
+        Route::patch('/settings/levels/order', [SettingController::class, 'updateOrder'])->name('settings.levels.order');
+        Route::patch('/team/wages/batch-update', [SettingController::class, 'batchUpdateMemberWageStandards'])->name('settings.team.wages.batch-update');
+        Route::patch('/settings/team/{user}/wage', [SettingController::class, 'updateMemberWageStandard'])->name('settings.team.wage.update'); // Ajax update
 
-       Route::post('/team/invite', [App\Http\Controllers\ProjectApplicationController::class, 'inviteWorker'])->name('team.invite');
+        Route::post('/settings/files', [App\Http\Controllers\SettingController::class, 'storeProjectFile'])->name('settings.files.store');
+        Route::delete('/settings/files/{projectFile}', [App\Http\Controllers\SettingController::class, 'destroyProjectFile'])->name('settings.files.destroy');
+
+        Route::post('/team/invite', [App\Http\Controllers\ProjectApplicationController::class, 'inviteWorker'])->name('team.invite');
         // Route untuk PM membatalkan undangan atau worker menerima/menolak
         Route::patch('/team/invitations/{user}/status', [App\Http\Controllers\ProjectApplicationController::class, 'updateInvitationStatus'])->name('invitations.updateStatus');
     }); // Akhir dari prefix projects/{project}

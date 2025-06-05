@@ -128,7 +128,7 @@
                     </header>
                 @endif
 
-                <main class="p-4 md:p-6">
+                <main class="py-2">
                     {{ $slot }}
                 </main>
             </div>

@@ -9,10 +9,14 @@ use App\Models\ProjectUser;
 use App\Models\Category;
 use App\Models\User;
 use App\Models\WageStandard;
+use App\Models\PaymentTerm;
+use App\Models\ProjectPosition;
 use App\Models\ActivityLog;
 use App\Models\Task; // Tambahkan ini
 use App\Models\Payment; // Tambahkan ini
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Str; 
 use Illuminate\Support\Collection;
 
@@ -109,34 +113,143 @@ class ProjectController extends Controller
     // Menampilkan form untuk membuat proyek baru
     public function create()
     {
-        $categories = Category::all();
-        return view('projects.create', compact('categories'));
+        // $categories = Category::all(); // Tidak diperlukan lagi di sini
+        // return view('projects.create', compact('categories'));
+        // Jika halaman create.blade.php dihapus, redirect saja:
+        return redirect()->route('projects.my-projects')->with('info', 'Gunakan tombol "Buat Proyek Baru" untuk membuat proyek.');
     }
 
-    // Menyimpan proyek baru
     public function store(Request $request)
     {
-        $request->validate([
+        $this->authorize('create', Project::class);
+
+        $validatedData = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'start_date' => 'required|date',
-            'end_date' => 'required|date|after:start_date',
-            'budget' => 'required|numeric',
-            'status' => 'required|string|in:open,in_progress,completed,cancelled',
-            'owner_id' => 'required|exists:users,id',
-            'categories' => 'nullable|array',
-            'categories.*' => 'exists:categories,id',
+            'end_date' => 'required|date|after_or_equal:start_date',
+            'budget' => 'required|numeric|min:0',
+            
+            'wip_limits' => 'nullable|integer|min:1',
+            'difficulty_weight' => 'nullable|integer|min:0|max:100',
+            'priority_weight' => 'nullable|integer|min:0|max:100',
+            
+            // Ubah aturan validasi di sini
+            'payment_calculation_type' => ['required', Rule::in(['termin', 'full'])], // Hanya 'termin' dan 'full'
+            
+            // Validasi payment_terms tetap sama, hanya relevan jika tipe adalah 'termin'
+            'payment_terms' => Rule::requiredIf(fn () => $request->input('payment_calculation_type') === 'termin') . '|array',
+            // Jika payment_calculation_type adalah 'termin' dan payment_terms kosong, validasi 'min:1' akan gagal.
+            // Jadi, tambahkan min:1 hanya jika payment_calculation_type adalah 'termin'
+            // Ini bisa dilakukan dengan callback validasi kustom atau membiarkan 'requiredIf' dan validasi array 'min' bekerja bersama.
+            // Untuk menyederhanakan, kita pastikan 'payment_terms' hanya dikirim jika tipenya 'termin'.
+            // Di frontend, kita sudah mengosongkan payment_terms jika tipe bukan termin.
+            'payment_terms.*.name' => 'required_with:payment_terms|string|max:255',
+            'payment_terms.*.start_date' => 'required_with:payment_terms|date',
+            'payment_terms.*.end_date' => 'required_with:payment_terms|date|after_or_equal:payment_terms.*.start_date',
+            
+            'positions' => 'nullable|array',
+            'positions.*.name' => 'required_with:positions|string|max:255',
+            'positions.*.count' => 'required_with:positions|integer|min:1',
+        ], [
+            'payment_terms.required' => 'Jika metode pembayaran adalah Termin, minimal satu termin harus didefinisikan.',
+            // 'payment_terms.min' => 'Jika metode pembayaran adalah Termin, minimal satu termin harus didefinisikan.', // Pesan ini mungkin tidak diperlukan lagi jika requiredIf sudah cukup
+            'payment_terms.*.name.required_with' => 'Nama termin wajib diisi untuk setiap termin yang ditambahkan.',
+            'payment_terms.*.start_date.required_with' => 'Tanggal mulai termin wajib diisi.',
+            'payment_terms.*.end_date.required_with' => 'Tanggal akhir termin wajib diisi.',
+            'payment_terms.*.end_date.after_or_equal' => 'Tanggal akhir termin harus setelah atau sama dengan tanggal mulai.',
+            'positions.*.name.required_with' => 'Nama posisi wajib diisi jika menambahkan data posisi.',
+            'positions.*.count.required_with' => 'Jumlah untuk posisi wajib diisi dan minimal 1.',
         ]);
 
-        // Create the project
-        $project = Project::create($request->except('categories'));
+        // Validasi total bobot WSM
+        $difficultyWeight = $request->input('difficulty_weight', 65); // Default jika null
+        $priorityWeight = $request->input('priority_weight', 35);   // Default jika null
 
-        // Attach categories if any are selected
-        if ($request->has('categories')) {
-            $project->categories()->attach($request->categories);
+        if (($difficultyWeight + $priorityWeight) > 100) {
+             if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validasi gagal.',
+                    'errors' => ['weights_total' => ['Total bobot Kesulitan dan Prioritas tidak boleh lebih dari 100%.']]
+                ], 422);
+            }
+            return back()->withErrors(['weights_total' => 'Total bobot Kesulitan dan Prioritas tidak boleh lebih dari 100%.'])->withInput();
+        }
+        if (($difficultyWeight + $priorityWeight) < 100 && ($difficultyWeight !=0 || $priorityWeight !=0) ) { // Hanya jika salah satu atau keduanya tidak 0
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validasi gagal.',
+                    'errors' => ['weights_total' => ['Total bobot Kesulitan dan Prioritas harus 100% jika salah satu atau keduanya diisi.']]
+                ], 422);
+            }
+            return back()->withErrors(['weights_total' => 'Total bobot Kesulitan dan Prioritas harus 100% jika salah satu atau keduanya diisi.'])->withInput();
         }
 
-        return redirect()->route('projects.index')->with('success', 'Proyek berhasil dibuat!');
+
+        DB::beginTransaction();
+        try {
+            $projectData = [
+                'name' => $validatedData['name'],
+                'description' => $validatedData['description'],
+                'start_date' => $validatedData['start_date'],
+                'end_date' => $validatedData['end_date'],
+                'budget' => $validatedData['budget'],
+                'status' => 'open',
+                'owner_id' => Auth::id(),
+                'wip_limits' => $validatedData['wip_limits'],
+                'difficulty_weight' => $request->input('difficulty_weight', 65),
+                'priority_weight' => $request->input('priority_weight', 35),
+                'payment_calculation_type' => $validatedData['payment_calculation_type'],
+            ];
+
+            $project = Project::create($projectData);
+
+            // Simpan termin hanya jika tipe adalah 'termin' dan ada data termin
+            if ($project->payment_calculation_type === 'termin' && !empty($validatedData['payment_terms'])) {
+                foreach ($validatedData['payment_terms'] as $termData) {
+                    $project->paymentTerms()->create($termData);
+                }
+            }
+
+            // Simpan posisi pekerja jika ada (asumsi Anda punya model ProjectPosition)
+            if (!empty($validatedData['positions'])) {
+                foreach ($validatedData['positions'] as $positionData) {
+                    // Pastikan model ProjectPosition ada dan relasinya sudah di-setup di Project.php
+                    $project->projectPositions()->create($positionData);
+                    // Contoh jika belum ada model ProjectPosition, bisa disimpan sebagai JSON di project (tidak ideal untuk query)
+                    // $project->update(['job_positions_meta' => json_encode($validatedData['positions'])]); // Kurang disarankan
+                    // Log::info('Data posisi untuk proyek baru:', $positionData); // Sementara log dulu
+                }
+            }
+            // Kategori tidak di-handle di sini lagi
+
+            DB::commit();
+
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Proyek berhasil dibuat!',
+                    'project' => $project->load('owner')
+                ], 201);
+            }
+
+            return redirect()->route('projects.my-projects')->with('success', 'Proyek berhasil dibuat!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Error creating project: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            
+            if ($request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Terjadi kesalahan server saat membuat proyek. Silakan coba lagi.',
+                    'errors' => ['general' => $e->getMessage()] // Kirim pesan error general
+                ], 500);
+            }
+            return back()->with('error', 'Gagal membuat proyek: ' . $e->getMessage())->withInput();
+        }
     }
 
     // Gunakan metode yang sama untuk edit dan update

@@ -144,11 +144,21 @@ public function getWsmScoreAttribute(): float
         return 0.0; // Jika nilai dasar 0, hasil akhir juga 0
     }
 
-    // Status Pembayaran (Teks)
     public function getPaymentStatusTextAttribute(): string
-    {
-        return $this->payment_id !== null ? 'Sudah Dibayar' : 'Belum Dibayar';
+{
+    if ($this->payment_id) {
+        // Selalu coba ambil payment jika payment_id ada
+        $payment = $this->relationLoaded('payment') ? $this->payment : $this->payment()->first();
+        if ($payment) {
+            if ($payment->status === Payment::STATUS_APPROVED) {
+                return 'Paid';
+            } elseif ($payment->status === Payment::STATUS_DRAFT) {
+                return 'Payment Drafted';
+            }
+        }
     }
+    return 'Unpaid';
+}
 
     public function comments()
     {
@@ -203,13 +213,18 @@ public function getWsmScoreAttribute(): float
             return $this->attachments()->count();
         }
 
-        /**
-     * Accessor untuk menentukan apakah user saat ini bisa memindahkan (update status) task ini.
-     * Akan otomatis ditambahkan jika model di-serialize ke array/JSON
-     * dengan nama atribut 'can_move'.
-     */
     public function getCanMoveAttribute(): bool
     {
+        // Jika task sudah memiliki payment_id (sudah masuk proses pembayaran/dibayar)
+        // DAN payment tersebut sudah 'approved', maka tidak bisa dipindah.
+        if ($this->payment_id !== null) {
+            // Cek status payment terkait. Jika tidak ada relasi payment yang terload, kita load.
+            $payment = $this->relationLoaded('payment') ? $this->payment : $this->payment()->first();
+            if ($payment && $payment->status === Payment::STATUS_APPROVED) {
+                return false; // Tidak bisa dipindah jika sudah dibayar dan disetujui
+            }
+        }
+
         // Pastikan ada user yang login
         if (Auth::check()) {
             // Menggunakan policy 'updateStatus' yang sudah kita definisikan

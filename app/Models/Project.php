@@ -21,7 +21,7 @@ class Project extends Model
         'wip_limits',
         'difficulty_weight',
         'priority_weight',
-        'payment_calculation_type', // Pastikan ini ada
+        'payment_calculation_type',
     ];
 
     /**
@@ -30,13 +30,12 @@ class Project extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'start_date' => 'date', // <-- Tambahkan ini
-        'end_date' => 'date',   // <-- Tambahkan ini
-        'budget' => 'decimal:2', // Casting budget jika perlu
+        'start_date' => 'date',
+        'end_date' => 'date',
+        'budget' => 'decimal:2',
         'wip_limits' => 'integer',
         'difficulty_weight' => 'integer',
         'priority_weight' => 'integer',
-        // Tambahkan cast lain jika ada (misal: created_at, updated_at sudah otomatis)
     ];
 
     // Relasi ke User (pemilik proyek)
@@ -50,14 +49,23 @@ class Project extends Model
     {
         // Sertakan pivot wage_standard_id yang baru
         return $this->belongsToMany(User::class, 'project_users')
-                    ->withPivot('status', 'salary', 'position', 'wage_standard_id'); // Tambah wage_standard_id
+            ->withPivot('status', 'salary', 'position', 'wage_standard_id');
     }
-
+        
+    public function projectPositions()
+    {
+        return $this->hasMany(ProjectPosition::class);
+    }
 
     // Relasi ke Task
     public function tasks()
     {
         return $this->hasMany(Task::class);
+    }
+
+    public function files()
+    {
+        return $this->hasMany(ProjectFile::class)->orderBy('created_at', 'desc');
     }
 
     // Relasi ke Category (many-to-many)
@@ -101,7 +109,7 @@ class Project extends Model
     }
     // --- END BARU ---
 
-     // Method to get default weights if needed
+    // Method to get default weights if needed
     public function getDifficultyWeightAttribute($value)
     {
         // Default to 65 if null or 0, but allow 0 if explicitly set
@@ -110,7 +118,7 @@ class Project extends Model
 
     public function getPriorityWeightAttribute($value)
     {
-         // Default to 35 if null or 0, but allow 0 if explicitly set
+        // Default to 35 if null or 0, but allow 0 if explicitly set
         return ($value === null || $value === 0) ? ($this->attributes['priority_weight'] ?? 35) : $value;
     }
 
