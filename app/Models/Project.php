@@ -23,7 +23,8 @@ class Project extends Model
         'priority_weight',
         'payment_calculation_type',
     ];
-
+    const STATUS_ACTIVE = 'active';
+    const STATUS_BLOCKED = 'blocked';
     /**
      * The attributes that should be cast.
      *

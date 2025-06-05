@@ -18,7 +18,7 @@ return new class extends Migration
             $table->date('start_date');
             $table->date('end_date');
             $table->decimal('budget', 15, 2);
-            $table->enum('status', ['open', 'in_progress', 'completed', 'cancelled'])->default('open');
+            $table->enum('status', ['open', 'in_progress', 'completed', 'cancelled','active', 'blocked'])->default('open');
             $table->foreignId('owner_id')->constrained('users')->onDelete('cascade');
             $table->timestamps();
         });

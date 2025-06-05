@@ -9,6 +9,10 @@ use App\Http\Controllers\PaymentController; // Tetap gunakan PaymentController
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\WageStandardController;
 use App\Http\Controllers\ActivityController;
+use App\Http\Controllers\Admin\AdminUserController;
+use App\Http\Controllers\Admin\AdminProjectController;
+use App\Http\Controllers\Admin\AdminDashboardController;
+
 
 /* ... Route::get('/', ...), Route::get('/projects', ...) */
 
@@ -131,6 +135,20 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+// ---------------------------------------------------------------------
+    // Rute Admin
+    // ---------------------------------------------------------------------
+    Route::get('/admin/users', [AdminUserController::class, 'index'])->name('admin.users.index');
+    Route::get('/admin/projects', [AdminProjectController::class, 'index'])->name('admin.projects.index');
+    Route::get('/admin/projects/{id}/toggle-status', [AdminProjectController::class, 'toggleStatus'])->name('admin.projects.toggleStatus');
+    Route::post('/admin/users/{id}/toggle-status', [AdminUserController::class, 'toggleStatus'])->name('admin.users.toggleStatus');
+    Route::post('/admin/projects/{id}/toggle-status', [AdminProjectController::class, 'toggleStatus'])->name('admin.projects.toggleStatus');
+    Route::get('/admin/users/create', [AdminUserController::class, 'create'])->name('admin.users.create');
+    Route::post('/admin/users/store', [AdminUserController::class, 'store'])->name('admin.users.store');
+    Route::get('/admin/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
+    Route::get('/admin/users/sidebar', function () { return view('admin.users.sidebaradmin');})->name('admin.users.sidebar');
+
 
 }); // Akhir dari middleware('auth')
 
