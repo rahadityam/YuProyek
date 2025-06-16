@@ -208,7 +208,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="text-center px-4 py-6">Tidak ada pengguna.</td>
+                                    <td colspan="5" class="text-center px-4 py-6">No users found.</td>
                                 </tr>
                             @endforelse
 
@@ -294,19 +294,19 @@
 
             form.action = actionUrl;
 
-            if (isBlock) {
-                title.textContent = 'Blokir';
-                message.textContent = 'Apakah Anda yakin ingin memblokir akun ini?';
-                confirmBtn.textContent = 'Blokir';
-                confirmBtn.classList.add('smsbox-confirm-block');
-                confirmBtn.classList.remove('smsbox-confirm-unblock');
-            } else {
-                title.textContent = 'Unblokir';
-                message.textContent = 'Apakah Anda yakin ingin membuka blokir akun ini?';
-                confirmBtn.textContent = 'Unblokir';
-                confirmBtn.classList.add('smsbox-confirm-unblock');
-                confirmBtn.classList.remove('smsbox-confirm-block');
-            }
+         if (isBlock) {
+            title.textContent = 'Block';
+            message.textContent = 'Are you sure you want to block this account?';
+            confirmBtn.textContent = 'Block';
+            confirmBtn.classList.add('smsbox-confirm-block');
+            confirmBtn.classList.remove('smsbox-confirm-unblock');
+        } else {
+            title.textContent = 'Unblock';
+            message.textContent = 'Are you sure you want to unblock this account?';
+            confirmBtn.textContent = 'Unblock';
+            confirmBtn.classList.add('smsbox-confirm-unblock');
+            confirmBtn.classList.remove('smsbox-confirm-block');
+        }
 
             modal.classList.remove('hidden');
             document.body.classList.add('overflow-hidden');

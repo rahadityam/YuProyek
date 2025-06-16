@@ -11,11 +11,13 @@
                     </a>
                 </div>
 
+               @if(Auth::user()->role !== 'admin')
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex items-end h-16">
-                <x-nav-link :href="route('projects.my-projects')" :active="request()->routeIs(['projects.my-projects', 'dashboard'])">
+                    <x-nav-link :href="route('projects.my-projects')" :active="request()->routeIs(['projects.my-projects', 'dashboard'])">
                         {{ __('Home') }}
                     </x-nav-link>
                 </div>
+            @endif
 
                 <!-- Navigation Links - Positioned to align with bottom border -->
                 <!-- <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex items-end h-16">
