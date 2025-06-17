@@ -12,7 +12,9 @@ use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AdminProjectController;
 use App\Http\Controllers\Admin\AdminDashboardController;
-
+use App\Http\Controllers\ceo\ceoDashboardController;
+use App\Http\Controllers\ceo\ceoListProjectController;
+use App\Http\Controllers\ceo\ceoListUserController;
 
 /* ... Route::get('/', ...), Route::get('/projects', ...) */
 
@@ -136,7 +138,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-// ---------------------------------------------------------------------
+    // ---------------------------------------------------------------------
     // Rute Admin
     // ---------------------------------------------------------------------
     Route::get('/admin/users', [AdminUserController::class, 'index'])->name('admin.users.index');
@@ -147,8 +149,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/users/create', [AdminUserController::class, 'create'])->name('admin.users.create');
     Route::post('/admin/users/store', [AdminUserController::class, 'store'])->name('admin.users.store');
     Route::get('/admin/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
-    Route::get('/admin/users/sidebar', function () { return view('admin.users.sidebaradmin');})->name('admin.users.sidebar');
+    Route::get('/admin/users/sidebar', function () {
+        return view('admin.users.sidebaradmin');
+    })->name('admin.users.sidebar');
 
+    // ---------------------------------------------------------------------
+    // Rute CEO
+    // ---------------------------------------------------------------------
+    Route::get('/ceo/dashboard', [ceoDashboardController::class, 'index'])->name('ceo.dashboard');
+    Route::get('/ceo/users', [ceoListUserController::class, 'index'])->name('ceo.user_list');
+    Route::get('/users/{user}', [ProfileController::class, 'show'])->name('profile.show');
+    Route::get('/ceo/projects', [ceoListProjectController::class, 'index'])->name('ceo.project_list');
+    Route::get('/ceo/projects/{project}/kanban', [TaskController::class, 'kanban'])->name('kanban');
 
 }); // Akhir dari middleware('auth')
 

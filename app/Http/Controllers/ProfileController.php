@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\User;
 use App\Models\UserEducation;
 use App\Models\UserDocument;
 use Illuminate\Http\RedirectResponse;
@@ -61,7 +62,7 @@ class ProfileController extends Controller
             if ($user->profile_photo_path) {
                 Storage::disk('public')->delete($user->profile_photo_path);
             }
-            
+
             $path = $request->file('profile_photo')->store('profile-photos', 'public');
             $validated['profile_photo_path'] = $path;
         }
@@ -95,7 +96,7 @@ class ProfileController extends Controller
                 UserEducation::where('id', $id)->where('user_id', $user->id)->delete();
             }
         }
-        
+
         // Update existing education data
         if ($request->has('education_id')) {
             foreach ($request->education_id as $key => $id) {
@@ -109,7 +110,7 @@ class ProfileController extends Controller
                 }
             }
         }
-        
+
         // Add new education data
         if ($request->has('new_education_level')) {
             foreach ($request->new_education_level as $key => $level) {
@@ -136,16 +137,16 @@ class ProfileController extends Controller
             $request->validate([
                 'cv_file' => 'file|mimes:pdf|max:5120',
             ]);
-            
+
             $path = $request->file('cv_file')->store('user-documents', 'public');
-            
+
             // Delete previous CV if exists
             $oldCv = $user->getCv();
             if ($oldCv) {
                 Storage::disk('public')->delete($oldCv->file_path);
                 $oldCv->delete();
             }
-            
+
             UserDocument::create([
                 'user_id' => $user->id,
                 'type' => 'cv',
@@ -153,22 +154,22 @@ class ProfileController extends Controller
                 'file_path' => $path,
             ]);
         }
-        
+
         // Handle Portfolio upload
         if ($request->hasFile('portfolio_file')) {
             $request->validate([
                 'portfolio_file' => 'file|mimes:pdf|max:10240',
             ]);
-            
+
             $path = $request->file('portfolio_file')->store('user-documents', 'public');
-            
+
             // Delete previous portfolio if exists
             $oldPortfolio = $user->getPortfolio();
             if ($oldPortfolio) {
                 Storage::disk('public')->delete($oldPortfolio->file_path);
                 $oldPortfolio->delete();
             }
-            
+
             UserDocument::create([
                 'user_id' => $user->id,
                 'type' => 'portfolio',
@@ -176,7 +177,7 @@ class ProfileController extends Controller
                 'file_path' => $path,
             ]);
         }
-        
+
         // Handle Certificate uploads
         if ($request->hasFile('certificate_files')) {
             foreach ($request->file('certificate_files') as $key => $file) {
@@ -184,9 +185,9 @@ class ProfileController extends Controller
                     "certificate_files.$key" => 'file|mimes:pdf|max:5120',
                     "certificate_titles.$key" => 'required|string|max:255',
                 ]);
-                
+
                 $path = $file->store('user-documents', 'public');
-                
+
                 UserDocument::create([
                     'user_id' => $user->id,
                     'type' => 'certificate',
@@ -195,7 +196,7 @@ class ProfileController extends Controller
                 ]);
             }
         }
-        
+
         // Remove certificates if requested
         if ($request->has('certificate_delete')) {
             foreach ($request->certificate_delete as $id) {
@@ -203,7 +204,7 @@ class ProfileController extends Controller
                     ->where('user_id', $user->id)
                     ->where('type', 'certificate')
                     ->first();
-                    
+
                 if ($certificate) {
                     Storage::disk('public')->delete($certificate->file_path);
                     $certificate->delete();
@@ -227,7 +228,7 @@ class ProfileController extends Controller
         if ($user->profile_photo_path) {
             Storage::disk('public')->delete($user->profile_photo_path);
         }
-        
+
         // Delete user documents
         foreach ($user->documents as $document) {
             Storage::disk('public')->delete($document->file_path);
@@ -244,18 +245,29 @@ class ProfileController extends Controller
     }
 
     public function switchRole(Request $request, $role)
-{
-    $user = Auth::user();
-    
-    // Validasi role yang diizinkan
-    if (!in_array($role, ['worker', 'project_owner'])) {
-        return redirect()->back()->with('error', 'Peran tidak valid');
+    {
+        $user = Auth::user();
+
+        // Validasi role yang diizinkan
+        if (!in_array($role, ['worker', 'project_owner'])) {
+            return redirect()->back()->with('error', 'Peran tidak valid');
+        }
+
+        // Update role pengguna
+        $user->role = $role;
+        $user->save();
+
+        return redirect()->back()->with('success', 'Peran berhasil diubah menjadi ' . ucfirst($role));
     }
-    
-    // Update role pengguna
-    $user->role = $role;
-    $user->save();
-    
-    return redirect()->back()->with('success', 'Peran berhasil diubah menjadi ' . ucfirst($role));
-}
+    // app/Http/Controllers/UserController.php
+
+    public function show(User $user)
+    {
+        $educations = $user->educations;
+        $cv = $user->getCv();
+        $portfolio = $user->getPortfolio();
+        $certificates = $user->getCertificates();
+
+        return view('profile.show', compact('user', 'educations', 'cv', 'portfolio', 'certificates'));
+    }
 }
