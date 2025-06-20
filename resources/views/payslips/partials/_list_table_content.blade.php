@@ -2,37 +2,40 @@
     <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
             <tr>
-                @php
-                    $currentParams = request()->except('page', '_token'); // Ambil semua parameter kecuali page dan token
-                    $sortLink = function($field, $label) use ($project, $currentParams) {
-                        $queryParams = array_merge($currentParams, [
-                            'sort' => $field,
-                            'direction' => (request('sort') === $field && request('direction') === 'asc') ? 'desc' : 'asc',
-                        ]);
-                        return route('projects.payslips.history', $project) . '?' . http_build_query($queryParams);
-                    };
-                    $sortIndicator = fn($field) => (request('sort') === $field) ? (request('direction') === 'asc' ? '↑' : '↓') : '';
-                @endphp
                 <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <a href="#" @click.prevent="sortBy('status')" class="hover:text-indigo-700">Status {!! $sortIndicator('status') !!}</a>
+                    <a href="#" data-sort-field="status" class="hover:text-indigo-700 inline-flex items-center">
+                        Status <span class="ml-1 w-4" x-text="getSortIndicator('status')"></span>
+                    </a>
                 </th>
                 <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <a href="#" @click.prevent="sortBy('updated_at')" class="hover:text-indigo-700">Tanggal {!! $sortIndicator('updated_at') !!}</a>
+                    <a href="#" data-sort-field="updated_at" class="hover:text-indigo-700 inline-flex items-center">
+                        Tanggal <span class="ml-1 w-4" x-text="getSortIndicator('updated_at')"></span>
+                    </a>
                 </th>
                 <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <a href="#" @click.prevent="sortBy('user_name')" class="hover:text-indigo-700">Pekerja {!! $sortIndicator('user_name') !!}</a>
+                    <a href="#" data-sort-field="user_name" class="hover:text-indigo-700 inline-flex items-center">
+                        Pekerja <span class="ml-1 w-4" x-text="getSortIndicator('user_name')"></span>
+                    </a>
                 </th>
                 <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <a href="#" @click.prevent="sortBy('payment_type')" class="hover:text-indigo-700">Tipe {!! $sortIndicator('payment_type') !!}</a>
+                    <a href="#" data-sort-field="payment_type" class="hover:text-indigo-700 inline-flex items-center">
+                        Tipe <span class="ml-1 w-4" x-text="getSortIndicator('payment_type')"></span>
+                    </a>
                 </th>
                 <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <a href="#" @click.prevent="sortBy('payment_name')" class="hover:text-indigo-700">Nama Slip {!! $sortIndicator('payment_name') !!}</a>
+                    <a href="#" data-sort-field="payment_name" class="hover:text-indigo-700 inline-flex items-center">
+                        Nama Slip <span class="ml-1 w-4" x-text="getSortIndicator('payment_name')"></span>
+                    </a>
                 </th>
                 <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <a href="#" @click.prevent="sortBy('amount')" class="hover:text-indigo-700">Nominal {!! $sortIndicator('amount') !!}</a>
+                    <a href="#" data-sort-field="amount" class="hover:text-indigo-700 inline-flex items-center">
+                        Nominal <span class="ml-1 w-4" x-text="getSortIndicator('amount')"></span>
+                    </a>
                 </th>
                 <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                     <a href="#" @click.prevent="sortBy('approver_name')" class="hover:text-indigo-700">Disetujui Oleh {!! $sortIndicator('approver_name') !!}</a>
+                     <a href="#" data-sort-field="approver_name" class="hover:text-indigo-700 inline-flex items-center">
+                        Disetujui Oleh <span class="ml-1 w-4" x-text="getSortIndicator('approver_name')"></span>
+                     </a>
                 </th>
                 <th scope="col" class="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
             </tr>
@@ -56,6 +59,7 @@
                         @endif
                     </td>
                     <td class="px-4 py-4 whitespace-nowrap text-sm">
+                        {{-- Logika tanggal tetap sama --}}
                         {{ $payslip->status == \App\Models\Payment::STATUS_DRAFT ? ($payslip->created_at ? $payslip->created_at->format('d/m/Y H:i') : '-') : ($payslip->approved_at ? $payslip->approved_at->format('d/m/Y H:i') : '-') }}
                         <span class="block text-gray-400 text-[10px]">
                             {{ $payslip->status == \App\Models\Payment::STATUS_DRAFT ? '(Dibuat)' : '(Disetujui)' }}
@@ -67,14 +71,13 @@
                     <td class="px-4 py-4 whitespace-nowrap text-sm text-right">Rp {{ number_format($payslip->amount, 0, ',', '.') }}</td>
                     <td class="px-4 py-4 whitespace-nowrap text-sm">{{ $payslip->approver->name ?? ($payslip->status == \App\Models\Payment::STATUS_APPROVED ? 'N/A' : '-') }}</td>
                     <td class="px-4 py-4 whitespace-nowrap text-center text-sm font-medium">
+                        {{-- Konten Aksi tetap sama --}}
                         <div class="flex justify-center space-x-3">
                             <a href="{{ route('projects.payslips.show', [$project, $payslip]) }}" class="text-indigo-600 hover:text-indigo-900" title="{{ $payslip->status == \App\Models\Payment::STATUS_DRAFT ? 'Lihat Detail & Setujui' : 'Lihat Detail Slip' }}">
-                                <!-- Ikon file signature untuk status draft -->
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
                             </a>
-                            
                             @if($payslip->status == \App\Models\Payment::STATUS_APPROVED)
                             <a href="{{ route('projects.payslips.show', [$project, $payslip]) }}?print=1" target="_blank" class="text-gray-600 hover:text-gray-900" title="Print Slip Gaji">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -82,7 +85,6 @@
                                 </svg>
                             </a>
                             @endif
-                            
                             @if($isProjectOwner && $payslip->status == \App\Models\Payment::STATUS_DRAFT)
                             <form method="POST" action="{{ route('projects.payslips.destroy', [$project, $payslip]) }}" class="inline" onsubmit="return confirm('Yakin ingin menghapus draft slip gaji \'{{ e($payslip->payment_name) }}\'? Task terkait (jika ada) akan dikembalikan.')">
                                 @csrf

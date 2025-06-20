@@ -1,15 +1,15 @@
 <x-app-layout>
-    <div x-data="payslipListFilter({
+    <div id="payslip-list-component" {{-- Tambahkan ID unik --}}
+         x-data="payslipListFilter({
             baseUrl: '{{ route('projects.payslips.history', $project) }}',
-            initialFilters: {{ json_encode($request->query()) }},
+            initialFilters: {{ Js::from($request->query()) }},
             isProjectOwner: {{ Js::from($isProjectOwner) }}
          })"
-         x-init="init()"
+         @click.document="handleDelegatedClick($event)"
          class="py-6 px-4 sm:px-6 lg:px-8">
 
         <div class="mb-6 flex justify-between items-center">
             <h2 class="text-2xl font-semibold text-gray-900">Daftar Slip Gaji - {{ $project->name }}</h2>
-            {{-- Tombol Buat Slip Gaji sudah dipindah ke halaman Perhitungan Gaji --}}
         </div>
 
          <!-- Tabs -->
@@ -27,9 +27,9 @@
          </div>
 
          {{-- Flash Message --}}
-         @if(request()->has('success_message') || session('success'))
+         @if(request()->get('success_message') || session('success'))
              <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
-                 <span class="block sm:inline">{{ request('success_message', session('success')) }}</span>
+                 <span class="block sm:inline">{{ request()->get('success_message', session('success')) }}</span>
              </div>
          @endif
           @if($errors->has('general'))
@@ -40,16 +40,22 @@
 
         {{-- Filter Form --}}
          <div class="mb-6 bg-gray-50 p-4 rounded-md border border-gray-200">
-             <form @submit.prevent="applyFilters">
-                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
-                     <div>
-                         <label for="filter_search" class="block text-sm font-medium text-gray-700">Cari</label>
-                         <input type="text" name="search" id="filter_search" x-model.debounce.500ms="filters.search" placeholder="Nama slip/pekerja..." class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
-                     </div>
-                     @if($isProjectOwner)
-                     <div>
-                        <label for="filter_user_id" class="block text-sm font-medium text-gray-700">Pekerja</label>
-                        <select name="user_id" id="filter_user_id" x-model="filters.user_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+     <form @submit.prevent>
+         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+             <div>
+                 <label for="filter_search" class="block text-sm font-medium text-gray-700">Cari</label>
+                 {{-- UBAH: Tambahkan @input untuk memicu fetch --}}
+                 <input type="text" name="search" id="filter_search" 
+                        x-model.debounce.500ms="filters.search" 
+                        @input.debounce.500ms="onFilterChange()" 
+                        placeholder="Nama slip/pekerja..." 
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+             </div>
+             @if($isProjectOwner)
+             <div>
+                <label for="filter_user_id" class="block text-sm font-medium text-gray-700">Pekerja</label>
+                {{-- UBAH: Tambahkan @change untuk memicu fetch --}}
+                <select name="user_id" id="filter_user_id" x-model="filters.user_id" @change="onFilterChange()" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
                             <option value="">Semua Pekerja</option>
                             @foreach ($workersForFilter as $worker)
                                 <option value="{{ $worker->id }}">{{ $worker->name }}</option>
@@ -59,7 +65,8 @@
                      @endif
                      <div>
                          <label for="filter_payment_type" class="block text-sm font-medium text-gray-700">Tipe Slip</label>
-                         <select name="payment_type" id="filter_payment_type" x-model="filters.payment_type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                 {{-- UBAH: Tambahkan @change untuk memicu fetch --}}
+                 <select name="payment_type" id="filter_payment_type" x-model="filters.payment_type" @change="onFilterChange()" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
                              <option value="">Semua Tipe</option>
                               @foreach ($paymentTypes as $type)
                                  <option value="{{ $type }}">{{ ucfirst($type) }}</option>
@@ -69,7 +76,8 @@
                       @if($isProjectOwner)
                      <div>
                          <label for="filter_status" class="block text-sm font-medium text-gray-700">Status Slip</label>
-                         <select name="status" id="filter_status" x-model="filters.status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                 {{-- UBAH: Tambahkan @change untuk memicu fetch --}}
+                 <select name="status" id="filter_status" x-model="filters.status" @change="onFilterChange()" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
                              <option value="">Semua Status</option>
                              @foreach ($statusesForFilter as $value => $label)
                                 <option value="{{ $value }}">{{ $label }}</option>
@@ -77,50 +85,48 @@
                          </select>
                      </div>
                      @endif
-                     <div class="grid grid-cols-2 gap-2">
-                         <div>
-                             <label for="filter_date_from" class="block text-sm font-medium text-gray-700">Dari Tgl.</label>
-                             <input type="date" name="date_from" id="filter_date_from" x-model="filters.date_from" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
-                         </div>
-                         <div>
-                             <label for="filter_date_to" class="block text-sm font-medium text-gray-700">Sampai Tgl.</label>
-                             <input type="date" name="date_to" id="filter_date_to" x-model="filters.date_to" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
-                         </div>
-                     </div>
+                     <div class="grid grid-cols-2 gap-2 {{ $isProjectOwner ? '' : 'lg:col-span-2' }}">
+                 <div>
+                     <label for="filter_date_from" class="block text-sm font-medium text-gray-700">Dari Tgl.</label>
+                     {{-- UBAH: Tambahkan @change untuk memicu fetch --}}
+                     <input type="date" name="date_from" id="filter_date_from" x-model="filters.date_from" @change="onFilterChange()" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
                  </div>
-                  <div class="mt-4 flex justify-end space-x-2">
-                       <button type="button" @click="resetFilters()" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                           Reset
-                       </button>
-                       {{-- Tombol Terapkan tidak diperlukan lagi untuk filter live --}}
-                  </div>
-             </form>
+                 <div>
+                     <label for="filter_date_to" class="block text-sm font-medium text-gray-700">Sampai Tgl.</label>
+                     {{-- UBAH: Tambahkan @change untuk memicu fetch --}}
+                     <input type="date" name="date_to" id="filter_date_to" x-model="filters.date_to" @change="onFilterChange()" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                 </div>
+             </div>
+             <div class="{{ $isProjectOwner ? 'lg:col-span-5' : 'lg:col-span-1' }} flex justify-end">
+                <button type="button" @click="resetFilters()" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    Reset
+                </button>
+             </div>
          </div>
+     </form>
+ </div>
 
-        {{-- Table Container --}}
-        <div x-show="loading" class="text-center py-10">
-            <svg class="animate-spin -ml-1 mr-3 h-8 w-8 text-indigo-600 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"> <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle> <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-            <span class="text-gray-600">Memuat data slip gaji...</span>
+        <div class="relative">
+        {{-- Loading Overlay --}}
+        <div x-show="loading" x-transition class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+            <svg class="animate-spin h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"> <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle> <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
         </div>
 
-         <div x-show="!loading">
-             <div id="payslip-list-table-container" x-ref="tableContainer" class="bg-white shadow overflow-hidden sm:rounded-md">
-                  <div x-html="tableHtml">
-                      @include('payslips.partials._list_table_content', ['payslips' => $payslips, 'project' => $project, 'request' => $request, 'isProjectOwner' => $isProjectOwner])
-                  </div>
+        <div id="table-wrapper">
+             <div id="payslip-list-table-container" x-html="tableHtml">
+                  @include('payslips.partials._list_table_content', ['payslips' => $payslips, 'project' => $project, 'request' => $request, 'isProjectOwner' => $isProjectOwner])
              </div>
-             <div id="payslip-list-pagination-container" class="mt-4" x-html="paginationHtml">
-                 {{-- Render initial pagination --}}
+             <div id="payslip-list-pagination-container" class="px-6 py-4 border-t border-gray-200 bg-white" x-html="paginationHtml">
                  @if ($payslips->hasPages())
                     {{ $payslips->links('vendor.pagination.tailwind') }}
                  @endif
              </div>
-         </div>
-
+        </div>
     </div>
-
+    
     @push('scripts')
     <script>
+        // UBAH: GANTI SELURUH FUNGSI LAMA DENGAN INI
         function payslipListFilter(config) {
             return {
                 baseUrl: config.baseUrl,
@@ -131,133 +137,104 @@
                     status: config.initialFilters.status || '',
                     date_from: config.initialFilters.date_from || '',
                     date_to: config.initialFilters.date_to || '',
-                    sort: config.initialFilters.sort || 'updated_at', // Default sort
+                    sort: config.initialFilters.sort || 'updated_at',
                     direction: config.initialFilters.direction || 'desc',
-                    page: config.initialFilters.page || 1
+                    page: parseInt(config.initialFilters.page) || 1
                 },
                 isProjectOwner: config.isProjectOwner,
                 loading: false,
                 tableHtml: '',
                 paginationHtml: '',
-                currentUrl: '',
 
+                // PERUBAHAN: Hapus fetchTimeout, debounce akan dihandle x-model
+                
                 init() {
-                    this.tableHtml = this.$refs.tableContainer.querySelector('[x-html="tableHtml"]').innerHTML;
-                    const paginationDiv = document.getElementById('payslip-list-pagination-container');
-                    if (paginationDiv) this.paginationHtml = paginationDiv.innerHTML;
-
-                    // Pastikan filter user_id untuk non-owner adalah ID mereka
+                    console.log("[INIT] Payslip list component initializing...");
+                    // Mengambil konten awal yang sudah dirender oleh server
+                    this.tableHtml = document.getElementById('payslip-list-table-container').innerHTML;
+                    this.paginationHtml = document.getElementById('payslip-list-pagination-container').innerHTML;
+                    
                     if (!this.isProjectOwner && {{ Auth::check() ? 'true' : 'false' }}) {
                         this.filters.user_id = '{{ Auth::id() }}';
                     }
 
-                    this.updateUrlWithoutReload();
-
-                    // Watchers for live filtering
-                    Object.keys(this.filters).forEach(key => {
-                        if (key !== 'sort' && key !== 'direction' && key !== 'page') {
-                            this.$watch(`filters.${key}`, () => {
-                                this.filters.page = 1; // Reset to page 1 on filter change
-                                this.fetchData();
-                            });
-                        }
-                    });
-
-                    // Handle pagination clicks
-                    this.$watch('tableHtml', () => { // Re-attach listeners after table update
-                        this.attachPaginationListeners();
-                    });
-                    this.attachPaginationListeners();
-
-
-                    // Handle back/forward browser buttons
-                    window.addEventListener('popstate', (event) => {
+                    // Menangani navigasi back/forward browser
+                    window.onpopstate = (event) => {
                         if (event.state) {
-                            this.filters = { ...this.filters, ...event.state };
-                            // Re-ensure non-owner filter
-                            if (!this.isProjectOwner && {{ Auth::check() ? 'true' : 'false' }}) {
-                                this.filters.user_id = '{{ Auth::id() }}';
-                            }
-                            this.filters.page = parseInt(this.filters.page) || 1;
-                            this.fetchData(false); // Don't push state again
+                            console.log("[POPSTATE] Browser navigation detected. Updating filters from state.");
+                            Object.assign(this.filters, event.state);
+                            // Tidak perlu panggil fetchData, karena browser akan me-render ulang halaman dari cache atau turbo
                         }
-                    });
+                    };
+
+                    console.log("[INIT] Initial filters state:", JSON.parse(JSON.stringify(this.filters)));
                 },
 
-                attachPaginationListeners() {
-                    this.$nextTick(() => {
-                        const paginationLinks = document.querySelectorAll('#payslip-list-pagination-container .pagination a');
-                        paginationLinks.forEach(link => {
-                            link.addEventListener('click', (e) => {
-                                e.preventDefault();
-                                this.goToPage(link.href);
-                            });
-                        });
-                    });
+                // Fungsi ini dipanggil setiap kali nilai filter berubah di UI
+                onFilterChange() {
+                    console.log("[FILTER CHANGE] A filter value changed. Resetting to page 1 and fetching data.");
+                    this.filters.page = 1;
+                    this.fetchData();
                 },
-
-                buildUrlParams() {
-                    const activeFilters = {};
-                    for (const key in this.filters) {
-                        if (!this.isProjectOwner && key === 'user_id') {
-                             activeFilters[key] = '{{ Auth::id() }}';
-                             continue;
-                        }
-                        if (this.filters[key] !== null && this.filters[key] !== '' && this.filters[key] !== 'all') {
-                             if (key === 'page' && this.filters[key] === 1 && !this.hasOtherFilters()) {
-                                 // Don't include page=1 if no other filters are active, to keep URL clean
-                             } else if (key === 'page' && this.filters[key] === 1 && this.hasOtherFilters()) {
-                                 activeFilters[key] = this.filters[key]; // Include page=1 if other filters exist
-                             } else if (key !== 'page' || this.filters[key] !== 1) {
-                                 activeFilters[key] = this.filters[key];
-                             }
-                        }
+                
+                handleDelegatedClick(event) {
+                    const sortLink = event.target.closest('#payslip-list-table-container thead a');
+                    const pageLink = event.target.closest('#payslip-list-pagination-container a');
+                    
+                    if (sortLink) {
+                        event.preventDefault();
+                        this.sortBy(sortLink.dataset.sortField);
+                    } else if (pageLink) {
+                        event.preventDefault();
+                        this.goToPage(pageLink.href);
                     }
-                    return new URLSearchParams(activeFilters).toString();
+                },
+                
+                sortBy(field) {
+                    if (!field) return;
+                    console.log(`[SORT] Sorting by: ${field}`);
+                    this.filters.direction = (this.filters.sort === field && this.filters.direction === 'asc') ? 'desc' : 'asc';
+                    this.filters.sort = field;
+                    this.filters.page = 1;
+                    this.fetchData();
                 },
 
-                hasOtherFilters() { // Helper to check if any filter other than page is active
-                    return Object.keys(this.filters).some(key =>
-                        key !== 'page' && this.filters[key] !== null && this.filters[key] !== '' && this.filters[key] !== 'all'
-                    );
+                getSortIndicator(field) {
+                    if (this.filters.sort !== field) return '↕';
+                    return this.filters.direction === 'asc' ? '↑' : '↓';
                 },
 
-                updateUrlWithoutReload() {
-                    const params = this.buildUrlParams();
-                    const newUrl = `${this.baseUrl}${params ? '?' + params : ''}`;
-                    if (newUrl !== this.currentUrl) {
-                        history.replaceState({ ...this.filters }, '', newUrl);
-                        this.currentUrl = newUrl;
-                    }
+                goToPage(url) {
+                    try {
+                        const page = new URL(url).searchParams.get('page') || 1;
+                        console.log(`[PAGINATION] Going to page: ${page}`);
+                        this.filters.page = parseInt(page);
+                        this.fetchData();
+                    } catch (e) { console.error("Invalid pagination URL:", url, e); }
                 },
 
                 fetchData(updateHistory = true) {
                     this.loading = true;
-                    const params = this.buildUrlParams();
-                    const fetchUrl = `${this.baseUrl}${params ? '?' + params : ''}`;
+                    if (updateHistory) this.updateUrl();
 
-                    fetch(fetchUrl, {
-                        headers: {
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Accept': 'application/json',
+                    const fetchUrl = this.buildUrlParams(true);
+                    console.log(`[FETCH] Fetching data from: ${fetchUrl}`);
+
+                    fetch(fetchUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                    .then(res => {
+                        if (!res.ok) {
+                            console.error('Server responded with an error:', res.status, res.statusText);
+                            return Promise.reject(res);
                         }
-                    })
-                    .then(response => {
-                        if (!response.ok) throw new Error('Network response error');
-                        return response.json();
+                        return res.json();
                     })
                     .then(data => {
                         this.tableHtml = data.table_html;
-                        this.paginationHtml = data.pagination_html || '';
-                        if (updateHistory && fetchUrl !== this.currentUrl) {
-                            history.pushState({ ...this.filters }, '', fetchUrl);
-                            this.currentUrl = fetchUrl;
-                        }
-                         this.$nextTick(() => this.attachPaginationListeners());
+                        this.paginationHtml = data.pagination_html;
                     })
                     .catch(error => {
-                        console.error('Error fetching payslip list:', error);
-                        this.tableHtml = `<tr><td colspan="8" class="text-center py-4 text-red-500">Gagal memuat data.</td></tr>`;
+                        console.error('Error fetching data:', error);
+                        this.tableHtml = `<tr><td colspan="8" class="text-center py-10 text-red-500 font-semibold">Gagal memuat data. Silakan coba lagi.</td></tr>`;
                         this.paginationHtml = '';
                     })
                     .finally(() => {
@@ -265,34 +242,28 @@
                     });
                 },
 
-                applyFilters() { // Called by watchers
-                    this.filters.page = 1;
-                    this.fetchData();
+                buildUrlParams(fullPath = false) {
+                    const params = new URLSearchParams();
+                    Object.entries(this.filters).forEach(([key, value]) => {
+                        if (value && value !== 'all' && !(key === 'page' && value === 1)) {
+                             params.append(key, value);
+                        }
+                    });
+                    const paramString = params.toString();
+                    return fullPath ? `${this.baseUrl}${paramString ? '?' + paramString : ''}` : paramString;
                 },
 
-                sortBy(field) {
-                    let newDirection = 'asc';
-                    if (this.filters.sort === field && this.filters.direction === 'asc') {
-                        newDirection = 'desc';
-                    }
-                    this.filters.sort = field;
-                    this.filters.direction = newDirection;
-                    this.filters.page = 1;
-                    this.fetchData();
-                },
-
-                goToPage(url) {
-                    try {
-                        const targetUrl = new URL(url);
-                        const page = targetUrl.searchParams.get('page') || 1;
-                        this.filters.page = parseInt(page);
-                        this.fetchData(); // History will be updated by fetchData
-                    } catch (e) {
-                        console.error("Invalid URL for pagination:", url, e);
+                updateUrl(push = true) {
+                    const newUrl = this.buildUrlParams(true);
+                    if (push) {
+                        history.pushState({ ...this.filters }, '', newUrl);
+                    } else {
+                        history.replaceState({ ...this.filters }, '', newUrl);
                     }
                 },
 
                 resetFilters() {
+                    console.log("[RESET] Resetting all filters.");
                     this.filters.search = '';
                     this.filters.user_id = this.isProjectOwner ? '' : '{{ Auth::id() }}';
                     this.filters.payment_type = '';

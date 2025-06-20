@@ -140,11 +140,6 @@
                 <div id="recap-table-container">
                     @include('tasks.partials._recap_table_content', ['tasks' => $tasks, 'project' => $project, 'request' => $request])
                 </div>
-                <div id="recap-pagination-container" class="mt-4 no-print">
-                    @if ($tasks->hasPages())
-                       {{ $tasks->links('vendor.pagination.tailwind') }}
-                    @endif
-                </div>
             </div>
         </div>
 

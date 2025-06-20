@@ -242,158 +242,105 @@ class PaymentController extends Controller
         }
     }
 
-    // ... sisa controller (payslipList, showPayslipDetail, approvePayslip, destroy, showPayrollCalculation) ...
-    // Pastikan method showPayrollCalculation sudah meng-handle variabel modal dengan benar
     public function payslipList(Project $project, Request $request)
     {
+        $this->authorize('viewAny', [Payment::class, $project]);
+
         $currentUser = Auth::user();
         $isProjectOwner = $currentUser->isProjectOwner($project);
 
-        $query = Payment::where('project_id', $project->id)
-                         ->whereIn('status', [Payment::STATUS_DRAFT, Payment::STATUS_APPROVED])
-                         ->with(['user', 'approver', 'tasks', 'paymentTerm']);
+        // UBAH: Mulai query dengan alias dan select eksplisit untuk menghindari ambiguitas
+        $query = Payment::query()->from('payments as p')
+            ->select('p.*') // Pastikan kita hanya menyeleksi kolom dari tabel payments
+            ->join('users as worker', 'p.user_id', '=', 'worker.id'); // Selalu join dengan user
+
+        $query->where('p.project_id', $project->id)
+              ->whereIn('p.status', [Payment::STATUS_DRAFT, Payment::STATUS_APPROVED]);
 
         if (!$isProjectOwner) {
-            if ($currentUser->isProjectMember($project)) {
-                $query->where('user_id', $currentUser->id)->where('status', Payment::STATUS_APPROVED);
-            } else {
-                $query->whereRaw('1 = 0');
-            }
+            $query->where('p.user_id', $currentUser->id)->where('p.status', Payment::STATUS_APPROVED);
         }
 
-        $filters = $request->only(['search', 'user_id', 'payment_type', 'status', 'date_from', 'date_to']);
-
-        if (!empty($filters['search'])) {
-            $searchTerm = $filters['search'];
+        // --- FILTERING (DISEMPURNAKAN) ---
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            // Sekarang kita bisa menggunakan 'worker.name' secara langsung
             $query->where(function (Builder $q) use ($searchTerm) {
-                $q->where('payment_name', 'like', "%{$searchTerm}%")
-                  ->orWhere('notes', 'like', "%{$searchTerm}%")
-                  ->orWhereHas('user', function ($uq) use ($searchTerm) {
-                      $uq->where('name', 'like', "%{$searchTerm}%");
-                  })
-                  ->orWhereHas('paymentTerm', function ($tq) use ($searchTerm) {
-                      $tq->where('name', 'like', "%{$searchTerm}%");
-                  });
+                $q->where('p.payment_name', 'like', "%{$searchTerm}%")
+                  ->orWhere('p.notes', 'like', "%{$searchTerm}%")
+                  ->orWhere('worker.name', 'like', "%{$searchTerm}%"); // Lebih efisien daripada orWhereHas
+            });
+        }
+        
+        // Filter lain tetap sama
+        if ($isProjectOwner && $request->filled('user_id')) {
+            $query->where('p.user_id', $request->user_id);
+        }
+        if ($request->filled('payment_type')) {
+            $query->where('p.payment_type', $request->payment_type);
+        }
+        if ($isProjectOwner && $request->filled('status')) {
+            $query->where('p.status', $request->status);
+        }
+        if ($request->filled('date_from')) {
+            $query->where(function ($q) use ($request) {
+                $q->whereDate('p.created_at', '>=', $request->date_from)
+                  ->orWhereDate('p.approved_at', '>=', $request->date_from);
+            });
+        }
+        if ($request->filled('date_to')) {
+            $query->where(function ($q) use ($request) {
+                $q->whereDate('p.created_at', '<=', $request->date_to)
+                  ->orWhereDate('p.approved_at', '<=', $request->date_to);
             });
         }
 
-        if ($isProjectOwner && !empty($filters['user_id'])) {
-            $query->where('user_id', $filters['user_id']);
-        } elseif (!$isProjectOwner && $currentUser->isProjectMember($project)) {
-            $query->where('user_id', $currentUser->id);
-        }
 
-
-        if (!empty($filters['payment_type'])) {
-            $query->where('payment_type', $filters['payment_type']);
-        }
-
-        if ($isProjectOwner && !empty($filters['status'])) {
-            if (in_array($filters['status'], [Payment::STATUS_DRAFT, Payment::STATUS_APPROVED])) {
-                $query->where('status', $filters['status']);
-            }
-        }
-
-        if (!empty($filters['date_from'])) {
-            $query->where(function($q) use ($filters) {
-                $q->where(function($q_approved) use ($filters) {
-                    $q_approved->where('status', Payment::STATUS_APPROVED)
-                               ->whereDate('approved_at', '>=', $filters['date_from']);
-                })->orWhere(function($q_draft) use ($filters) {
-                    $q_draft->where('status', Payment::STATUS_DRAFT)
-                            ->whereDate('created_at', '>=', $filters['date_from']);
-                });
-            });
-        }
-        if (!empty($filters['date_to'])) {
-             $query->where(function($q) use ($filters) {
-                $q->where(function($q_approved) use ($filters) {
-                    $q_approved->where('status', Payment::STATUS_APPROVED)
-                               ->whereDate('approved_at', '<=', $filters['date_to']);
-                })->orWhere(function($q_draft) use ($filters) {
-                    $q_draft->where('status', Payment::STATUS_DRAFT)
-                            ->whereDate('created_at', '<=', $filters['date_to']);
-                });
-            });
-        }
-
+        // --- SORTING (DISEMPURNAKAN) ---
         $sortField = $request->input('sort', 'updated_at');
         $sortDirection = $request->input('direction', 'desc');
-        $allowedSorts = ['updated_at', 'created_at', 'approved_at', 'amount', 'payment_name', 'user_name', 'payment_type', 'approver_name', 'term_name', 'status'];
+        $allowedSorts = [
+            'updated_at' => 'p.updated_at', 'created_at' => 'p.created_at',
+            'approved_at' => 'p.approved_at', 'amount' => 'p.amount',
+            'payment_name' => 'p.payment_name', 'payment_type' => 'p.payment_type',
+            'status' => 'p.status', 'user_name' => 'worker.name',
+            'approver_name' => 'approver.name'
+        ];
 
-        if (in_array($sortField, $allowedSorts)) {
-           if ($sortField === 'user_name') {
-                $query->select('payments.*')
-                      ->join('users as worker', 'payments.user_id', '=', 'worker.id')
-                      ->orderBy('worker.name', $sortDirection);
-           } elseif ($sortField === 'approver_name') {
-               $query->select('payments.*')
-                      ->leftJoin('users as approver', 'payments.approved_by', '=', 'approver.id')
-                      ->orderBy('approver.name', $sortDirection);
-           } elseif ($sortField === 'term_name') {
-                $query->select('payments.*')
-                      ->leftJoin('payment_terms as pt', 'payments.payment_term_id', '=', 'pt.id')
-                      ->orderBy('pt.name', $sortDirection);
-           }
-           else {
-                $query->orderBy($sortField, $sortDirection);
-           }
+        if (array_key_exists($sortField, $allowedSorts)) {
+            if ($sortField === 'approver_name') {
+               // Left Join untuk approver karena bisa jadi NULL
+               $query->leftJoin('users as approver', 'p.approved_by', '=', 'approver.id')
+                     ->orderBy($allowedSorts[$sortField], $sortDirection);
+            } else {
+                // Untuk semua kolom lain (termasuk user_name), orderBy biasa sudah cukup karena sudah di-join
+                $query->orderBy($allowedSorts[$sortField], $sortDirection);
+            }
         } else {
-             // Default sort jika field tidak ada di allowedSorts
-            $query->orderByRaw("FIELD(status, '" . Payment::STATUS_DRAFT . "', '" . Payment::STATUS_APPROVED . "') ASC")
-                  ->orderBy('updated_at', 'desc');
+             $query->orderBy('p.updated_at', 'desc'); // Default sort
         }
-
 
         $payslips = $query->paginate(15)->withQueryString();
 
-        $workersForFilter = collect();
-        if ($isProjectOwner) {
-            $workersForFilter = $project->workers()->wherePivot('status', 'accepted')->orderBy('name')->get();
-        } else {
-            if ($currentUser->isProjectMember($project)) {
-                $workersForFilter = collect([$currentUser]);
-            }
-        }
-
-        $paymentTypesQuery = Payment::where('project_id', $project->id);
-        if (!$isProjectOwner && $currentUser->isProjectMember($project)) {
-            $paymentTypesQuery->where('user_id', $currentUser->id)->where('status', Payment::STATUS_APPROVED);
-        } elseif (!$isProjectOwner && !$currentUser->isProjectMember($project)) {
-            $paymentTypesQuery->whereRaw('1 = 0');
-        }
-        $paymentTypes = $paymentTypesQuery->distinct()->pluck('payment_type');
-        
-        $statusesForFilter = [];
-        if ($isProjectOwner) {
-            $statusesForFilter = [Payment::STATUS_DRAFT => 'Draft', Payment::STATUS_APPROVED => 'Approved'];
-        }
-
-
-        if ($request->ajax() || $request->wantsJson()) {
-            $tableHtml = view('payslips.partials._list_table_content', compact(
-                'project', 'payslips', 'request', 'isProjectOwner'
-            ))->render();
-            $paginationHtml = $payslips->links('vendor.pagination.tailwind')->toHtml();
-
+        // --- AJAX RESPONSE (TETAP SAMA) ---
+        if ($request->ajax()) {
+            // Kita pass 'request' ke view partial agar sort indicator bisa berfungsi
             return response()->json([
-                'table_html' => $tableHtml,
-                'pagination_html' => $paginationHtml,
-                'total_items' => $payslips->total()
+                'table_html' => view('payslips.partials._list_table_content', compact('payslips', 'project', 'isProjectOwner', 'request'))->render(),
+                'pagination_html' => $payslips->links('vendor.pagination.tailwind')->toHtml(),
             ]);
         }
 
+        // --- INITIAL PAGE LOAD RESPONSE (TETAP SAMA) ---
+        $workersForFilter = $project->workers()->wherePivot('status', 'accepted')->orderBy('name')->get();
+        $paymentTypes = Payment::where('project_id', $project->id)->distinct()->pluck('payment_type');
+        $statusesForFilter = $isProjectOwner ? [Payment::STATUS_DRAFT => 'Draft', Payment::STATUS_APPROVED => 'Approved'] : [];
+
         return view('payslips.list', compact(
-            'project',
-            'payslips',
-            'workersForFilter',
-            'paymentTypes',
-            'statusesForFilter',
-            'isProjectOwner',
-            'request'
+            'project', 'payslips', 'workersForFilter', 'paymentTypes',
+            'statusesForFilter', 'isProjectOwner', 'request'
         ));
     }
-
 
     public function showPayslipDetail(Project $project, Payment $payslip)
     {
