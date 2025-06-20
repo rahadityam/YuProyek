@@ -13,6 +13,7 @@
             successCriteria: {{ Js::from(session('success_criteria')) }},
             successFinancial: {{ Js::from(session('success_financial')) }},
             successInfo: {{ Js::from(session('success_info')) }},
+            isProjectLocked: {{ Js::from($isProjectLocked) }}, 
             
             initialErrors: {{ Js::from($errors->getMessages()) }},
             // URLs & Tokens
@@ -126,6 +127,21 @@
                               <span class="block sm:inline ml-1">{{ $message }}</span>
                           </div>
                      @enderror
+                     <div x-show="isProjectLocked" x-cloak
+                        class="bg-yellow-50 border-l-4 border-yellow-400 p-4" role="alert">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.21 3.031-1.742 3.031H4.42c-1.532 0-2.492-1.697-1.742-3.031l5.58-9.92zM10 13a1 1 0 110-2 1 1 0 010 2zm-1-8a1 1 0 00-1 1v3a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm text-yellow-700">
+                                    Pengaturan proyek ini telah dikunci karena sudah ada slip gaji yang disetujui. Perubahan pada informasi finansial, kriteria, dan data sensitif lainnya tidak diizinkan untuk menjaga integritas data.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 {{-- ========================== --}}
@@ -155,17 +171,17 @@
                              </div>
                              <div>
                                  <label for="start_date" class="block text-sm font-medium text-gray-700 mb-1">Tanggal Mulai</label>
-                                 <input type="date" name="start_date" id="start_date" x-model="project.start_date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                 <input type="date" name="start_date" id="start_date" x-model="project.start_date" :disabled="isProjectLocked" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                                  @error('start_date')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                              </div>
                              <div>
                                  <label for="end_date" class="block text-sm font-medium text-gray-700 mb-1">Tanggal Selesai</label>
-                                 <input type="date" name="end_date" id="end_date" x-model="project.end_date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                 <input type="date" name="end_date" id="end_date" x-model="project.end_date" :disabled="isProjectLocked"  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                                  @error('end_date')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                              </div>
                              <div>
                                  <label for="budget" class="block text-sm font-medium text-gray-700 mb-1">Anggaran (Budget)</label>
-                                 <input type="number" name="budget" id="budget" step="any" min="0" x-model.number="project.budget" placeholder="Contoh: 5000000" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                 <input type="number" name="budget" id="budget" step="any" min="0" x-model.number="project.budget" placeholder="Contoh: 5000000" :disabled="isProjectLocked" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                                  @error('budget')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                              </div>
                              <div>
@@ -263,7 +279,7 @@
                                     <h3 class="text-lg font-medium leading-6 text-gray-900">Metode Kalkulasi Pembayaran Utama</h3>
                                     <div class="mt-3 space-y-4">
                                         <p class="text-sm text-gray-600">Pilih cara utama perhitungan pembayaran task. Opsi bonus/lainnya tetap tersedia.</p>
-                                        <fieldset>
+                                        <fieldset :disabled="isProjectLocked">
                                             <legend class="sr-only">Metode Pembayaran</legend>
                                             <div class="space-y-3">
                                                 {{-- Pilihan Task --}}
@@ -308,7 +324,7 @@
                                     </div>
                                 </div>
                                 <div class="px-4 py-3 bg-gray-100 text-right sm:px-6 border-t border-gray-200">
-                                    <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
+                                    <button type="submit" :disabled="isProjectLocked" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
                                         Simpan Metode Pembayaran
                                     </button>
                                 </div>
@@ -323,7 +339,7 @@
                                 <div class="px-4 py-5 sm:p-6">
                                     <h3 class="text-lg font-medium leading-6 text-gray-900 mb-1">Kelola Termin Pembayaran</h3>
                                     <p class="text-sm text-gray-600 mb-4">Definisikan nama dan periode setiap termin pembayaran.</p>
-
+                                    <fieldset :disabled="isProjectLocked"></fieldset>
                                     {{-- List Termin yang Ada & Baru --}}
                                     <div class="space-y-4" x-ref="termsContainer">
                                         <template x-for="(term, index) in paymentTerms" :key="index">
@@ -358,7 +374,7 @@
                                                 <div class="sm:col-span-1 flex justify-end">
                                                      {{-- Hidden input for delete flag --}}
                                                      <input type="hidden" :name="`terms[${index}][delete]`" :value="term.markedForDeletion ? '1' : '0'">
-                                                     <button type="button" @click="removeTerm(index)"
+                                                     <button type="button" @click="removeTerm(index)" :disabled="isProjectLocked" 
                                                              class="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-red-500" title="Hapus Termin">
                                                          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                                      </button>
@@ -369,14 +385,14 @@
 
                                     {{-- Tombol Tambah Termin --}}
                                     <div class="mt-4">
-                                        <button type="button" @click="addTerm()" class="inline-flex items-center px-3 py-1.5 border border-dashed border-gray-400 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500">
+                                        <button type="button" @click="addTerm()" :disabled="isProjectLocked" class="inline-flex items-center px-3 py-1.5 border border-dashed border-gray-400 text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-indigo-500">
                                             <svg class="-ml-0.5 mr-1 h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" /></svg>
                                             Tambah Termin Baru
                                         </button>
                                     </div>
                                 </div>
                                 <div class="px-4 py-3 bg-gray-100 text-right sm:px-6 border-t border-gray-200">
-                                    <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
+                                    <button type="submit" :disabled="isProjectLocked" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
                                         Simpan Data Termin
                                     </button>
                                 </div>
@@ -393,7 +409,7 @@
                                           <p class="text-sm text-gray-600 mt-1">Definisikan harga dasar per task untuk setiap kategori pekerjaan.</p>
                                       </div>
                                       {{-- BARU: Tombol Tambah memanggil modal --}}
-                                      <button @click="openWageStandardModal('add')" type="button" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex-shrink-0">
+                                      <button @click="openWageStandardModal('add')" :disabled="isProjectLocked" type="button" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 flex-shrink-0">
                                           <svg class="-ml-0.5 mr-1 h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" /></svg>
                                           Tambah Standar
                                       </button>
@@ -419,11 +435,11 @@
                                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700" x-text="'Rp ' + Number(standard.task_price).toLocaleString('id-ID')"></td>
                                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium">
                                                                    {{-- BARU: Tombol Edit memanggil modal --}}
-                                                                   <button @click="openWageStandardModal('edit', standard)" type="button" class="text-indigo-600 hover:text-indigo-800 mr-4">Edit</button>
+                                                                   <button @click="openWageStandardModal('edit', standard)" :disabled="isProjectLocked" type="button" class="text-indigo-600 hover:text-indigo-800 mr-4">Edit</button>
                                                                     {{-- Form hapus tetap, atau bisa diubah ke AJAX juga nanti --}}
                                                                     <form :action="wageStandardDestroyUrlTemplate.replace(':standardId', standard.id)" method="POST" class="inline" @submit="if(!confirm('Yakin hapus standar ini?')) $event.preventDefault()">
                                                                         @csrf @method('DELETE')
-                                                                        <button type="submit" class="text-red-600 hover:text-red-800">Hapus</button>
+                                                                        <button type="submit" :disabled="isProjectLocked" class="text-red-600 hover:text-red-800">Hapus</button>
                                                                    </form>
                                                                </td>
                                                            </tr>
@@ -446,13 +462,13 @@
                                     </div>
                                     <div class="flex space-x-2 flex-shrink-0">
                                         <template x-if="!isEditingMemberWages">
-                                            <button @click="toggleEditMemberWages" type="button" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                            <button @click="toggleEditMemberWages" type="button" :disabled="isProjectLocked" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                                                 Edit Standar Tim
                                             </button>
                                         </template>
                                         <template x-if="isEditingMemberWages">
-                                            <button @click="saveMemberWages" type="button" :disabled="isSubmittingMemberWages" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50">
+                                            <button @click="saveMemberWages" type="button" :disabled="isSubmittingMemberWages || isProjectLocked" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50">
                                                 <svg x-show="!isSubmittingMemberWages" xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>
                                                 <svg x-show="isSubmittingMemberWages" class="animate-spin -ml-0.5 mr-1.5 h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                                 <span x-text="isSubmittingMemberWages ? 'Menyimpan...' : 'Simpan Perubahan'"></span>
@@ -486,7 +502,7 @@
                                                                     <span x-text="getWageStandardName(member.pivot ? member.pivot.wage_standard_id : null)"></span>
                                                                 </template>
                                                                 <template x-if="isEditingMemberWages">
-                                                                    <select x-model="memberAssignedWages[member.id]"
+                                                                    <select x-model="memberAssignedWages[member.id]" :disabled="!isEditingMemberWages || isProjectLocked"
                                                                             class="mt-1 block w-full max-w-xs pl-3 pr-10 py-2 text-xs border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 rounded-md">
                                                                         <option value="">-- Tidak Ditentukan --</option>
                                                                         <template x-for="standard in wageStandards" :key="standard.id">
@@ -527,19 +543,19 @@
                                      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                          <div>
                                              <label for="difficulty_weight" class="block text-sm font-medium text-gray-700 mb-1">Bobot Kesulitan (%)</label>
-                                             <input type="number" name="difficulty_weight" id="difficulty_weight" min="0" max="100" value="{{ old('difficulty_weight', $project->difficulty_weight) }}" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                             <input type="number" name="difficulty_weight" id="difficulty_weight" min="0" max="100" value="{{ old('difficulty_weight', $project->difficulty_weight) }}" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" :disabled="isProjectLocked">
                                              @error('difficulty_weight')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                                          </div>
                                          <div>
                                              <label for="priority_weight" class="block text-sm font-medium text-gray-700 mb-1">Bobot Prioritas (%)</label>
-                                             <input type="number" name="priority_weight" id="priority_weight" min="0" max="100" value="{{ old('priority_weight', $project->priority_weight) }}" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                             <input type="number" name="priority_weight" id="priority_weight" min="0" max="100" value="{{ old('priority_weight', $project->priority_weight) }}" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" :disabled="isProjectLocked">
                                              @error('priority_weight')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                                          </div>
                                      </div>
                                      @error('weights')<p class="mt-1 text-xs text-red-600 mt-2">{{ $message }}</p>@enderror
                                  </div>
                                   <div class="px-4 py-3 bg-gray-50 text-right sm:px-6 border-t border-gray-200">
-                                       <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
+                                       <button type="submit" :disabled="isProjectLocked" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50">
                                            Simpan Bobot
                                        </button>
                                    </div>
@@ -554,7 +570,7 @@
                                       <div>
                                           <div class="flex justify-between items-center mb-3">
                                               <h4 class="text-md font-semibold text-gray-800">Tingkat Kesulitan</h4>
-                                              <button @click="openLevelModal('difficulty')" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                              <button @click="openLevelModal('difficulty')" :disabled="isProjectLocked" class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                                   <svg class="-ml-0.5 mr-1 h-3.5 w-3.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" /></svg>
                                                   Tambah
                                               </button>
@@ -572,8 +588,8 @@
                                                                </div>
                                                            </div>
                                                            <div class="flex space-x-3 flex-shrink-0 items-center">
-                                                               <button @click="editLevel('difficulty', level)" class="text-indigo-600 hover:text-indigo-800 text-xs font-medium">Edit</button>
-                                                               <form @submit.prevent="deleteLevel($event, 'difficulty', level.id)"> @csrf <button type="submit" class="text-red-600 hover:text-red-800 text-xs font-medium">Hapus</button> </form>
+                                                               <button @click="editLevel('difficulty', level)" :disabled="isProjectLocked" class="text-indigo-600 hover:text-indigo-800 text-xs font-medium">Edit</button>
+                                                               <form @submit.prevent="deleteLevel($event, 'difficulty', level.id)"> @csrf <button type="submit" :disabled="isProjectLocked" class="text-red-600 hover:text-red-800 text-xs font-medium">Hapus</button> </form>
                                                            </div>
                                                        </li>
                                                   </template>
@@ -853,48 +869,85 @@
                 originalMemberAssignedWages: {},
                 isSubmittingMemberWages: false,
 
+                isProjectLocked: config.isProjectLocked,
+
                 get nextTermIndex() { return this.paymentTerms.length; },
                 get levelModalTypeLabel() { return this.levelModalType === 'difficulty' ? 'Kesulitan' : 'Prioritas'; },
 
             // Methods
             initComponent() {
-                if (typeof Sortable === 'undefined') {
-                    console.error('SortableJS is not loaded');
-                    return;
-                }
-                this.paymentTerms = config.initialPaymentTerms.map(term => ({
-                     ...term,
-                     start_date: this.formatDateForInput(term.start_date),
-                     end_date: this.formatDateForInput(term.end_date),
-                     markedForDeletion: false
-                 }));
-                // Inisialisasi editableProjectPositions dari data project yang ada
-                    // Pastikan project.project_positions adalah array, bukan null
-                    this.editableProjectPositions = JSON.parse(JSON.stringify(this.project.project_positions || [])); 
-                    this.editableProjectPositions.forEach(pos => pos.markedForDeletion = false);
+    console.log('[Pengaturan Proyek] Menginisialisasi komponen Alpine...');
 
+    // 1. Inisialisasi data dari config
+    // Kita melakukan ini terlebih dahulu untuk memastikan semua data mentah tersedia.
+    
+    // Data utama proyek, dengan format tanggal yang benar
+    this.project.start_date = this.formatDateForInput(config.project.start_date);
+    this.project.end_date = this.formatDateForInput(config.project.end_date);
+    
+    // Data termin, dengan format tanggal dan flag tambahan
+    this.paymentTerms = (config.initialPaymentTerms || []).map(term => ({
+        ...term,
+        start_date: this.formatDateForInput(term.start_date),
+        end_date: this.formatDateForInput(term.end_date),
+        markedForDeletion: false
+    }));
+    
+    // Data standar upah
+    this.wageStandards = JSON.parse(JSON.stringify(config.initialWageStandards || []));
 
-                    this.members = JSON.parse(JSON.stringify(config.initialMembers));
-                    this.members.forEach(member => {
-                        const currentVal = (member.pivot && member.pivot.wage_standard_id !== null) ? String(member.pivot.wage_standard_id) : '';
-                        this.memberAssignedWages[member.id] = currentVal;
-                    });
+    // Data level (Difficulty & Priority)
+    // Tidak perlu diubah karena sudah di-pass langsung dari config
+    
+    // Data Anggota Tim (Members) dan standar upah mereka
+    this.members = JSON.parse(JSON.stringify(config.initialMembers || []));
+    this.members.forEach(member => {
+        const currentVal = (member.pivot && member.pivot.wage_standard_id !== null) ? String(member.pivot.wage_standard_id) : '';
+        this.memberAssignedWages[member.id] = currentVal;
+    });
 
-                    this.wageStandards = JSON.parse(JSON.stringify(config.initialWageStandards));
+    // ==========================================================
+    // ===== INI BAGIAN PERBAIKAN UTAMA =====
+    // ==========================================================
+    // Selalu reset 'editableProjectPositions' dengan data terbaru dari config.
+    // Ini akan memperbaiki masalah di mana posisi tidak muncul setelah navigasi Turbo.
+    const initialPositions = config.project.project_positions || [];
+    this.editableProjectPositions = JSON.parse(JSON.stringify(initialPositions));
+    this.editableProjectPositions.forEach(pos => pos.markedForDeletion = false);
+    console.log(`[Pengaturan Proyek] Data Posisi dimuat: ${this.editableProjectPositions.length} item.`);
+    // ==========================================================
+    // ===== AKHIR PERBAIKAN =====
+    // ==========================================================
+    
+    // 2. Inisialisasi UI dan state lainnya
+    
+    // Setup SortableJS
+    if (typeof Sortable === 'undefined') {
+        console.error('SortableJS tidak termuat.');
+    } else {
+        this.$nextTick(() => { // Pastikan DOM sudah siap sebelum menginisialisasi Sortable
+            this.initSortable();
+        });
+    }
 
-                    // Format tanggal untuk project
-                    this.project.start_date = this.formatDateForInput(this.project.start_date);
-                    this.project.end_date = this.formatDateForInput(this.project.end_date);
+    // Handle flash message
+    if (this.flashMessage) {
+        setTimeout(() => { this.flashMessage = ''; }, 5000);
+    }
 
-                    if (typeof Sortable === 'undefined') { console.error('SortableJS is not loaded'); return; }
-                    this.initSortable();
-                    if (this.flashMessage) { setTimeout(() => { this.flashMessage = ''; }, 5000); }
-                    if (config.successCriteria) this.activeTab = 'criteria';
-                    if (config.successFinancial) this.activeTab = 'financial';
-                    if (config.successInfo) this.activeTab = 'project';
-                    this.isLevelModalOpen = false;
-                    this.isLevelSubmitting = false;
-                },
+    // Atur tab aktif berdasarkan sesi dari backend
+    if (config.successCriteria) this.activeTab = 'criteria';
+    if (config.successFinancial) this.activeTab = 'financial';
+    if (config.successInfo) this.activeTab = 'project';
+    // (Anda bisa tambahkan untuk tab 'files' jika perlu)
+
+    // Reset state modal
+    this.isLevelModalOpen = false;
+    this.isLevelSubmitting = false;
+
+    console.log('[Pengaturan Proyek] Inisialisasi komponen selesai.');
+    this.isProjectLocked = config.isProjectLocked; 
+},
 
             formatDateForInput(dateString) {
                 if (!dateString) return '';

@@ -135,5 +135,147 @@
         </div>
     </div>
     @stack('scripts')
+    <script>
+        const notificationBellComponent = () => ({
+            isOpen: false,
+            isLoading: true,
+            notifications: [],
+            unreadCount: 0,
+            
+            // init() sekarang hanya akan dijalankan sekali per pemuatan komponen
+            init() {
+                // Kita tidak lagi memulai polling di sini.
+                // Polling akan dikelola secara global.
+                console.log('Alpine component "notificationBell" initialized.');
+                // Ambil data notifikasi untuk tampilan awal komponen ini.
+                this.fetchNotifications();
+            },
+
+            toggle() {
+                this.isOpen = !this.isOpen;
+                if (this.isOpen) {
+                    this.fetchNotifications(); // Refresh saat dropdown dibuka
+                }
+            },
+
+            fetchNotifications() {
+                if (!document.body.contains(this.$el)) {
+                    // Komponen sudah tidak ada di DOM, hentikan fetch
+                    console.warn("Skipping fetch: notificationBell component no longer in DOM.");
+                    return;
+                }
+                this.isLoading = true;
+                fetch("{{ route('notifications.index') }}")
+                    .then(response => response.json())
+                    .then(data => {
+                        this.notifications = data.notifications.data;
+                        this.unreadCount = data.unread_count;
+                    })
+                    .catch(error => console.error('Error fetching notifications:', error))
+                    .finally(() => {
+                        this.isLoading = false;
+                    });
+            },
+
+            markAsRead(notificationId) {
+                const notif = this.notifications.find(n => n.id === notificationId);
+                if (notif && !notif.read_at) {
+                    fetch(`/notifications/${notificationId}/mark-as-read`, {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            notif.read_at = new Date().toISOString();
+                            this.unreadCount = Math.max(0, this.unreadCount - 1);
+                        }
+                    });
+                }
+            },
+
+            markAllRead() {
+                fetch("{{ route('notifications.markAllAsRead') }}", {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        this.unreadCount = 0;
+                        this.notifications.forEach(n => n.read_at = new Date().toISOString());
+                    }
+                });
+            },
+            
+            // ... (fungsi timeAgo tetap sama) ...
+            timeAgo(dateString) {
+                if (!dateString) return '';
+                const date = new Date(dateString);
+                const seconds = Math.floor((new Date() - date) / 1000);
+                let interval = seconds / 31536000;
+                if (interval > 1) return Math.floor(interval) + "y ago";
+                interval = seconds / 2592000;
+                if (interval > 1) return Math.floor(interval) + "mo ago";
+                interval = seconds / 86400;
+                if (interval > 1) return Math.floor(interval) + "d ago";
+                interval = seconds / 3600;
+                if (interval > 1) return Math.floor(interval) + "h ago";
+                interval = seconds / 60;
+                if (interval > 1) return Math.floor(interval) + "m ago";
+                return Math.floor(seconds) + "s ago";
+            }
+        });
+
+        // Daftarkan komponen Alpine
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('notificationBell', notificationBellComponent);
+        });
+
+        // --- MANAJEMEN POLLING GLOBAL (KUNCI PERBAIKAN) ---
+        (() => {
+            let pollingIntervalId = null;
+            const POLLING_INTERVAL_MS = 60000; // 60 detik
+
+            function startPolling() {
+                // Hentikan polling lama jika ada
+                if (pollingIntervalId !== null) {
+                    clearInterval(pollingIntervalId);
+                }
+                
+                console.log(`Starting notification polling every ${POLLING_INTERVAL_MS / 1000} seconds.`);
+                
+                // Buat polling baru
+                pollingIntervalId = setInterval(() => {
+                    const notificationBellEl = document.querySelector('[x-data="notificationBell()"]');
+                    // Hanya panggil fetch jika komponennya ada di halaman
+                    if (notificationBellEl && notificationBellEl.__x) {
+                        console.log('Polling: Fetching notifications...');
+                        notificationBellEl.__x.fetchNotifications();
+                    } else {
+                        console.log('Polling: Notification bell component not found. Stopping polling.');
+                        clearInterval(pollingIntervalId);
+                        pollingIntervalId = null;
+                    }
+                }, POLLING_INTERVAL_MS);
+            }
+
+            function stopPolling() {
+                if (pollingIntervalId !== null) {
+                    console.log('Stopping notification polling.');
+                    clearInterval(pollingIntervalId);
+                    pollingIntervalId = null;
+                }
+            }
+            
+            // Mulai polling saat halaman pertama kali dimuat
+            document.addEventListener('DOMContentLoaded', startPolling);
+            
+            // Untuk Turbo Drive: Hentikan polling sebelum halaman di-cache,
+            // dan mulai lagi setelah halaman baru dimuat.
+            document.addEventListener('turbo:before-cache', stopPolling);
+            document.addEventListener('turbo:load', startPolling);
+        })();
+    </script>
 </body>
 </html>

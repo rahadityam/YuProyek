@@ -12,6 +12,7 @@ use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\Admin\AdminUserController;
 use App\Http\Controllers\Admin\AdminProjectController;
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\NotificationController;
 
 
 /* ... Route::get('/', ...), Route::get('/projects', ...) */
@@ -59,6 +60,7 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/dashboard', [ProjectController::class, 'projectDashboard'])->name('dashboard');
         Route::get('/kanban', [TaskController::class, 'kanban'])->name('kanban');
+        Route::get('/tasks/recap', [TaskController::class, 'recap'])->name('tasks.recap');
         Route::resource('/wage-standards', WageStandardController::class)->except(['show'])->names('wage-standards');
         Route::get('/team', [ProjectController::class, 'teamMembers'])->name('team');
         Route::patch('/team/{user}/update-status', [ProjectApplicationController::class, 'updateStatus'])->name('application.updateStatus');
@@ -66,7 +68,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/team/user/{user}', [ProjectApplicationController::class, 'viewProfile'])->name('user.profile');
         // Route::patch('/team/{user}/wage', [ProjectController::class, 'updateMemberWage'])->name('team.updateWage');
         Route::get('/activity', [ActivityController::class, 'index'])->name('activity');
-        Route::get('/activity/filter', [ActivityController::class, 'filter'])->name('activity.filter');
+        // Route::get('/activity/filter', [ActivityController::class, 'filter'])->name('activity.filter');
 
 
         // Penggajian & Slip Gaji
@@ -114,6 +116,12 @@ Route::middleware('auth')->group(function () {
         // Route untuk PM membatalkan undangan atau worker menerima/menolak
         Route::patch('/team/invitations/{user}/status', [App\Http\Controllers\ProjectApplicationController::class, 'updateInvitationStatus'])->name('invitations.updateStatus');
     }); // Akhir dari prefix projects/{project}
+
+    Route::prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/', [NotificationController::class, 'index'])->name('index');
+        Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('markAllAsRead');
+        Route::post('/{notification}/mark-as-read', [NotificationController::class, 'markAsRead'])->name('markAsRead');
+    });
 
     // ---------------------------------------------------------------------
     // Rute Manajemen Tugas (Tasks) - Tetap

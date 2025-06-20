@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Validator; // Tambahkan ini
+use App\Notifications\PayslipApprovedNotification;
+use Illuminate\Support\Facades\Notification;
 
 class PaymentController extends Controller
 {
@@ -445,6 +447,13 @@ class PaymentController extends Controller
                 'approved_at' => now(),
                 'approved_by' => Auth::id(),
             ]);
+
+             // --- KIRIM NOTIFIKASI SLIP GAJI DISETUJUI ---
+            $worker = $payslip->user;
+            $approver = Auth::user();
+            if ($worker) {
+                $worker->notify(new PayslipApprovedNotification($payslip, $approver));
+            }
 
             DB::commit();
 

@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Str; 
 use Illuminate\Support\Collection;
+use Carbon\Carbon;
 
 class ProjectController extends Controller
 {
@@ -293,57 +294,56 @@ class ProjectController extends Controller
 
     // Menampilkan proyek yang diikuti oleh user yang login
     public function myProjects(Request $request)
-{
-    $user = Auth::user();
-    $query = null;
-    $isOwner = false;
+    {
+        $user = Auth::user();
+        $query = null;
+        $isOwner = false;
 
-    // Check if user is a project owner
-    if ($user->role === 'project_owner') {
-        $query = Project::where('owner_id', $user->id);
-        $isOwner = true;
-    } else {
-        // If user is a worker, get projects they follow/participate in
-        $query = $user->projects();
+        // Check if user is a project owner
+        if ($user->role === 'project_owner') {
+            $query = Project::where('owner_id', $user->id);
+            $isOwner = true;
+        } else {
+            // ==========================================================
+            // ===== MODIFIKASI DIMULAI DI SINI =====
+            // ==========================================================
+            // If user is a worker, get projects where their status is 'accepted'
+            $query = $user->projects()->wherePivot('status', 'accepted');
+            // ==========================================================
+            // ===== AKHIR MODIFIKASI =====
+            // ==========================================================
+        }
+
+        // Search functionality
+        if ($request->has('search')) {
+            $searchTerm = $request->input('search');
+            $query->where(function($q) use ($searchTerm) {
+                $q->where('name', 'like', "%{$searchTerm}%")
+                  ->orWhere('description', 'like', "%{$searchTerm}%");
+            });
+        }
+
+        // Filter by status
+        if ($request->has('status') && $request->input('status') !== 'all') {
+            $query->where('status', $request->input('status'));
+        }
+
+        // Sorting
+        $sortField = $request->input('sort', 'created_at');
+        $sortDirection = $request->input('direction', 'desc');
+        
+        $allowedSortFields = ['name', 'budget', 'start_date', 'end_date', 'created_at'];
+        $sortField = in_array($sortField, $allowedSortFields) ? $sortField : 'created_at';
+        $sortDirection = in_array(strtolower($sortDirection), ['asc', 'desc']) ? $sortDirection : 'desc';
+
+        $query->orderBy($sortField, $sortDirection);
+
+        // Paginate results
+        $projects = $query->paginate(9)->withQueryString();
+
+        return view('projects.my-projects', compact('projects', 'isOwner'));
     }
 
-    // Search functionality
-    if ($request->has('search')) {
-        $searchTerm = $request->input('search');
-        $query->where(function($q) use ($searchTerm) {
-            $q->where('name', 'like', "%{$searchTerm}%")
-              ->orWhere('description', 'like', "%{$searchTerm}%");
-        });
-    }
-
-    // Filter by status
-    if ($request->has('status') && $request->input('status') !== 'all') {
-        $query->where('status', $request->input('status'));
-    }
-
-    // Sorting
-    $sortField = $request->input('sort', 'created_at');
-    $sortDirection = $request->input('direction', 'desc');
-    
-    // Validate sort field to prevent SQL injection
-    $allowedSortFields = ['name', 'budget', 'start_date', 'end_date', 'created_at'];
-    $sortField = in_array($sortField, $allowedSortFields) ? $sortField : 'created_at';
-    $sortDirection = in_array(strtolower($sortDirection), ['asc', 'desc']) ? $sortDirection : 'desc';
-
-    $query->orderBy($sortField, $sortDirection);
-
-    // Paginate results
-    $projects = $query->paginate(9)->withQueryString();
-
-    return view('projects.my-projects', compact('projects', 'isOwner'));
-}
-
-    /**
-     * Menampilkan dashboard internal spesifik untuk sebuah proyek.
-     *
-     * @param  \App\Models\Project  $project
-     * @return \Illuminate\View\View
-     */
     public function projectDashboard(Project $project)
     {
         // --- 1. Data Aktivitas ---

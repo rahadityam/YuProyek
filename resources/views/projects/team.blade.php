@@ -30,12 +30,12 @@
                             <button @click="activeTab = 'members'"
                                     :class="{ 'border-indigo-500 text-indigo-600': activeTab === 'members', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'members' }"
                                     class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                                Anggota Tim ({{ $members->count() + 1 }}) {{-- +1 untuk owner --}}
+                                Team Members ({{ $members->count() + 1 }}) {{-- +1 untuk owner --}}
                             </button>
                             <button @click="activeTab = 'pending'"
                                     :class="{ 'border-indigo-500 text-indigo-600': activeTab === 'pending', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'pending' }"
                                     class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">
-                                Undangan Tertunda ({{ $pendingInvitations->count() }})
+                                Pending Invitations ({{ $pendingInvitations->count() }})
                             </button>
                         </nav>
                     </div>
@@ -126,14 +126,14 @@
                                         @endforeach
                                     </div>
                                 @else
-                                    <p class="text-gray-500 italic">Belum ada anggota tim.</p>
+                                    <p class="text-gray-500 italic">No team members yet.</p>
                                 @endif
                             </div>
                         </div>
 
                         {{-- Tab: Undangan Tertunda --}}
                         <div x-show="activeTab === 'pending'" x-transition>
-                            <h3 class="text-lg font-semibold mb-3 border-b pb-2">Undangan Tertunda</h3>
+                            <h3 class="text-lg font-semibold mb-3 border-b pb-2">Pending Invitations</h3>
                             @if($pendingInvitations->count() > 0)
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     @foreach($pendingInvitations as $pending)
@@ -175,7 +175,7 @@
                                     @endforeach
                                 </div>
                             @else
-                                <p class="text-gray-500 italic">Tidak ada undangan yang tertunda.</p>
+                                <p class="text-gray-500 italic">No pending invitations.</p>
                             @endif
                         </div>
                     </div>

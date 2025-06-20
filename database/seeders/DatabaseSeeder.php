@@ -23,7 +23,7 @@ class DatabaseSeeder extends Seeder
         // ]);
 
         
-$this->call(DifficultyLevelSeeder::class, false, ['project' => Project::first()]);
-$this->call(PriorityLevelSeeder::class, false, ['project' => Project::first()]);
+        // $this->call(DifficultyLevelSeeder::class, false, ['project' => Project::first()]);
+        // $this->call(PriorityLevelSeeder::class, false, ['project' => Project::first()]);
     }
 }

@@ -11,7 +11,8 @@ use App\Models\User;
 use App\Models\ActivityLog;
 use Illuminate\Support\Facades\Validator;
 use App\Notifications\UserInvitedToProjectNotification;
-
+use Illuminate\Support\Facades\Log;
+    
 class ProjectApplicationController extends Controller
 {
     /**
@@ -253,6 +254,9 @@ public function viewProfile(Project $project, User $user)
     //     $invitedUser->notify(new UserInvitedToProjectNotification($project, Auth::user()));
     // }
 
+    
+    $invitedUser->notify(new UserInvitedToProjectNotification($project, Auth::user()));
+
     return response()->json([
         'success' => true,
         'message' => $invitedUser->name . ' has been successfully invited to the project.',
@@ -266,48 +270,63 @@ public function viewProfile(Project $project, User $user)
     ]);
 }
 
-/**
- * Project Manager actions on pending invitations (e.g., cancel)
- * Or Worker actions (accept/decline invitation - usually from a notification link)
- */
 public function updateInvitationStatus(Request $request, Project $project, User $user)
 {
     $currentUser = Auth::user();
-    $action = $request->input('action'); // e.g., 'accept', 'decline', 'cancel_pm'
+    $action = $request->input('action'); // 'accept' or 'decline' or 'cancel_pm'
 
+    // Pastikan projectUser ada dan berstatus 'invited'
     $projectUser = ProjectUser::where('project_id', $project->id)
         ->where('user_id', $user->id)
-        ->where('status', 'invited') // Hanya bisa bertindak pada status 'invited'
+        ->where('status', 'invited')
         ->first();
 
     if (!$projectUser) {
-        return response()->json(['success' => false, 'message' => 'Invitation not found or already actioned.'], 404);
+        return redirect()->route('dashboard')->with('error', 'Undangan tidak valid atau sudah direspons.');
     }
 
-    $message = '';
+    // --- Hapus notifikasi terkait setelah direspons ---
+    $notification = $currentUser->notifications()
+        ->where('data->project_id', $project->id)
+        ->where('data->inviter_id', $project->owner_id) // Asumsi inviter adalah owner
+        ->latest()
+        ->first();
 
-    if ($action === 'accept' && $currentUser->id === $user->id) { // Worker accepts
-        $projectUser->status = 'accepted';
-        $projectUser->save();
-        $message = 'You have successfully joined the project.';
-        ActivityLog::create([ /* ... */ 'description' => $user->name . ' accepted project invitation.']);
-        // redirect ke dashboard proyek atau halaman tim
-        return redirect()->route('projects.team', $project)->with('success', $message);
-    } elseif ($action === 'decline' && $currentUser->id === $user->id) { // Worker declines
-        $projectUser->delete(); // Atau set status 'declined_invitation'
-        $message = 'You have declined the project invitation.';
-        ActivityLog::create([ /* ... */ 'description' => $user->name . ' declined project invitation.']);
-         // redirect ke dashboard umum atau halaman lain
-        return redirect()->route('dashboard')->with('info', $message);
-    } elseif ($action === 'cancel_pm' && $currentUser->id === $project->owner_id) { // PM cancels
-        $projectUser->delete(); // Atau set status 'cancelled_invitation'
-        $message = 'Invitation for ' . $user->name . ' has been cancelled.';
-        ActivityLog::create([ /* ... */ 'description' => 'cancelled invitation for ' . $user->name . '.']);
-        return back()->with('success', $message);
-    } else {
-        return response()->json(['success' => false, 'message' => 'Invalid action or unauthorized.'], 403);
+    if ($notification) {
+        $notification->markAsRead();
     }
-    // Untuk AJAX response dari modal jika perlu
-    // return response()->json(['success' => true, 'message' => $message]);
+
+    // Aksi oleh PEKERJA yang diundang
+    if (($action === 'accept' || $action === 'decline') && $currentUser->id === $user->id) {
+        if ($action === 'accept') {
+            $projectUser->status = 'accepted';
+            $projectUser->save();
+            ActivityLog::create([
+                'project_id' => $project->id, 'user_id' => $user->id,
+                'action' => 'joined_project', 'description' => $user->name . ' telah bergabung ke proyek.'
+            ]);
+            return redirect()->route('projects.team', $project)->with('success', 'Anda telah bergabung ke proyek.');
+        } else { // decline
+            $projectUser->delete();
+             ActivityLog::create([
+                'project_id' => $project->id, 'user_id' => $user->id,
+                'action' => 'declined_invitation', 'description' => $user->name . ' menolak undangan proyek.'
+            ]);
+            return redirect()->route('dashboard')->with('info', 'Anda telah menolak undangan proyek.');
+        }
+    }
+    
+    // Aksi oleh PROJECT MANAGER untuk membatalkan
+    elseif ($action === 'cancel_pm' && $currentUser->id === $project->owner_id) {
+        $projectUser->delete();
+        ActivityLog::create([
+            'project_id' => $project->id, 'user_id' => $currentUser->id,
+            'action' => 'cancelled_invitation', 'description' => 'membatalkan undangan untuk ' . $user->name
+        ]);
+        return back()->with('success', 'Undangan untuk ' . $user->name . ' berhasil dibatalkan.');
+    }
+
+    // Jika tidak ada kondisi yang cocok, berarti tidak terotorisasi
+    return redirect()->route('dashboard')->with('error', 'Aksi tidak diizinkan.');
 }
 }

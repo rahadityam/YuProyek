@@ -73,39 +73,31 @@ class Task extends Model
          return $this->hasOne(ProjectUser::class, 'user_id', 'assigned_to')->where('project_id', -1); // Dummy condition
     }
 
-
-    // --- Accessor ---
-
     // Skor WSM (Weighted Sum Model)
-    // Skor WSM (Weighted Sum Model)
-public function getWsmScoreAttribute(): float
-{
-    $difficultyValue = $this->difficultyLevel->value ?? 0;
-    $priorityValue = $this->priorityLevel->value ?? 0;
-    
-    // Get achievement percentage - only default to 100 if NULL, not if 0
-    $achievement = $this->achievement_percentage !== null ? $this->achievement_percentage : 100;
+    public function getWsmScoreAttribute(): float
+    {
+        $difficultyValue = $this->difficultyLevel->value ?? 0;
+        $priorityValue = $this->priorityLevel->value ?? 0;
+        
+        $achievement = $this->achievement_percentage !== null ? $this->achievement_percentage : 100;
 
-    $project = $this->project; // Load relasi project
-    if (!$project) {
-        return 0; // Handle jika task tidak punya project
+        $project = $this->project;
+        if (!$project) {
+            return 0;
+        }
+
+        $difficultyWeight = $project->difficulty_weight;
+        $priorityWeight = $project->priority_weight;  
+
+        $wDifficulty = $difficultyWeight / 100;
+        $wPriority = $priorityWeight / 100;
+
+        $rawScore = ($difficultyValue * $wDifficulty) + ($priorityValue * $wPriority);
+
+        $finalScore = $rawScore * ($achievement / 100);
+
+        return round($finalScore, 2);
     }
-
-    $difficultyWeight = $project->difficulty_weight; // Accessor di Project akan handle default
-    $priorityWeight = $project->priority_weight;     // Accessor di Project akan handle default
-
-    // Normalisasi bobot (asumsi 0-100)
-    $wDifficulty = $difficultyWeight / 100;
-    $wPriority = $priorityWeight / 100;
-
-    // Hitung skor mentah berdasarkan level
-    $rawScore = ($difficultyValue * $wDifficulty) + ($priorityValue * $wPriority);
-
-    // Terapkan persentase pencapaian
-    $finalScore = $rawScore * ($achievement / 100);
-
-    return round($finalScore, 2); // Bulatkan 2 desimal
-}
 
     // Nilai Dasar (dari Wage Standard yang terhubung ke User di Project ini)
     public function getBaseValueAttribute(): float
@@ -114,34 +106,29 @@ public function getWsmScoreAttribute(): float
             return 0.0;
         }
 
-        // Cari data pivot project_users untuk user & project ini
         $projectUser = ProjectUser::where('project_id', $this->project_id)
                                   ->where('user_id', $this->assigned_to)
-                                  ->with('wageStandard') // Eager load wage standard
+                                  ->with('wageStandard')
                                   ->first();
 
-        // Jika ada pivot dan wage standard terhubung
         if ($projectUser && $projectUser->wageStandard) {
             return (float) $projectUser->wageStandard->task_price;
         }
 
-        return 0.0; // Fallback
+        return 0.0;
     }
 
     // Nilai Akhir Task (WSM * Nilai Dasar)
     public function getCalculatedValueAttribute(): float
     {
-        // Panggil accessor wsm_score dan base_value
         $wsmScore = $this->wsm_score;
         $baseValue = $this->base_value;
 
-        // Pastikan baseValue valid sebelum mengalikan
         if ($baseValue > 0) {
-             // Logika perhitungan: WSM Score * Harga Dasar Task dari Wage Standard
             return round($wsmScore * $baseValue, 2);
         }
 
-        return 0.0; // Jika nilai dasar 0, hasil akhir juga 0
+        return 0.0;
     }
 
     public function getPaymentStatusTextAttribute(): string

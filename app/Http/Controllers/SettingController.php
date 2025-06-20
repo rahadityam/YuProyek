@@ -8,6 +8,7 @@ use App\Models\DifficultyLevel;
 use App\Models\PriorityLevel;
 use App\Models\Category;
 use App\Models\WageStandard;
+use App\Models\Payment;
 use App\Models\PaymentTerm;
 use App\Models\Task;
 use App\Models\User;
@@ -36,6 +37,9 @@ class SettingController extends Controller
         $difficultyLevels = $project->difficultyLevels()->orderBy('display_order', 'asc')->get();
         $priorityLevels = $project->priorityLevels()->orderBy('display_order', 'asc')->get();
         $projectFiles = $project->files()->paginate(10);
+        $isProjectLocked = Payment::where('project_id', $project->id)
+                                ->where('status', Payment::STATUS_APPROVED)
+                                ->exists();
 
         return view('projects.pengaturan', compact(
             'project', // project akan di-load dengan projectPositions di blade
@@ -46,101 +50,129 @@ class SettingController extends Controller
             'paymentTerms',
             'difficultyLevels',
             'priorityLevels',
-            'projectFiles'
+            'projectFiles',
+            'isProjectLocked'
         ));
     }
 
     // SettingController.php
 
 public function updateProjectInfo(Request $request, Project $project)
-{
-    if (Auth::id() !== $project->owner_id) { abort(403); }
+    {
+        // Otorisasi tetap sama
+        $this->authorize('update', $project);
 
-    $rules = [
-        'name' => 'required|string|max:255',
-        'description' => 'nullable|string',
-        'start_date' => 'nullable|date',
-        'end_date' => 'nullable|date|after_or_equal:start_date',
-        'budget' => 'nullable|numeric|min:0',
-        'status' => 'required|string|in:open,in_progress,completed,cancelled',
-        'wip_limits' => 'nullable|integer|min:1',
-        'positions' => 'nullable|array',
-        'positions.*.id' => 'nullable|integer|exists:project_positions,id,project_id,' . $project->id,
-        'positions.*.delete' => 'nullable|boolean',
-    ];
+        // Cek status "terkunci" dari sisi backend sebagai pengaman utama
+        $isLocked = Payment::where('project_id', $project->id)
+                           ->where('status', Payment::STATUS_APPROVED)
+                           ->exists();
 
-    // Tambahkan aturan validasi kondisional untuk setiap item dalam array 'positions'
-    foreach ($request->input('positions', []) as $key => $position) {
-        // Hanya validasi 'name' dan 'count' jika item tidak ditandai untuk dihapus
-        if (!isset($position['delete']) || !$position['delete']) {
-            $rules["positions.{$key}.name"] = 'required|string|max:255';
-            $rules["positions.{$key}.count"] = 'required|integer|min:1';
+        // ==========================================================
+        // ===== MODIFIKASI ATURAN VALIDASI DIMULAI DI SINI =====
+        // ==========================================================
+
+        // Aturan validasi dasar yang selalu berlaku
+        $baseRules = [
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'status' => 'required|string|in:open,in_progress,completed,cancelled',
+            'wip_limits' => 'nullable|integer|min:1',
+            'positions' => 'nullable|array',
+            'positions.*.id' => 'nullable|integer|exists:project_positions,id,project_id,' . $project->id,
+            'positions.*.delete' => 'nullable|boolean',
+        ];
+
+        // Aturan validasi untuk field yang bisa dikunci
+        $lockableRules = [
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
+            'budget' => 'nullable|numeric|min:0',
+        ];
+        
+        $rules = $baseRules;
+        // Jika proyek TIDAK terkunci, gabungkan semua aturan validasi
+        if (!$isLocked) {
+            $rules = array_merge($baseRules, $lockableRules);
         }
-    }
 
-    $validated = $request->validate($rules, [
-        'positions.*.name.required' => 'Nama posisi wajib diisi.',
-        'positions.*.count.required' => 'Jumlah untuk posisi wajib diisi.',
-        'positions.*.count.min' => 'Jumlah untuk posisi minimal 1.',
-    ]);
-
-    DB::beginTransaction();
-    try {
-        // Update data proyek dasar
-        $project->update([
-            'name' => $validated['name'],
-            'description' => $validated['description'],
-            'start_date' => $validated['start_date'],
-            'end_date' => $validated['end_date'],
-            'budget' => $validated['budget'],
-            'status' => $validated['status'],
-            'wip_limits' => $validated['wip_limits'],
-        ]);
-
-        // Proses Project Positions
-        if (isset($validated['positions'])) { // Cek apakah 'positions' ada setelah validasi
-            foreach ($validated['positions'] as $positionData) {
-                if (isset($positionData['id']) && $positionData['id']) {
-                    $position = ProjectPosition::find($positionData['id']);
-                    if ($position && $position->project_id === $project->id) {
-                        if (isset($positionData['delete']) && $positionData['delete']) {
-                            $position->delete();
-                        } else {
-                            // Pastikan name dan count ada sebelum update (karena validasi kondisional)
-                            if (isset($positionData['name']) && isset($positionData['count'])) {
-                                $position->update([
-                                    'name' => $positionData['name'],
-                                    'count' => $positionData['count'],
-                                ]);
-                            }
-                        }
-                    }
-                } elseif (!isset($positionData['delete']) || !$positionData['delete']) {
-                    // Buat posisi baru, pastikan name dan count ada
-                    if (isset($positionData['name']) && isset($positionData['count'])) {
-                        $project->projectPositions()->create([
-                            'name' => $positionData['name'],
-                            'count' => $positionData['count'],
-                        ]);
-                    }
-                }
+        // Aturan validasi kondisional untuk setiap item dalam array 'positions'
+        foreach ($request->input('positions', []) as $key => $position) {
+            if (!isset($position['delete']) || !$position['delete']) {
+                $rules["positions.{$key}.name"] = 'required|string|max:255';
+                $rules["positions.{$key}.count"] = 'required|integer|min:1';
             }
         }
 
+        $validated = $request->validate($rules, [
+            'positions.*.name.required' => 'Nama posisi wajib diisi.',
+            'positions.*.count.required' => 'Jumlah untuk posisi wajib diisi.',
+            'positions.*.count.min' => 'Jumlah untuk posisi minimal 1.',
+        ]);
 
-        DB::commit();
+        // ==========================================================
+        // ===== MODIFIKASI LOGIKA UPDATE DIMULAI DI SINI =====
+        // ==========================================================
+        DB::beginTransaction();
+        try {
+            // Data yang selalu bisa diupdate
+            $updateData = [
+                'name' => $validated['name'],
+                'description' => $validated['description'],
+                'status' => $validated['status'],
+                'wip_limits' => $validated['wip_limits'],
+            ];
 
-        return redirect()->route('projects.pengaturan', $project)
-                         ->with('success_info', 'Informasi proyek berhasil diperbarui!')
+            // Hanya tambahkan data yang bisa dikunci jika proyek TIDAK terkunci
+            if (!$isLocked) {
+                $updateData['start_date'] = $validated['start_date'];
+                $updateData['end_date'] = $validated['end_date'];
+                $updateData['budget'] = $validated['budget'];
+            }
+            
+            // Lakukan update
+            $project->update($updateData);
+
+            // Proses Project Positions (logika ini tetap sama, tapi fieldset disabled melindunginya)
+            if (isset($validated['positions'])) {
+                foreach ($validated['positions'] as $positionData) {
+                    if (isset($positionData['id']) && $positionData['id']) {
+                        $position = ProjectPosition::find($positionData['id']);
+                        if ($position && $position->project_id === $project->id) {
+                            if (isset($positionData['delete']) && $positionData['delete']) {
+                                if (!$isLocked) $position->delete(); // Hanya hapus jika tidak terkunci
+                            } else {
+                                if (isset($positionData['name']) && isset($positionData['count'])) {
+                                     if (!$isLocked) $position->update([ // Hanya update jika tidak terkunci
+                                        'name' => $positionData['name'],
+                                        'count' => $positionData['count'],
+                                    ]);
+                                }
+                            }
+                        }
+                    } elseif (!isset($positionData['delete']) || !$positionData['delete']) {
+                        if (isset($positionData['name']) && isset($positionData['count'])) {
+                             if (!$isLocked) $project->projectPositions()->create([ // Hanya buat baru jika tidak terkunci
+                                'name' => $positionData['name'],
+                                'count' => $positionData['count'],
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->route('projects.pengaturan', $project)
+                             ->with('success_info', 'Informasi proyek berhasil diperbarui!')
+                             ->with('active_tab', 'project');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Error updating project info for project {$project->id}: " . $e->getMessage(), ['exception' => $e]);
+            return back()->withErrors(['general' => 'Gagal memperbarui informasi proyek: ' . $e->getMessage()])
+                         ->withInput()
                          ->with('active_tab', 'project');
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error("Error updating project info for project {$project->id}: " . $e->getMessage(), ['exception' => $e]);
-        return back()->withErrors(['general' => 'Gagal memperbarui informasi proyek: ' . $e->getMessage()])
-                     ->withInput()
-                     ->with('active_tab', 'project');
+        }
     }
-}
 
     // --- Method BARU untuk Update Tipe Kalkulasi Pembayaran ---
     public function updatePaymentCalculationType(Request $request, Project $project)

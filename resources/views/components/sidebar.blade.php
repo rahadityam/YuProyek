@@ -84,14 +84,13 @@
 
         {{-- Kelola Proyek Dropdown --}}
         <div class="flex flex-col" :class="{ 'items-center': $store.sidebar.isCollapsed, 'items-start': !$store.sidebar.isCollapsed }">
-            <div class="flex items-center pr-2 pl-2 pb-1 pt-1 rounded-md cursor-pointer group w-full" {{-- Adjusted padding for consistency --}}
-                 @click="toggleManageProjectDropdown">
+            <div class="flex items-center pr-2 pl-2 pb-1 pt-1 rounded-md cursor-pointer group w-full" @click="toggleManageProjectDropdown">
                 <div class="flex-shrink-0 flex justify-center items-center w-8 h-8">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 group-hover:text-[#5F65DB]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path> </svg>
                 </div>
                 <span class="ml-3 group-hover:text-[#5F65DB] whitespace-nowrap overflow-hidden transition-all duration-200 ease-in-out"
                       :style="$store.sidebar.isCollapsed ? 'max-width: 0; opacity: 0; margin-left:0;' : 'max-width: 200px; opacity: 1;'"
-                      >Kelola Proyek</span>
+                      >Manage Project</span>
                 <svg xmlns="http://www.w3.org/2000/svg" class="ml-auto transition-transform w-5 h-5 group-hover:text-[#5F65DB]"
                      :class="{ 'rotate-90': openManageProjectDropdown }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                      x-show="!$store.sidebar.isCollapsed"
@@ -101,14 +100,15 @@
             </div>
 
             <div class="overflow-hidden transition-all duration-300 w-full"
-                :class="{ 'pl-0': $store.sidebar.isCollapsed, 'pl-6': !$store.sidebar.isCollapsed }" {{-- Adjusted padding left --}}
-                x-bind:style="openManageProjectDropdown ? ($store.sidebar.isCollapsed ? 'max-height: 200px;' : 'max-height: 200px;') : 'max-height: 0px;'">
+                :class="{ 'pl-0': $store.sidebar.isCollapsed, 'pl-6': !$store.sidebar.isCollapsed }"
+                x-bind:style="openManageProjectDropdown ? 'max-height: 200px;' : 'max-height: 0px;'">
                 {{-- Dashboard --}}
                 <a href="{{ route('projects.dashboard', $currentProjectId) }}"
-                   class="flex items-center pr-2 pl-2 pb-1 pt-1 rounded-md cursor-pointer group w-full"
-                   :class="{ 'bg-[#E2EBFD]': isActive('/projects/{{ $currentProjectId }}/dashboard'), 'justify-center': $store.sidebar.isCollapsed }"
-                   :style="isActive('/projects/{{ $currentProjectId }}/dashboard') ? 'box-shadow: inset 4px 0 0 0 #5F65DB; color: #5F65DB;' : ''"
-                   title="Dashboard">
+                    data-turbo-action="replace" {{-- MODIFIKASI --}}
+                    class="flex items-center pr-2 pl-2 pb-1 pt-1 rounded-md cursor-pointer group w-full"
+                    :class="{ 'bg-[#E2EBFD]': isActive('/projects/{{ $currentProjectId }}/dashboard'), 'justify-center': $store.sidebar.isCollapsed }"
+                    :style="isActive('/projects/{{ $currentProjectId }}/dashboard') ? 'box-shadow: inset 4px 0 0 0 #5F65DB; color: #5F65DB;' : ''"
+                    title="Dashboard">
                     <div class="flex-shrink-0 flex justify-center items-center w-8 h-8">
                          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 group-hover:text-[#5F65DB]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect> </svg>
                     </div>
@@ -118,29 +118,31 @@
                 </a>
                  {{-- Papan Kanban --}}
                 <a href="{{ route('projects.kanban', $currentProjectId) }}"
-                   class="flex items-center pr-2 pl-2 pb-1 pt-1 rounded-md cursor-pointer group w-full"
-                   :class="{ 'bg-[#E2EBFD]': isActive('/projects/{{ $currentProjectId }}/kanban'), 'justify-center': $store.sidebar.isCollapsed }"
-                   :style="isActive('/projects/{{ $currentProjectId }}/kanban') ? 'box-shadow: inset 4px 0 0 0 #5F65DB; color: #5F65DB;' : ''"
-                   title="Papan Kanban">
+                    data-turbo-action="replace" {{-- MODIFIKASI --}}
+                    class="flex items-center pr-2 pl-2 pb-1 pt-1 rounded-md cursor-pointer group w-full"
+                    :class="{ 'bg-[#E2EBFD]': isActive('/projects/{{ $currentProjectId }}/kanban'), 'justify-center': $store.sidebar.isCollapsed }"
+                    :style="isActive('/projects/{{ $currentProjectId }}/kanban') ? 'box-shadow: inset 4px 0 0 0 #5F65DB; color: #5F65DB;' : ''"
+                    title="Papan Kanban">
                     <div class="flex-shrink-0 flex justify-center items-center w-8 h-8">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 group-hover:text-[#5F65DB]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <rect x="3" y="3" width="5" height="18" rx="1"></rect> <rect x="9" y="7" width="5" height="14" rx="1"></rect> <rect x="15" y="5" width="5" height="16" rx="1"></rect> </svg>
                     </div>
                     <span class="ml-3 group-hover:text-[#5F65DB] whitespace-nowrap overflow-hidden transition-all duration-200 ease-in-out"
                           :style="$store.sidebar.isCollapsed ? 'max-width: 0; opacity: 0; margin-left:0;' : 'max-width: 200px; opacity: 1;'"
-                          >Papan Kanban</span>
+                          >Kanban Board</span>
                 </a>
                 {{-- Gaji --}}
                 <a href="{{ route('projects.payroll.calculate', $currentProjectId) }}"
-                   class="flex items-center pr-2 pl-2 pb-1 pt-1 rounded-md cursor-pointer group w-full"
-                   :class="{ 'bg-[#E2EBFD]': isActive('/projects/{{ $currentProjectId }}/payroll') || isActive('/projects/{{ $currentProjectId }}/payslips'), 'justify-center': $store.sidebar.isCollapsed }"
-                   :style="isActive('/projects/{{ $currentProjectId }}/payroll') || isActive('/projects/{{ $currentProjectId }}/payslips') ? 'box-shadow: inset 4px 0 0 0 #5F65DB; color: #5F65DB;' : ''"
-                   title="Gaji">
+                    data-turbo-action="replace" {{-- MODIFIKASI --}}
+                    class="flex items-center pr-2 pl-2 pb-1 pt-1 rounded-md cursor-pointer group w-full"
+                    :class="{ 'bg-[#E2EBFD]': isActive('/projects/{{ $currentProjectId }}/payroll') || isActive('/projects/{{ $currentProjectId }}/payslips'), 'justify-center': $store.sidebar.isCollapsed }"
+                    :style="isActive('/projects/{{ $currentProjectId }}/payroll') || isActive('/projects/{{ $currentProjectId }}/payslips') ? 'box-shadow: inset 4px 0 0 0 #5F65DB; color: #5F65DB;' : ''"
+                    title="Gaji">
                     <div class="flex-shrink-0 flex justify-center items-center w-8 h-8">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 group-hover:text-[#5F65DB]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 14h.01M12 17h.01M15 17h.01M9 10h.01M12 10h.01M15 10h.01M4 7v10a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-2M6 7V5a2 2 0 012-2h8a2 2 0 012 2v2M16 7a2 2 0 012 2v1" /> </svg>
                     </div>
                     <span class="ml-3 group-hover:text-[#5F65DB] whitespace-nowrap overflow-hidden transition-all duration-200 ease-in-out"
                           :style="$store.sidebar.isCollapsed ? 'max-width: 0; opacity: 0; margin-left:0;' : 'max-width: 200px; opacity: 1;'"
-                          >Gaji</span>
+                          >Payroll</span>
                 </a>
             </div>
         </div>
@@ -178,7 +180,7 @@
                 </div>
                 <span class="ml-3 group-hover:text-[#5F65DB] whitespace-nowrap overflow-hidden transition-all duration-200 ease-in-out"
                       :style="$store.sidebar.isCollapsed ? 'max-width: 0; opacity: 0; margin-left:0;' : 'max-width: 200px; opacity: 1;'"
-                      >Aktivitas</span>
+                      >Log Activity</span>
             </a>
         </div>
         {{-- Pengaturan --}}
@@ -194,7 +196,7 @@
                 </div>
                 <span class="ml-3 group-hover:text-[#5F65DB] whitespace-nowrap overflow-hidden transition-all duration-200 ease-in-out"
                       :style="$store.sidebar.isCollapsed ? 'max-width: 0; opacity: 0; margin-left:0;' : 'max-width: 200px; opacity: 1;'"
-                      >Pengaturan</span>
+                      >Settings</span>
             </a>
             @endcan
         </div>

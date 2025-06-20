@@ -21,7 +21,15 @@
         <div class="px-4 pb-1 flex-shrink-0 border-b border-gray-200"> {{-- White header --}}
             <div class="container mx-auto">
                 {{-- Search and Filter section --}}
-                <div class="flex justify-end items-center mb-3"> {{-- Reduced bottom margin --}}
+                <div class="flex justify-between items-center mb-3">
+                    
+                    <a href="{{ route('projects.tasks.recap', $project) }}" 
+                       class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Assignment Recap
+                    </a>
                     <div x-data="{ showFilters: false }" class="relative">
                         {{-- Search and Filter Toggle --}}
                         <div class="flex items-center gap-2">
@@ -167,7 +175,7 @@
 
                         {{-- Header Expand --}}
                         <div x-show="!isCollapsed"
-                             class="py-2.5 px-3 flex items-center justify-between border-b border-gray-200 bg-white flex-shrink-0">
+                             class="kanban-column-header py-2.5 px-3 flex items-center justify-between border-b border-gray-200 bg-white flex-shrink-0">
                              <div class="flex items-center">
                                  <div class="w-2.5 h-2.5 rounded-full mr-2 flex-shrink-0" style="background-color: {{ $config['color'] }};"></div>
                                  <h3 class="font-semibold text-gray-700 text-sm flex items-center">
@@ -284,6 +292,7 @@
         _boundClearFilters: null,
         _boundHandleTaskFormSuccess: null,
         _boundHandleShowStatusMessage: null,
+        wipLimit: {{ $project->wip_limits ?? 0 }},
 
         // Status message display
         showStatusMessage: function(message, isSuccess = true) {
@@ -308,6 +317,7 @@
 
         // Update task counts in columns
         updateTaskCounts: function() {
+            const inProgressStatusName = 'In Progress';
             document.querySelectorAll('.task-list').forEach(list => {
                 const status = list.dataset.status;
                 const columnDiv = list.closest('.flex.flex-col');
@@ -324,6 +334,17 @@
                 const emptyPlaceholder = list.querySelector('.task-list-empty-template');
                 if (emptyPlaceholder) {
                     emptyPlaceholder.style.display = totalTasksInList === 0 ? 'flex' : 'none';
+                }
+
+                const headerDiv = columnDiv?.querySelector('.kanban-column-header');
+                if (status === inProgressStatusName && this.wipLimit > 0 && headerDiv) {
+                    if (totalTasksInList >= this.wipLimit) {
+                        headerDiv.classList.add('bg-red-100'); // Beri warna background merah muda
+                        headerDiv.setAttribute('title', `WIP Limit (${this.wipLimit}) reached`);
+                    } else {
+                        headerDiv.classList.remove('bg-red-100');
+                        headerDiv.removeAttribute('title');
+                    }
                 }
             });
         },
@@ -365,18 +386,31 @@
                 
         body: JSON.stringify(payload) // Kirim payload baru
     })
-            .then(response => response.json())
-            .then(data => {
-                if (!data.success) {
-                    console.error("Batch update failed:", data);
-                    this.showStatusMessage('Error saving task order.', false);
-                }
-            })
-            .catch(error => {
+            .then(response => {
+            if (!response.ok) {
+                // Tangkap error khusus WIP dari backend
+                return response.json().then(err => { throw err; });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (!data.success) { // Handle error umum
+                this.showStatusMessage(data.message || 'Error saving task order.', false);
+            }
+        })
+        .catch(error => {
+            // ===== PENANGANAN ERROR WIP DARI BACKEND =====
+            if (error.error_type === 'WIP_LIMIT_EXCEEDED') {
+                this.showStatusMessage(error.message, false);
+                // Reload halaman untuk sinkronisasi paksa dengan state server
+                // Ini adalah cara paling aman untuk memastikan UI kembali ke keadaan sebelum drag
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
                 console.error('Error updating tasks:', error);
                 this.showStatusMessage('Network error saving task order.', false);
-            });
-        }, 750),
+            }
+        });
+    }, 750),
 
         // Initialize SortableJS
         initializeSortable: function() {
@@ -392,6 +426,8 @@
         try { instance.destroy(); } catch(e) {}
     });
     this.sortableInstances = [];
+
+    const self = this;
 
     document.querySelectorAll('.task-list').forEach(list => {
         if (list.sortableInstance) {
@@ -448,6 +484,25 @@
                     el.style.visibility = 'hidden';
                 });
             },
+
+            onMove: function (evt) {
+                    // evt.to adalah list tujuan
+                    // evt.dragged adalah item yang di-drag
+                    const targetList = evt.to;
+                    const wipLimit = self.wipLimit;
+                    const inProgressStatusName = 'In Progress';
+
+                    if (wipLimit > 0 && targetList.dataset.status === inProgressStatusName) {
+                        // Hitung jumlah task di kolom tujuan (tidak termasuk 'ghost' element)
+                        const currentCount = targetList.querySelectorAll('.task:not(.sortable-ghost)').length;
+                        
+                        if (currentCount >= wipLimit) {
+                            self.showStatusMessage(`WIP Limit (${wipLimit}) tercapai, tidak bisa menambah tugas lagi.`, false);
+                            return false; // Mencegah perpindahan
+                        }
+                    }
+                    return true; // Izinkan perpindahan
+                },
 
             onEnd: (evt) => { // onEnd sudah ada dan seharusnya OK
                         console.log('[KanbanApp onEnd] Drag ended. Event details:', evt);

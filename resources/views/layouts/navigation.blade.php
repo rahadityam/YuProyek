@@ -36,6 +36,72 @@
             <div class="flex items-center"> <!-- Pastikan item di kanan berada di ujung kanan -->
                 <!-- Settings Dropdown -->
                 <div class="hidden sm:flex sm:items-center sm:ms-6">
+                    <div x-data="notificationBell()" class="relative mr-3">
+        <!-- Notification Bell Icon -->
+        <button @click="toggle" class="relative p-2 text-gray-500 rounded-full hover:text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            <!-- Unread Count Badge -->
+            <span x-show="unreadCount > 0" x-text="unreadCount"
+                  class="absolute top-0 right-0 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-red-100 transform translate-x-1/2 -translate-y-1/2 bg-red-600 rounded-full">
+            </span>
+        </button>
+
+        <!-- Dropdown Panel -->
+        <div x-show="isOpen" @click.away="isOpen = false" x-transition
+             class="absolute right-0 mt-2 w-80 md:w-96 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 origin-top-right z-50"
+             style="display:none;">
+            <div class="flex justify-between items-center px-4 py-2 border-b">
+                <h3 class="font-semibold text-gray-800">Notifications</h3>
+                <button @click="markAllRead" x-show="unreadCount > 0" class="text-xs text-indigo-600 hover:underline focus:outline-none">Mark all as read</button>
+            </div>
+
+            <div x-show="isLoading" class="p-4 text-center text-sm text-gray-500">Loading...</div>
+
+            <div x-show="!isLoading && notifications.length === 0" class="p-4 text-center text-sm text-gray-500">
+                You have no notifications.
+            </div>
+
+            {{-- resources/views/layouts/navigation.blade.php --}}
+
+<ul x-show="!isLoading && notifications.length > 0" class="max-h-96 overflow-y-auto divide-y divide-gray-100">
+    <template x-for="notification in notifications" :key="notification.id">
+        <li :class="{ 'bg-indigo-50': !notification.read_at }" class="hover:bg-gray-50">
+            {{-- Kita buat link membungkus semuanya --}}
+            <a :href="notification.data.action_url || '#'" 
+               @click="markAsRead(notification.id)"
+               class="block px-4 py-3">
+                <p class="text-sm text-gray-700" x-text="notification.data.message"></p>
+
+                {{-- Aksi khusus untuk Undangan Proyek --}}
+                <template x-if="notification.type.includes('UserInvitedToProjectNotification') && !notification.read_at">
+                    <div class="mt-2 flex space-x-2">
+                        <form :action="notification.data.action_accept_url" method="POST" @click.stop class="inline">
+                            @csrf
+                            @method('PATCH')
+                            <button type="submit"
+                               class="inline-flex items-center px-2.5 py-1 border border-transparent text-xs font-medium rounded shadow-sm text-white bg-green-600 hover:bg-green-700">
+                                Accept
+                            </button>
+                        </form>
+                        <form :action="notification.data.action_decline_url" method="POST" @click.stop class="inline">
+                            @csrf
+                            @method('PATCH')
+                            <button type="submit"
+                               class="inline-flex items-center px-2.5 py-1 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50">
+                                Decline
+                            </button>
+                        </form>
+                    </div>
+                </template>
+                <p class="text-xs text-gray-400 mt-1" x-text="timeAgo(notification.created_at)"></p>
+            </a>
+        </li>
+    </template>
+</ul>
+        </div>
+    </div>
                 <x-dropdown align="right" width="48">
     <x-slot name="trigger">
         <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">

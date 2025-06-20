@@ -11,14 +11,14 @@
         <div class="mb-6 flex justify-between items-center">
             <h2 class="text-2xl font-semibold text-gray-900">Detail Slip Gaji - {{ $payslip->payment_name }}</h2>
              <div class="flex space-x-2">
-                 @if($payslip->isApproved())
+                 <!-- @if($payslip->isApproved()) -->
                     {{-- Tombol Print/Export jika sudah diapprove --}}
                      <button @click="printPayslip()" class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /> </svg>
                          Print
                      </button>
                     {{-- Tambahkan tombol Export PDF jika diperlukan --}}
-                 @endif
+                 <!-- @endif -->
                  {{-- Tombol Kembali --}}
                 <a href="{{ $payslip->isApproved() ? route('projects.payslips.history', $project) : route('projects.payslips.history', $project) }}" class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                     <svg class="-ml-0.5 mr-1.5 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"> <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" /> </svg>
