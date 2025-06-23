@@ -30,7 +30,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                @foreach ($users as $user)
+                                    @foreach ($users as $user)
                                     <tr class="border-t">
                                         <td class="px-4 py-2 border">{{ $user->name }}</td>
                                         <td class="px-4 py-2 border">{{ $user->email }}</td>
@@ -52,88 +52,60 @@
                                         <div class="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6">
                                             <h2 class="text-xl font-bold mb-4">User Profile</h2>
 
-                                            <!-- Tab Navigation -->
+                                            <!-- Tabs -->
                                             <nav class="flex space-x-4 mb-4">
                                                 <button class="tab-btn px-4 py-2 font-medium rounded-md bg-gray-100 text-gray-900"
-                                                        onclick="showTab({{ $user->id }}, 'profile')">
-                                                    Personal Data
-                                                </button>
+                                                    onclick="showTab({{ $user->id }}, 'profile')">Personal Data</button>
                                                 <button class="tab-btn px-4 py-2 font-medium rounded-md"
-                                                        onclick="showTab({{ $user->id }}, 'documents')">
-                                                    Documents
-                                                </button>
+                                                    onclick="showTab({{ $user->id }}, 'documents')">Documents</button>
                                             </nav>
 
-                                            <!-- Personal Data Tab -->
+                                            <!-- Tab: Personal Data -->
                                             <div id="profile-tab-{{ $user->id }}" class="tab-content">
                                                 <div class="space-y-2 text-sm">
                                                     <div><strong>Name:</strong> {{ $user->name }}</div>
                                                     <div><strong>Email:</strong> {{ $user->email }}</div>
-                                                    <div><strong>Phone:</strong> {{ $user->phone_number ?? '-' }}</div>
-                                                    <div><strong>ID Number:</strong> {{ $user->id_number ?? '-' }}</div>
-                                                    <div><strong>Bank Account:</strong> {{ $user->bank_account ?? '-' }}</div>
-                                                    <div><strong>Gender:</strong> {{ ucfirst($user->gender ?? '-') }}</div>
-                                                    <div><strong>Birth Date:</strong> {{ $user->birth_date ?? '-' }}</div>
-                                                    <div><strong>Address:</strong> {{ $user->address ?? '-' }}</div>
-                                                    <div><strong>Description:</strong> {{ $user->description ?? '-' }}</div>
+                                                    <div><strong>Phone:</strong> {{ $user->phone_number ?: '-' }}</div>
+                                                    <div><strong>ID Number:</strong> {{ $user->id_number ?: '-' }}</div>
+                                                    <div><strong>Bank Account:</strong> {{ $user->bank_account ?: '-' }}</div>
+                                                    <div><strong>Gender:</strong> {{ ucfirst($user->gender ?: '-') }}</div>
+                                                    <div><strong>Birth Date:</strong> {{ $user->birth_date ?: '-' }}</div>
+                                                    <div><strong>Address:</strong> {{ $user->address ?: '-' }}</div>
+                                                    <div><strong>Description:</strong> {{ $user->description ?: '-' }}</div>
                                                     @if ($user->profile_photo_path)
-                                                        <div>
-                                                            <strong>Photo:</strong><br>
-                                                            <img src="{{ asset('storage/' . $user->profile_photo_path) }}" alt="Profile Photo" class="w-24 h-24 rounded-full object-cover mt-2">
-                                                        </div>
-                                                    @endif
-
-                                                    @if ($user->educations && $user->educations->count())
-                                                        <div class="mt-4">
-                                                            <strong>Educational Background:</strong>
-                                                            <ul class="list-disc pl-5">
-                                                                @foreach ($user->educations as $edu)
-                                                                    <li>{{ $edu->level }} - {{ $edu->major }} at {{ $edu->institution }} ({{ $edu->graduation_year }})</li>
-                                                                @endforeach
-                                                            </ul>
-                                                        </div>
+                                                    <div>
+                                                        <strong>Photo:</strong><br>
+                                                        <img src="{{ asset('storage/' . $user->profile_photo_path) }}" class="w-24 h-24 rounded-full object-cover mt-2">
+                                                    </div>
                                                     @endif
                                                 </div>
                                             </div>
 
-                                            <!-- Documents Tab -->
+                                            <!-- Tab: Documents -->
                                             <div id="documents-tab-{{ $user->id }}" class="tab-content hidden">
                                                 <div class="space-y-2 text-sm">
-                                                    @if ($user->cv)
-                                                        <div>
-                                                            <strong>CV:</strong> <a href="{{ asset('storage/' . $user->cv->file_path) }}" class="text-blue-600 underline" target="_blank">View</a>
-                                                        </div>
+                                                    @if ($user->cv_path)
+                                                    <div><strong>CV:</strong> <a href="{{ asset('storage/' . $user->cv_path) }}" target="_blank" class="text-blue-600 underline">View</a></div>
                                                     @endif
-                                                    @if ($user->portfolio)
-                                                        <div>
-                                                            <strong>Portfolio:</strong> <a href="{{ asset('storage/' . $user->portfolio->file_path) }}" class="text-blue-600 underline" target="_blank">View</a>
-                                                        </div>
-                                                    @endif
-                                                    @if ($user->certificates && $user->certificates->count())
-                                                        <div>
-                                                            <strong>Certificates:</strong>
-                                                            <ul class="list-disc pl-5">
-                                                                @foreach ($user->certificates as $cert)
-                                                                    <li><a href="{{ asset('storage/' . $cert->file_path) }}" target="_blank" class="text-blue-600 underline">{{ $cert->title }}</a></li>
-                                                                @endforeach
-                                                            </ul>
-                                                        </div>
+                                                    @if ($user->portfolio_path)
+                                                    <div><strong>Portfolio:</strong> <a href="{{ asset('storage/' . $user->portfolio_path) }}" target="_blank" class="text-blue-600 underline">View</a></div>
                                                     @endif
                                                 </div>
                                             </div>
 
+                                            <!-- Modal Actions -->
                                             <div class="mt-6 flex justify-end gap-3">
                                                 <button onclick="closeModal({{ $user->id }})" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded">Back</button>
                                             </div>
                                         </div>
                                     </div>
-                                @endforeach
+                                    @endforeach
 
-                                @if ($users->isEmpty())
+                                    @if ($users->isEmpty())
                                     <tr>
                                         <td colspan="5" class="text-center px-4 py-6">No users found.</td>
                                     </tr>
-                                @endif
+                                    @endif
                                 </tbody>
                             </table>
 
