@@ -10,7 +10,9 @@
         users: {{ Js::from($users->map->only(['id', 'name'])) }},
         difficultyLevels: {{ Js::from($difficultyLevels->map->only(['id', 'name', 'value', 'color', 'display_order'])) }},
         priorityLevels: {{ Js::from($priorityLevels->map->only(['id', 'name', 'value', 'color', 'display_order'])) }},
-        csrfToken: '{{ csrf_token() }}'
+        csrfToken: '{{ csrf_token() }}',
+        isProjectOwner: {{ auth()->user()->isProjectOwner($project) ? 'true' : 'false' }},
+        currentUserId: {{ auth()->id() }}
      })"
      x-show="showModal"
      x-on:open-task-modal.window="openModal($event.detail)"
@@ -22,18 +24,15 @@
     <div class="flex items-end justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
         {{-- Overlay --}}
         <div x-show="showModal"
-             x-transition:enter="ease-out duration-300"
-             x-transition:enter-start="opacity-0"
-             x-transition:enter-end="opacity-100"
-             x-transition:leave="ease-in duration-200"
-             x-transition:leave-start="opacity-100"
-             x-transition:leave-end="opacity-0"
+             x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-200"
+             x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
              class="fixed inset-0 transition-opacity bg-gray-900 bg-opacity-60"
              @click="closeModal()" aria-hidden="true">
         </div>
 
         {{-- Modal Content --}}
-        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+        <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">​</span>
 
         <div @click.stop
              x-show="showModal"
@@ -64,16 +63,25 @@
                 <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
                     <div class="flex items-center min-w-0">
                         {{-- Status Indicator --}}
-                        <span x-show="task.status" class="inline-block px-2 py-0.5 mr-3 rounded text-xs font-medium capitalize"
-                              :class="{
-                                'bg-red-100 text-red-800': task.status === 'To Do',
-                                'bg-yellow-100 text-yellow-800': task.status === 'In Progress',
-                                'bg-blue-100 text-blue-800': task.status === 'Review',
-                                'bg-green-100 text-green-800': task.status === 'Done',
-                                'bg-gray-100 text-gray-800': !['To Do', 'In Progress', 'Review', 'Done'].includes(task.status)
-                              }"
-                              x-text="task.status">
-                        </span>
+                        <select x-model="task.status" name="status" id="task_status"
+                                :disabled="!canChangeStatus()"
+                                class="inline-block appearance-none border-none py-0.5 mr-3 rounded text-xs font-medium capitalize focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:cursor-not-allowed"
+                                :class="{
+                                    'bg-red-100 text-red-800': task.status === 'To Do',
+                                    'bg-yellow-100 text-yellow-800': task.status === 'In Progress',
+                                    'bg-blue-100 text-blue-800': task.status === 'Review',
+                                    'bg-green-100 text-green-800': task.status === 'Done',
+                                    'bg-gray-100 text-gray-800': !['To Do', 'In Progress', 'Review', 'Done'].includes(task.status)
+                                }">
+                            <option value="To Do">To Do</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Review">Review</option>
+                            <option value="Done">Done</option>
+                        </select>
+                        {{-- Tambahkan pesan error untuk status --}}
+                        <template x-if="formErrors.status">
+                            <p class="mt-1 text-xs text-red-600" x-text="formErrors.status[0]"></p>
+                        </template>
 
                          {{-- Task Title Input --}}
                         <input type="text" name="title" id="task_title" required placeholder="Task Title"
@@ -272,15 +280,31 @@
                                            @change="task.end_time = $event.target.value"
                                            class="mt-1 block w-1/2 py-1 px-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                                 </div>
-                                <div class="flex justify-between items-center">
-                                    <label for="task_achievement_percentage" class="font-medium text-gray-600">Achievement (%)</label>
-                                    <div class="w-1/2 flex items-center space-x-2">
-                                        <input type="range" min="0" max="100" step="5" name="achievement_percentage" id="task_achievement_percentage"
-                                               x-model.number="task.achievement_percentage"
-                                               class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                                        <span class="text-sm text-gray-700 w-8 text-right" x-text="task.achievement_percentage + '%'"></span>
-                                    </div>
+                                <div>
+                                <label for="task_progress_percentage" class="font-medium text-gray-600">Progress (%)</label>
+                                <div class="w-full flex items-center space-x-2 mt-1">
+                                    <input type="range" min="0" max="100" step="5" name="progress_percentage" id="task_progress_percentage"
+                                           x-model.number="task.progress_percentage"
+                                           :disabled="!canUpdateProgress()"
+                                           @change.debounce.500ms="saveProgress()"
+                                           class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed disabled:bg-gray-100">
+                                    <span class="text-sm text-gray-700 w-10 text-right" x-text="task.progress_percentage + '%'"></span>
                                 </div>
+                                <template x-if="formErrors.progress_percentage"><p class="mt-1 text-xs text-red-600" x-text="formErrors.progress_percentage[0]"></p></template>
+                            </div>
+
+                            {{-- Achievement Percentage (diisi oleh PM) --}}
+                            <div>
+                                <label for="task_achievement_percentage" class="font-medium text-gray-600">Validation (%)</label>
+                                <div class="w-full flex items-center space-x-2 mt-1">
+                                    {{-- PERBAIKAN: Tambahkan x-model.number --}}
+                                    <input type="range" min="0" max="100" step="5" name="achievement_percentage" id="task_achievement_percentage"
+                                           x-model.number="task.achievement_percentage"
+                                           :disabled="!isProjectOwner"
+                                           class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer disabled:cursor-not-allowed disabled:bg-gray-100">
+                                    <span class="text-sm text-gray-700 w-10 text-right" x-text="task.achievement_percentage + '%'"></span>
+                                </div>
+                                <template x-if="formErrors.achievement_percentage"><p class="mt-1 text-xs text-red-600" x-text="formErrors.achievement_percentage[0]"></p></template>
                             </div>
 
                             {{-- Attachments Section --}}
@@ -338,6 +362,7 @@
         </div>
     </div>
 </div>
+</div>
 
 {{-- AlpineJS Data and Methods --}}
 <script>
@@ -347,21 +372,22 @@
             isLoading: false,
             isEditMode: false,
             isSubmittingComment: false,
-            task: {}, // Holds current task data
+            task: {},
             comments: [],
             historyLogs: [],
             attachments: [],
             newComment: '',
-            activeTab: 'comments', // 'comments' or 'history'
+            activeTab: 'comments',
             formErrors: {},
             uploadProgress: 0,
             uploadError: '',
-            // Initial static data passed from Blade
             projectId: initData.projectId,
             users: initData.users,
             difficultyLevels: initData.difficultyLevels,
             priorityLevels: initData.priorityLevels,
             csrfToken: initData.csrfToken,
+            isProjectOwner: initData.isProjectOwner,
+            currentUserId: initData.currentUserId,
             
             // Get sorted levels based on display_order
             getSortedLevels(type) {
@@ -394,12 +420,48 @@
                          priority_level_id: '',
                          start_time: null,
                          end_time: null,
+                         progress_percentage: 0,
                          achievement_percentage: 0, // Default percentage
                      };
                     this.isLoading = false; // No data to fetch for new task initially
                 }
                  // Auto focus title maybe?
                  // setTimeout(() => this.$refs.taskForm.querySelector('#task_title').focus(), 100);
+            },
+
+            canUpdateProgress() {
+                return this.isProjectOwner || (this.task.assigned_to && this.task.assigned_to == this.currentUserId);
+            }, // <-- KOMA YANG HILANG SUDAH DITAMBAHKAN DI SINI
+
+            saveProgress() {
+                if (!this.canUpdateProgress() || !this.isEditMode || !this.task.id) {
+                    console.log('Skipping progress save (not allowed or not in edit mode).');
+                    return;
+                }
+                
+                fetch(`/tasks/${this.task.id}/update-progress`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': this.csrfToken
+                    },
+                    body: JSON.stringify({
+                        progress_percentage: this.task.progress_percentage
+                    })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        window.dispatchEvent(new CustomEvent('show-status-message', { detail: { message: 'Progress saved!', success: true } }));
+                    } else {
+                        window.dispatchEvent(new CustomEvent('show-status-message', { detail: { message: 'Failed to save progress.', success: false } }));
+                    }
+                })
+                .catch(err => {
+                    console.error('Error saving progress:', err);
+                    window.dispatchEvent(new CustomEvent('show-status-message', { detail: { message: 'Network error.', success: false } }));
+                });
             },
 
             fetchTaskData(taskId) {
@@ -412,7 +474,8 @@
                     .then(data => {
                         this.task = data.task;
                          // Ensure percentage is number
-                         this.task.achievement_percentage = parseInt(this.task.achievement_percentage || 0);
+                        this.task.achievement_percentage = parseInt(this.task.achievement_percentage || 0);
+                        this.task.progress_percentage = parseInt(data.task.progress_percentage || 0);
                         this.comments = data.comments || [];
                         this.historyLogs = data.history || [];
                         this.attachments = data.attachments || [];
@@ -592,16 +655,24 @@
                  });
             },
 
+            canChangeStatus() {
+                // PW atau PM bisa mengubah status, dengan asumsi policy backend akan
+                // melakukan validasi lebih lanjut (misal, PW tidak bisa langsung ke 'Done').
+                return this.isProjectOwner || (this.task.assigned_to && this.task.assigned_to == this.currentUserId);
+            },
+
             submitTask() {
                 this.isLoading = true;
                 this.formErrors = {};
+                
                 let url = this.isEditMode ? `/tasks/${this.task.id}` : '/tasks';
-                let method = 'POST'; // Selalu POST, _method akan menangani PUT
+                let method = 'POST';
 
                 let formData = new FormData(this.$refs.taskForm);
                 if (this.isEditMode) {
                     formData.append('_method', 'PUT');
                 }
+                
 
                 fetch(url, {
                     method: method,

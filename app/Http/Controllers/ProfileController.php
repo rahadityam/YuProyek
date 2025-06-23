@@ -82,7 +82,7 @@ class ProfileController extends Controller
         // Handle document uploads
         $this->handleDocumentUploads($request, $user);
 
-        return Redirect::route('profile.edit')->with('status', 'profile-updated');
+        return Redirect::route('profile.edit')->with('success', 'Profile has been updated successfully!');
     }
 
     /**

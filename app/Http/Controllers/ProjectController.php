@@ -344,20 +344,34 @@ class ProjectController extends Controller
         return view('projects.my-projects', compact('projects', 'isOwner'));
     }
 
-    public function projectDashboard(Project $project)
+    public function projectDashboard(Project $project, Request $request)
     {
-        // --- 1. Data Aktivitas ---
-        $recentActivities = ActivityLog::where('project_id', $project->id)
-            ->with('user')
-            ->orderBy('created_at', 'desc')
-            ->take(5) // Ambil 5 aktivitas terakhir
-            ->get();
+        $currentUser = Auth::user();
+        $isOwner = $currentUser->isProjectOwner($project);
 
-        // --- 2. Data Tugas (Statistik & Grafik) ---
-        $allProjectTasks = $project->tasks()
-                                ->with(['assignedUser', 'difficultyLevel', 'priorityLevel']) // Eager load relasi yang dibutuhkan
-                                ->get();
+        // --- 1. Data Aktivitas (Filter untuk PW) ---
+        $activityQuery = ActivityLog::where('project_id', $project->id)->with('user');
+        if (!$isOwner) {
+            // PW hanya melihat aktivitas yang relevan dengannya
+            $activityQuery->where(function($q) use ($currentUser) {
+                $q->where('user_id', $currentUser->id) // Aktivitas yang dia lakukan
+                    ->orWhereHasMorph('loggable', [Task::class], function ($query) use ($currentUser) {
+                        // Aktivitas pada task yang di-assign ke dia
+                        $query->where('assigned_to', $currentUser->id);
+                    });
+            });
+        }
+        $recentActivities = $activityQuery->orderBy('created_at', 'desc')->take(5)->get();
 
+        // --- 2. Data Tugas (Filter untuk PW) ---
+        $taskQuery = $project->tasks()->with(['assignedUser', 'difficultyLevel', 'priorityLevel']);
+        if (!$isOwner) {
+            // PW hanya melihat tugas yang di-assign ke dia
+            $taskQuery->where('assigned_to', $currentUser->id);
+        }
+        $allProjectTasks = $taskQuery->get();
+
+        // Statistik Tugas akan secara otomatis terfilter berdasarkan $allProjectTasks
         $taskStats = [
             'total'       => $allProjectTasks->count(),
             'todo'        => $allProjectTasks->where('status', 'To Do')->count(),
@@ -366,89 +380,128 @@ class ProjectController extends Controller
             'done'        => $allProjectTasks->where('status', 'Done')->count(),
         ];
 
-        // Untuk card "Tugas Sedang Dikerjakan" di tab Ringkasan Tugas
-        $inProgressTasksLimit = 4; // Batas tampilan item
-        $inProgressTasks = $allProjectTasks
-            ->where('status', 'In Progress')
-            ->sortByDesc('updated_at') // Tampilkan yang terbaru diupdate
-            ->take($inProgressTasksLimit);
+        // Kartu "Tugas Sedang Dikerjakan" & "Rekap Selesai" akan terfilter otomatis
+        $inProgressTasksLimit = 4;
+        $inProgressTasks = $allProjectTasks->where('status', 'In Progress')->sortByDesc('updated_at')->take($inProgressTasksLimit);
+        $completedTasksForCalcLimit = 4;
+        $completedTasksForCalc = $allProjectTasks->where('status', 'Done')->sortByDesc(fn ($task) => $task->end_time ?? $task->updated_at)->take($completedTasksForCalcLimit);
 
-        // Untuk card "Rekap Task Selesai (Kalkulasi)" di tab Ringkasan Keuangan
-        $completedTasksForCalcLimit = 4; // Batas tampilan item
-        $completedTasksForCalc = $allProjectTasks
+        // --- Grafik Status Tugas (Pie Chart) ---
+        // Data untuk chart ini sudah terfilter karena berasal dari $taskStats
+        $taskStatusChartData = [
+            'labels' => ['Todo', 'In Progress', 'Review', 'Done'],
+            'data' => [
+                $taskStats['todo'],
+                $taskStats['in_progress'],
+                $taskStats['review'],
+                $taskStats['done']
+            ],
+            'colors' => ['#E5E7EB', '#FCD34D', '#93C5FD', '#6EE7B7'],
+            'borderColors' => ['#9CA3AF', '#F59E0B', '#3B82F6', '#10B981']
+        ];
+
+        // --- Grafik Progres Tugas Harian (Line Chart) ---
+        $period = $request->input('progress_period', '7days');
+        $startDate = match ($period) {
+            '30days' => now()->subDays(29)->startOfDay(),
+            'all' => $project->start_date?->startOfDay() ?? now()->subDays(6)->startOfDay(),
+            default => now()->subDays(6)->startOfDay(),
+        };
+        $endDate = now()->endOfDay();
+
+        $completedTasksQuery = Task::query()
+            ->where('project_id', $project->id)
             ->where('status', 'Done')
-            // Tambahkan eager load untuk 'assignedUser' jika belum ada di $allProjectTasks dan dibutuhkan di view
-            // ->loadMissing('assignedUser') // Contoh jika assignedUser tidak selalu di-load
-            ->sortByDesc(function ($task) { // Urutkan berdasarkan tanggal selesai, fallback ke updated_at
-                return $task->end_date ?? $task->updated_at;
-            })
-            ->take($completedTasksForCalcLimit);
-        // Pastikan $task->calculated_value ada dan bisa diakses di view
+            ->whereBetween('updated_at', [$startDate, $endDate]);
 
-        // Data untuk Grafik Tugas per Anggota (Stacked Bar) - tidak diubah
-        $tasksByAssigneeGrouped = $allProjectTasks->groupBy('assigned_to');
-        $assigneeIds = $tasksByAssigneeGrouped->keys()->filter(fn($id) => !is_null($id) && $id > 0)->values()->all();
-        $assignees = User::whereIn('id', $assigneeIds)->pluck('name', 'id');
-        $statusOrder = ['To Do', 'In Progress', 'Review', 'Done'];
-        $statusColors = ['#E5E7EB','#FCD34D','#93C5FD','#6EE7B7'];
-        $statusBorderColors = ['#9CA3AF','#F59E0B','#3B82F6','#10B981'];
-        $assigneeLabels = collect($assigneeIds)->map(fn($id) => $assignees->get($id, "User ID: {$id}"))->toArray();
-        $unassignedTasks = $tasksByAssigneeGrouped->get(null, collect())->merge($tasksByAssigneeGrouped->get(0, collect()));
-        $hasUnassigned = $unassignedTasks->isNotEmpty();
-        if ($hasUnassigned) $assigneeLabels[] = 'Unassigned';
-        $datasets = [];
-        foreach ($statusOrder as $status) {
-            $dataCounts = [];
-            foreach ($assigneeIds as $id) $dataCounts[] = optional($tasksByAssigneeGrouped->get($id))->where('status', $status)->count() ?? 0;
-            if ($hasUnassigned) $dataCounts[] = $unassignedTasks->where('status', $status)->count(); // Perbaikan: 'status', $status
-            $datasets[] = [ 'label' => $status, 'data' => $dataCounts, 'backgroundColor' => $statusColors[array_search($status, $statusOrder)], 'borderColor' => $statusBorderColors[array_search($status, $statusOrder)], 'borderWidth' => 1 ];
+        if (!$isOwner) {
+            $completedTasksQuery->where('assigned_to', $currentUser->id);
         }
-        $tasksByAssigneeStatusChartData = [ 'labels' => $assigneeLabels, 'datasets' => $datasets ];
 
-        // --- 3. Data Tim --- (tidak diubah)
+        $completedTasksForChart = $completedTasksQuery
+            ->select('assigned_to', DB::raw('DATE(updated_at) as completion_date'), DB::raw('count(*) as total'))
+            ->groupBy('assigned_to', 'completion_date')
+            ->orderBy('completion_date', 'asc')
+            ->get();
+        
+        $workerIds = $isOwner ? $completedTasksForChart->pluck('assigned_to')->unique()->filter() : collect([$currentUser->id]);
+        $workers = User::whereIn('id', $workerIds)->pluck('name', 'id');
+        
+        $progressChartData = ['labels' => [], 'datasets' => []];
+        $dateRange = new \DatePeriod($startDate, new \DateInterval('P1D'), $endDate->addDay());
+        foreach ($dateRange as $date) {
+            $progressChartData['labels'][] = $date->format('d M');
+        }
+
+        $workerColors = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#6366F1', '#22C55E', '#FBBF24', '#F87171'];
+        $colorIndex = 0;
+
+        foreach ($workers as $workerId => $workerName) {
+            $dataPoints = [];
+            foreach ($dateRange as $date) {
+                $formattedDate = $date->format('Y-m-d');
+                $taskCount = $completedTasksForChart
+                    ->where('assigned_to', $workerId)
+                    ->where('completion_date', $formattedDate)
+                    ->first()?->total ?? 0;
+                $dataPoints[] = $taskCount;
+            }
+
+            $color = $workerColors[$colorIndex % count($workerColors)];
+            $progressChartData['datasets'][] = [
+                'label' => $workerName,
+                'data' => $dataPoints,
+                'borderColor' => $color,
+                'backgroundColor' => $color . '33',
+                'fill' => false,
+                'tension' => 0.1
+            ];
+            $colorIndex++;
+        }
+
+        // --- 3. Data Tim ---
         $acceptedWorkers = $project->workers()->wherePivot('status', 'accepted')->get();
 
-        // --- 4. Data Finansial (Statistik & Grafik) --- (tidak diubah)
-        $budget = $project->budget ?? 0;
-        $allDoneTasksValue = $allProjectTasks->where('status', 'Done')->sum('calculated_value'); // Gunakan data yang sudah ada
+        // --- 4. Data Finansial (Filter untuk PW) ---
+        $paymentsForStatsQuery = Payment::where('project_id', $project->id);
+        if (!$isOwner) {
+            $paymentsForStatsQuery->where('user_id', $currentUser->id);
+        }
+        $paymentsForStats = $paymentsForStatsQuery->get();
 
-        $totalTaskHakGaji = $allDoneTasksValue; // Sudah dihitung dari $allProjectTasks
-
-        $totalOtherFullHakGaji = Payment::where('project_id', $project->id)
-                                 ->whereIn('payment_type', ['other', 'full'])
-                                 ->sum('amount');
-        $totalPaidTaskTermin = Payment::where('project_id', $project->id)
-                                ->whereIn('payment_type', ['task', 'termin'])
-                                ->where('status', Payment::STATUS_APPROVED)
-                                ->sum('amount');
-        $totalPaidOtherFull = Payment::where('project_id', $project->id)
-                                 ->whereIn('payment_type', ['other', 'full'])
-                                 ->where('status', Payment::STATUS_APPROVED)
-                                 ->sum('amount');
-        $totalHakGaji = $totalTaskHakGaji + $totalOtherFullHakGaji;
+        $totalTaskHakGaji = $allProjectTasks->where('status', 'Done')->sum('calculated_value');
+        $totalOtherFullHakGaji = $paymentsForStats->whereIn('payment_type', ['other', 'full'])->sum('amount');
+        $totalPaidTaskTermin = $paymentsForStats->whereIn('payment_type', ['task', 'termin'])->where('status', Payment::STATUS_APPROVED)->sum('amount') ?? 0;
+        $totalPaidOtherFull = $paymentsForStats->whereIn('payment_type', ['other', 'full'])->where('status', Payment::STATUS_APPROVED)->sum('amount') ?? 0;
         $totalPaid = $totalPaidTaskTermin + $totalPaidOtherFull;
-        $remainingUnpaid = max(0, $totalHakGaji - $totalPaid);
-        $budgetDifference = $budget - $totalHakGaji;
+
+        // Hitung data spesifik PM hanya jika dia adalah owner
+        $budgetDifference = 0;
+        if ($isOwner) {
+            $totalOverallProjectEstimatedPayroll = Task::where('project_id', $project->id)->where('status', 'Done')->get()->sum('calculated_value') + Payment::where('project_id', $project->id)->whereIn('payment_type', ['other', 'full'])->sum('amount');
+            $budgetDifference = ($project->budget ?? 0) - $totalOverallProjectEstimatedPayroll;
+        }
 
         $financialStats = [
-            'budget' => $budget,
+            'budget' => $project->budget ?? 0, // Tetap dikirim untuk chart
             'totalTaskHakGaji' => $totalTaskHakGaji,
             'totalOtherFullHakGaji' => $totalOtherFullHakGaji,
-            'totalHakGaji' => $totalHakGaji,
-            'totalPaidTaskTermin' => $totalPaidTaskTermin,
-            'totalPaidOtherFull' => $totalPaidOtherFull,
+            'totalHakGaji' => $totalTaskHakGaji + $totalOtherFullHakGaji,
             'totalPaid' => $totalPaid,
-            'remainingUnpaid' => $remainingUnpaid,
-            'budgetDifference' => $budgetDifference,
+            'remainingUnpaid' => max(0, ($totalTaskHakGaji + $totalOtherFullHakGaji) - $totalPaid),
+            'budgetDifference' => $budgetDifference, // Nilainya 0 untuk PW
+            
             'overviewChartData' => [
                 'paidTaskTermin' => $totalPaidTaskTermin,
                 'paidOtherFull' => $totalPaidOtherFull,
-                'remainingUnpaid' => $remainingUnpaid,
+                'remainingUnpaid' => max(0, $totalTaskHakGaji - $totalPaidTaskTermin),
             ],
+            
             'spendingVsBudgetChartData' => [
-                'budget' => $budget,
-                'hakGaji' => $totalHakGaji,
-                'paid' => $totalPaid,
+                'budget' => $project->budget ?? 0,
+                'hakGaji' => $isOwner ? $totalOverallProjectEstimatedPayroll : ($totalTaskHakGaji + $totalOtherFullHakGaji),
+                'paid' => $isOwner ? Payment::where('project_id', $project->id)->where('status', Payment::STATUS_APPROVED)->sum('amount') : $totalPaid,
+                'isOwnerView' => $isOwner,
             ]
         ];
 
@@ -456,14 +509,16 @@ class ProjectController extends Controller
         return view('projects.dashboard', compact(
             'project',
             'taskStats',
-            'tasksByAssigneeStatusChartData',
-            'inProgressTasks',                  // Untuk Tab Tugas
-            'inProgressTasksLimit',             // Untuk Tab Tugas
-            'completedTasksForCalc',            // Untuk Tab Keuangan
-            'completedTasksForCalcLimit',       // Untuk Tab Keuangan
+            'taskStatusChartData',
+            'progressChartData',
+            'inProgressTasks',
+            'inProgressTasksLimit',
+            'completedTasksForCalc',
+            'completedTasksForCalcLimit',
             'acceptedWorkers',
             'recentActivities',
-            'financialStats'
+            'financialStats',
+            'isOwner'
         ));
     }
 

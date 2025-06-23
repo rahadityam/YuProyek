@@ -40,11 +40,24 @@
                         <div class="p-6"><div class="h-64"><canvas id="taskStatusChart"></canvas></div></div>
                     </div>
                     <div class="bg-white rounded-lg shadow-md overflow-hidden">
-                        <div class="px-6 py-4 border-b border-gray-200"><h3 class="font-semibold text-gray-800">Beban Tugas per Anggota (by Status)</h3></div>
-                        <div class="p-6"><div class="h-64"><canvas id="tasksByAssigneeStatusChart"></canvas></div></div>
+                        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                            <h3 class="font-semibold text-gray-800">Progres Penyelesaian Tugas Harian</h3>
+                            {{-- Dropdown Filter Periode --}}
+                            <div x-data="{ open: false }" class="relative">
+                                <button @click="open = !open" class="inline-flex items-center text-xs text-gray-500 hover:text-gray-700">
+                                    {{ ucfirst(request('progress_period', '7days')) == '7days' ? '7 Hari Terakhir' : (ucfirst(request('progress_period')) == '30days' ? '30 Hari Terakhir' : 'Semua Waktu') }}
+                                    <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                                </button>
+                                <div x-show="open" @click.away="open = false" x-transition class="absolute right-0 mt-2 w-40 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-10" style="display: none;">
+                                    <a href="{{ route('projects.dashboard', ['project' => $project, 'progress_period' => '7days']) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">7 Hari Terakhir</a>
+                                    <a href="{{ route('projects.dashboard', ['project' => $project, 'progress_period' => '30days']) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">30 Hari Terakhir</a>
+                                    <a href="{{ route('projects.dashboard', ['project' => $project, 'progress_period' => 'all']) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Semua Waktu</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-6"><div class="h-64"><canvas id="taskProgressChart"></canvas></div></div>
                     </div>
                 </div>
-
                 {{-- Task Statistics Cards (Layout 4 kolom) --}}
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                      <div class="bg-white rounded-lg shadow p-4 flex items-center">
@@ -97,9 +110,11 @@
                     <div class="bg-white rounded-lg shadow-md overflow-hidden">
                         <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
                             <h3 class="font-semibold text-gray-800">Tugas Sedang Dikerjakan</h3>
+                            {{-- ===== PERBAIKAN DI SINI: Tambahkan @endif ===== --}}
                             @if($inProgressTasks->count() > 0 || $taskStats['in_progress'] > $inProgressTasksLimit)
                                 <a href="{{ route('projects.kanban', ['project' => $project, 'status_filter' => 'In Progress']) }}" class="text-blue-600 hover:text-blue-800 text-sm">Lihat Semua ({{ $taskStats['in_progress'] }})</a>
                             @endif
+                            {{-- ===== AKHIR PERBAIKAN ===== --}}
                         </div>
                         <div class="p-6 max-h-96 overflow-y-auto">
                             @if($inProgressTasks->count() > 0)
@@ -111,19 +126,11 @@
                                                 <span class="text-xs text-gray-500">{{ $task->assignedUser->name ?? 'Unassigned' }}</span>
                                             </div>
                                             @php
-                                                $startDateTask = \Carbon\Carbon::parse($task->start_date ?? $task->created_at);
-                                                $endDateTask = $task->end_date ? \Carbon\Carbon::parse($task->end_date) : null;
-                                                $progressTaskPercent = 0;
+                                                $endDateTask = $task->end_time ? \Carbon\Carbon::parse($task->end_time) : null;
+                                                $progressTaskPercent = $task->progress_percentage ?? 0;
                                                 $isOverdueTask = false;
-                                                if ($endDateTask && $startDateTask <= $endDateTask) { // Perbaikan: startDate <= endDate
-                                                    $totalDaysTask = max(1, $startDateTask->diffInDays($endDateTask));
-                                                    $daysPassedTask = max(0, $startDateTask->diffInDays(now()));
-                                                    $progressTaskPercent = min(100, round(($daysPassedTask / $totalDaysTask) * 100));
-                                                    if ($task->status !== 'Done') { // Hanya cek overdue jika belum done
-                                                       $isOverdueTask = now()->gt($endDateTask);
-                                                    }
-                                                } elseif ($task->status === 'In Progress' || $task->status === 'Review') {
-                                                    $progressTaskPercent = 50; // Default progress jika tidak ada end_date atau start_date > end_date
+                                                if ($endDateTask && $task->status !== 'Done') {
+                                                    $isOverdueTask = now()->gt($endDateTask);
                                                 }
                                             @endphp
                                             <div class="mt-2">
@@ -159,7 +166,7 @@
                         </div>
                     </div>
                 </div>
-            </div> {{-- End Task Tab Content --}}
+            </div>
 
             {{-- Konten Tab Keuangan --}}
             <div x-show="activeTab === 'finance'" x-transition.opacity>
@@ -177,33 +184,50 @@
 
                 {{-- Financial Statistics Cards (Layout 4 kolom) --}}
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                     <div class="bg-white rounded-lg shadow p-4 flex items-center">
-                         <div class="rounded-full h-10 w-10 flex items-center justify-center bg-gray-100 text-gray-500"> <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> </div>
-                         <div class="ml-3"> <h4 class="text-xs font-medium text-gray-500 uppercase">Budget</h4> <p class="text-xl font-semibold">Rp {{ number_format($financialStats['budget'], 0, ',', '.') }}</p> </div>
-                     </div>
-                     <div class="bg-white rounded-lg shadow p-4 flex items-center">
-                         <div class="rounded-full h-10 w-10 flex items-center justify-center bg-blue-100 text-blue-600"> <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" /></svg> </div>
-                         <div class="ml-3"> <h4 class="text-xs font-medium text-gray-500 uppercase">Total Estimasi Gaji</h4> <p class="text-xl font-semibold">Rp {{ number_format($financialStats['totalHakGaji'], 0, ',', '.') }}</p>
-                            <p class="text-[10px] text-gray-400">(Task: {{number_format($financialStats['totalTaskHakGaji'], 0, ',', '.')}} + Lain: {{number_format($financialStats['totalOtherFullHakGaji'], 0, ',', '.')}})</p>
-                         </div>
-                     </div>
-                     <div class="bg-white rounded-lg shadow p-4 flex items-center">
-                         <div class="rounded-full h-10 w-10 flex items-center justify-center bg-green-100 text-green-600"> <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" /></svg> </div>
-                         <div class="ml-3"> <h4 class="text-xs font-medium text-gray-500 uppercase">Total Dibayar</h4> <p class="text-xl font-semibold">Rp {{ number_format($financialStats['totalPaid'], 0, ',', '.') }}</p>
-                            <p class="text-[10px] text-gray-400">(Task/Term: {{number_format($financialStats['totalPaidTaskTermin'], 0, ',', '.')}} + Lain: {{number_format($financialStats['totalPaidOtherFull'], 0, ',', '.')}})</p>
-                         </div>
-                     </div>
-                     @php
-                         $budgetDiff = $financialStats['budgetDifference']; $budgetColor = $budgetDiff >= 0 ? 'yellow' : 'red'; $budgetLabel = $budgetDiff >= 0 ? 'Sisa' : 'Lebih';
-                     @endphp
-                     <div class="bg-white rounded-lg shadow p-4 flex items-center">
-                         <div class="rounded-full h-10 w-10 flex items-center justify-center bg-{{ $budgetColor }}-100 text-{{ $budgetColor }}-600">
-                             @if($budgetDiff >= 0) <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0012 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 01-2.153.04c-1.095-.26-1.956-.925-2.413-1.976L12 11.46m4.5-6.49l-2.62 10.726M12 11.46l-2.413 5.042" /></svg>
-                             @else <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6L9 12.75l4.286-4.286a11.948 11.948 0 014.306 6.43l.776 2.898m0 0l3.182-5.511m-3.182 5.51l-5.511-3.181" /></svg> @endif
-                         </div>
-                         <div class="ml-3"> <h4 class="text-xs font-medium text-gray-500 uppercase">{{ $budgetLabel }} Budget</h4> <p class="text-xl font-semibold text-{{ $budgetColor }}-600">Rp {{ number_format(abs($budgetDiff), 0, ',', '.') }}</p> <p class="text-[10px] text-gray-400">(Budget vs Estimasi)</p> </div>
-                     </div>
+                     @if($isOwner)
+            {{-- Kartu Budget (Hanya untuk PM) --}}
+            <div class="bg-white rounded-lg shadow p-4 flex items-center">
+                <div class="rounded-full h-10 w-10 flex items-center justify-center bg-gray-100 text-gray-500"> <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> </div>
+                <div class="ml-3"> <h4 class="text-xs font-medium text-gray-500 uppercase">Budget Proyek</h4> <p class="text-xl font-semibold">Rp {{ number_format($financialStats['budget'], 0, ',', '.') }}</p> </div>
+            </div>
+        @endif
+        
+        {{-- Kartu Total Estimasi Gaji (Selalu tampil) --}}
+        <div class="bg-white rounded-lg shadow p-4 flex items-center">
+            <div class="rounded-full h-10 w-10 flex items-center justify-center bg-blue-100 text-blue-600"> <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z" /></svg> </div>
+            <div class="ml-3">
+                <h4 class="text-xs font-medium text-gray-500 uppercase">{{ $isOwner ? 'Total Estimasi Gaji' : 'Total Hak Gaji Anda' }}</h4>
+                <p class="text-xl font-semibold">Rp {{ number_format($financialStats['totalHakGaji'], 0, ',', '.') }}</p>
+                <p class="text-[10px] text-gray-400">(Task: {{number_format($financialStats['totalTaskHakGaji'], 0, ',', '.')}} + Lain: {{number_format($financialStats['totalOtherFullHakGaji'], 0, ',', '.')}})</p>
+            </div>
+        </div>
+        
+        {{-- Kartu Total Dibayar (Selalu tampil) --}}
+        <div class="bg-white rounded-lg shadow p-4 flex items-center">
+            <div class="rounded-full h-10 w-10 flex items-center justify-center bg-green-100 text-green-600"> <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" /></svg> </div>
+            <div class="ml-3">
+                <h4 class="text-xs font-medium text-gray-500 uppercase">{{ $isOwner ? 'Total Telah Dibayar' : 'Telah Dibayar ke Anda' }}</h4>
+                <p class="text-xl font-semibold">Rp {{ number_format($financialStats['totalPaid'], 0, ',', '.') }}</p>
+            </div>
+        </div>
+
+        {{-- ===== PERBAIKAN DI SINI: Tampilkan kondisional untuk PM ===== --}}
+        @if($isOwner)
+            {{-- Kartu Sisa Budget (Hanya untuk PM) --}}
+            @php
+                $budgetDiff = $financialStats['budgetDifference']; 
+                $budgetColor = $budgetDiff >= 0 ? 'yellow' : 'red';
+                $budgetLabel = $budgetDiff >= 0 ? 'Sisa' : 'Lebih';
+            @endphp
+            <div class="bg-white rounded-lg shadow p-4 flex items-center">
+                <div class="rounded-full h-10 w-10 flex items-center justify-center bg-{{ $budgetColor }}-100 text-{{ $budgetColor }}-600">
+                    @if($budgetDiff >= 0) <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v17.25m0 0c-1.472 0-2.882.265-4.185.75M12 20.25c1.472 0 2.882.265 4.185.75M18.75 4.97A48.416 48.416 0 0012 4.5c-2.291 0-4.545.16-6.75.47m13.5 0c1.01.143 2.01.317 3 .52m-3-.52l2.62 10.726c.122.499-.106 1.028-.589 1.202a5.988 5.988 0 01-2.153.04c-1.095-.26-1.956-.925-2.413-1.976L12 11.46m4.5-6.49l-2.62 10.726M12 11.46l-2.413 5.042" /></svg>
+                    @else <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6L9 12.75l4.286-4.286a11.948 11.948 0 014.306 6.43l.776 2.898m0 0l3.182-5.511m-3.182 5.51l-5.511-3.181" /></svg> @endif
                 </div>
+                <div class="ml-3"> <h4 class="text-xs font-medium text-gray-500 uppercase">{{ $budgetLabel }} Budget</h4> <p class="text-xl font-semibold text-{{ $budgetColor }}-600">Rp {{ number_format(abs($budgetDiff), 0, ',', '.') }}</p> <p class="text-[10px] text-gray-400">(vs Estimasi Gaji)</p> </div>
+            </div>
+        @endif
+    </div>
 
                 {{-- Bagian bawah Tab Keuangan: Aktivitas Terakhir & Rekap Task Selesai --}}
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -377,6 +401,7 @@
             window.tasksByAssigneeStatusChartInstance = null;
             window.financialOverviewChartInstance = null;
             window.spendingVsBudgetChartInstance = null;
+            window.taskProgressChartInstance = null;
 
             function initDashboardCharts() {
                 if (typeof Chart === 'undefined') {
@@ -385,21 +410,56 @@
                     return;
                 }
                 console.log('Initializing dashboard charts...');
-                if (window.taskStatusChartInstance) window.taskStatusChartInstance.destroy();
-                if (window.tasksByAssigneeStatusChartInstance) window.tasksByAssigneeStatusChartInstance.destroy();
-                if (window.financialOverviewChartInstance) window.financialOverviewChartInstance.destroy();
-                if (window.spendingVsBudgetChartInstance) window.spendingVsBudgetChartInstance.destroy();
+                const chartCanvasIds = ['taskStatusChart', 'taskProgressChart', 'financialOverviewChart', 'spendingVsBudgetChart'];
 
+                chartCanvasIds.forEach(id => {
+                    // Cek jika ada instance chart yang terasosiasi dengan canvas ini
+                    const chartInstance = Chart.getChart(id); 
+                    if (chartInstance) {
+                        console.log(`Destroying existing chart with ID: ${chartInstance.id} on canvas: ${id}`);
+                        chartInstance.destroy();
+                    }
+                });
+                
                 const taskStatusCtx = document.getElementById('taskStatusChart')?.getContext('2d');
                 if (taskStatusCtx) {
                     const taskData = @json($taskStats);
                     window.taskStatusChartInstance = new Chart(taskStatusCtx, { type: 'doughnut', data: { labels: ['Todo', 'In Progress', 'Review', 'Done'], datasets: [{ label: 'Jumlah Tugas', data: [ taskData.todo, taskData.in_progress, taskData.review, taskData.done ], backgroundColor: ['#E5E7EB', '#FCD34D', '#93C5FD', '#6EE7B7'], borderColor: ['#9CA3AF', '#F59E0B', '#3B82F6', '#10B981'], borderWidth: 1, hoverOffset: 4 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { position: 'bottom', labels: { padding: 15, boxWidth: 12 } } } } });
                 }
 
-                const tasksByAssigneeCtx = document.getElementById('tasksByAssigneeStatusChart')?.getContext('2d');
-                if (tasksByAssigneeCtx) {
-                    const assigneeStatusData = @json($tasksByAssigneeStatusChartData);
-                    window.tasksByAssigneeStatusChartInstance = new Chart(tasksByAssigneeCtx, { type: 'bar', data: { labels: assigneeStatusData.labels, datasets: assigneeStatusData.datasets }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }, y: { stacked: true } }, plugins: { legend: { position: 'bottom', labels: { padding: 15, boxWidth: 12 } }, tooltip: { mode: 'index', intersect: false, callbacks: { label: function(context) { let label = context.dataset.label || ''; if (label) { label += ': '; } if (context.parsed.x !== null) { label += context.parsed.x; } return label; } } } } } });
+                const progressCtx = document.getElementById('taskProgressChart')?.getContext('2d');
+                if (progressCtx) {
+                    const progressData = @json($progressChartData);
+                    new Chart(progressCtx, {
+                        type: 'line',
+                        data: {
+                            labels: progressData.labels,
+                            datasets: progressData.datasets
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        stepSize: 1, // Pastikan sumbu Y adalah bilangan bulat
+                                        precision: 0
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: { padding: 15, boxWidth: 12 }
+                                },
+                                tooltip: {
+                                    mode: 'index',
+                                    intersect: false,
+                                }
+                            }
+                        }
+                    });
                 }
 
                 const financialCtx = document.getElementById('financialOverviewChart')?.getContext('2d');
@@ -424,20 +484,57 @@
                 const spendingCtx = document.getElementById('spendingVsBudgetChart')?.getContext('2d');
                 if (spendingCtx) {
                     const spendingData = @json($financialStats['spendingVsBudgetChartData']);
-                    window.spendingVsBudgetChartInstance = new Chart(spendingCtx, { type: 'bar',
+                    
+                    // Tentukan label dan dataset berdasarkan peran pengguna
+                    let labels = ['Status Keuangan'];
+                    let datasets = [];
+
+                    if (spendingData.isOwnerView) {
+                        // Tampilan untuk PM (tidak berubah, sudah benar)
+                        datasets = [
+                            { label: 'Budget Proyek', data: [spendingData.budget], backgroundColor: '#BFDBFE', borderColor: '#60A5FA', borderWidth: 1 },
+                            { label: 'Total Estimasi Gaji', data: [spendingData.hakGaji], backgroundColor: '#FEF3C7', borderColor: '#FBBF24', borderWidth: 1 },
+                            { label: 'Total Telah Dibayar', data: [spendingData.paid], backgroundColor: '#A7F3D0', borderColor: '#34D399', borderWidth: 1 }
+                        ];
+                    } else {
+                        // ===== PERBAIKAN LOGIKA UNTUK PW =====
+                        // Tampilan untuk PW sekarang akan membandingkan hak gajinya dengan yang sudah dibayar.
+                        datasets = [
+                            // Gunakan 'hakGaji' untuk data bar pertama, bukan 'budget'
+                            { label: 'Total Hak Gaji Anda', data: [spendingData.hakGaji], backgroundColor: '#BFDBFE', borderColor: '#60A5FA', borderWidth: 1 },
+                            { label: 'Telah Dibayar ke Anda', data: [spendingData.paid], backgroundColor: '#A7F3D0', borderColor: '#34D399', borderWidth: 1 }
+                        ];
+                    }
+
+                    window.spendingVsBudgetChartInstance = new Chart(spendingCtx, {
+                        type: 'bar',
                         data: {
-                            labels: ['Status Keuangan'],
-                            datasets: [
-                                { label: 'Budget', data: [spendingData.budget], backgroundColor: '#BFDBFE', borderColor: '#60A5FA', borderWidth: 1 },
-                                { label: 'Estimasi Gaji', data: [spendingData.hakGaji], backgroundColor: '#FEF3C7', borderColor: '#FBBF24', borderWidth: 1 },
-                                { label: 'Sudah Dibayar (Approved)', data: [spendingData.paid], backgroundColor: '#A7F3D0', borderColor: '#34D399', borderWidth: 1 }
-                            ]
+                            labels: labels,
+                            datasets: datasets
                         },
-                        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { callback: (value) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', notation: 'compact' }).format(value) } } }, plugins: { legend: { position: 'bottom', labels: { padding: 15, boxWidth: 12 } }, tooltip: { callbacks: { label: (context) => ` ${context.dataset.label}: ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(context.raw)}` } } } }
+                        options: { 
+                            responsive: true, 
+                            maintainAspectRatio: false, 
+                            scales: { 
+                                y: { 
+                                    beginAtZero: true, 
+                                    ticks: { 
+                                        callback: (value) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', notation: 'compact' }).format(value) 
+                                    } 
+                                } 
+                            }, 
+                            plugins: { 
+                                legend: { position: 'bottom', labels: { padding: 15, boxWidth: 12 } }, 
+                                tooltip: { 
+                                    callbacks: { 
+                                        label: (context) => ` ${context.dataset.label}: ${new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(context.raw)}` 
+                                    } 
+                                } 
+                            } 
+                        }
                     });
                 }
             }
-
             function loadScript(src, callback) {
                 if (typeof Chart !== 'undefined' && src.includes('chart.js')) {
                     if (callback) callback();

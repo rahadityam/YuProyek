@@ -1,40 +1,45 @@
 <x-app-layout>
-    {{-- AlpineJS Data for Approval --}}
-     <div x-data="payslipApproval({
+     <div x-data="payslipActions({
          payslipId: {{ $payslip->id }},
          approveUrl: '{{ route('projects.payslips.approve', [$project, $payslip]) }}',
-         csrfToken: '{{ csrf_token() }}'
+         csrfToken: '{{ csrf_token() }}',
+         isExportingPdf: false,
+         payslipName: {{ Js::from($payslip->payment_name) }},
+         workerName: {{ Js::from($payslip->user->name) }}
      })"
          class="py-6 px-4 sm:px-6 lg:px-8">
 
-         {{-- Header & Back Button --}}
-        <div class="mb-6 flex justify-between items-center">
+         {{-- Header & Back Button (Tambahkan class 'no-print') --}}
+        <div class="mb-6 flex justify-between items-center no-print">
             <h2 class="text-2xl font-semibold text-gray-900">Detail Slip Gaji - {{ $payslip->payment_name }}</h2>
              <div class="flex space-x-2">
-                 <!-- @if($payslip->isApproved()) -->
-                    {{-- Tombol Print/Export jika sudah diapprove --}}
-                     <button @click="printPayslip()" class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /> </svg>
-                         Print
-                     </button>
-                    {{-- Tambahkan tombol Export PDF jika diperlukan --}}
-                 <!-- @endif -->
-                 {{-- Tombol Kembali --}}
-                <a href="{{ $payslip->isApproved() ? route('projects.payslips.history', $project) : route('projects.payslips.history', $project) }}" class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                {{-- Tombol Print --}}
+                <button @click="printPayslip()" class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /> </svg>
+                    Print
+                </button>
+                {{-- Tombol Export PDF --}}
+                <button @click="exportToPdf()" :disabled="isExportingPdf" class="inline-flex items-center px-3 py-1.5 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-gray-700 hover:bg-gray-800 disabled:opacity-50">
+                     <svg x-show="!isExportingPdf" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"> <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /> </svg>
+                     <svg x-show="isExportingPdf" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                     <span x-text="isExportingPdf ? 'Mengekspor...' : 'Export PDF'"></span>
+                </button>
+                {{-- Tombol Kembali --}}
+                <a href="{{ route('projects.payslips.history', $project) }}" class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                     <svg class="-ml-0.5 mr-1.5 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"> <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" /> </svg>
-                    Kembali ke {{ $payslip->isApproved() ? 'Riwayat' : 'Draft' }}
+                    Kembali ke Riwayat
                 </a>
              </div>
         </div>
 
-        {{-- Alert Message (untuk sukses approve) --}}
+        {{-- Alert Message (Tambahkan class 'no-print') --}}
          @if(session('success'))
-             <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
+             <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative no-print" role="alert">
                  <span class="block sm:inline">{{ session('success') }}</span>
              </div>
          @endif
          <template x-if="formErrors.general">
-             <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+             <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative no-print" role="alert">
                   <span class="block sm:inline" x-text="formErrors.general[0]"></span>
               </div>
           </template>
@@ -195,7 +200,7 @@
 
          {{-- Approval Form (Hanya tampil jika draft & user adalah PM) --}}
           @if(!$payslip->isApproved() && $project->owner_id === Auth::id())
-              <div class="mt-8 max-w-4xl mx-auto bg-indigo-50 shadow sm:rounded-lg border border-indigo-200">
+              <div class="mt-8 max-w-4xl mx-auto bg-indigo-50 shadow sm:rounded-lg border border-indigo-200 no-print">
                    <form @submit.prevent="submitApproval" x-ref="approvalForm" enctype="multipart/form-data">
                          <div class="px-4 py-5 sm:p-6">
                               <h3 class="text-lg font-medium text-indigo-900 mb-3">Persetujuan Slip Gaji</h3>
@@ -250,19 +255,25 @@
      </div>
 
      @push('scripts')
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
         <script>
-             function payslipApproval(config) {
+             function payslipActions(config) {
                  return {
+                    // Properti untuk Approval
                      payslipId: config.payslipId,
                      approveUrl: config.approveUrl,
                      csrfToken: config.csrfToken,
-                     signatureType: 'digital', // default
+                     signatureType: 'digital',
                      selectedFile: null,
                      previewUrl: null,
                      isSubmitting: false,
                      formErrors: {},
                      uploadProgress: 0,
+                    
+                    // Properti untuk Export PDF
+                    isExportingPdf: false,
+                     payslipName: config.payslipName,
+                     workerName: config.workerName,
 
                      handleFileSelect(event) {
                          this.formErrors = {}; // Clear previous errors
@@ -384,29 +395,73 @@
                          // Re-initialize Alpine if needed, though reload might be simpler
                          window.location.reload();
                      },
+                    exportToPdf() {
+                        if (this.isExportingPdf) return;
+                        this.isExportingPdf = true;
+
+                        // ===== VERIFIKASI TARGET ELEMEN =====
+                        // Pastikan kita menargetkan ID yang benar
+                        const element = document.getElementById('payslip-content');
+                        
+                        if (!element) {
+                            console.error("#payslip-content not found!");
+                            alert("Error: Elemen untuk di-export tidak ditemukan.");
+                            this.isExportingPdf = false;
+                            return;
+                        }
+                        
+                        // Menambahkan style sementara untuk print agar diterapkan oleh html2pdf
+                        const style = document.createElement('style');
+                        style.innerHTML = `
+                            .no-print { display: none !important; }
+                        `;
+                        document.head.appendChild(style);
+
+
+                        const filename = `Slip-Gaji-${this.payslipName.replace(/[^a-zA-Z0-9]/g, '-')}-${this.workerName.replace(/[^a-zA-Z0-9]/g, '-')}.pdf`;
+
+                        const opt = {
+                            margin:       [10, 5, 10, 5],
+                            filename:     filename,
+                            image:        { type: 'jpeg', quality: 0.98 },
+                            html2canvas:  { scale: 2, useCORS: true, logging: false },
+                            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                        };
+
+                        // Membuat PDF dari elemen yang sudah bersih dari .no-print
+                        html2pdf().set(opt).from(element).save().then(() => {
+                            // Hapus style sementara setelah selesai
+                            document.head.removeChild(style);
+                            this.isExportingPdf = false;
+                        }).catch(err => {
+                            console.error("PDF export error:", err);
+                            alert("Gagal mengekspor PDF. Silakan coba lagi.");
+                            // Hapus style sementara jika terjadi error
+                            document.head.removeChild(style);
+                            this.isExportingPdf = false;
+                        });
+                    }
                  }
-             }
-
-             // Initialize Alpine component specifically for print button if needed outside main data scope
-             function payslipPrint() {
-                  return {
-                      printPayslip() {
-                          const printContent = document.getElementById('payslip-content');
-                          if(!printContent) return;
-
-                          const options = {
-                              margin:       [10, 5, 10, 5], // top, left, bottom, right in mm
-                              filename:     'slip_gaji_{{ $payslip->payment_name }}_{{ $payslip->user->name }}.pdf',
-                              image:        { type: 'jpeg', quality: 0.98 },
-                              html2canvas:  { scale: 2, useCORS: true },
-                              jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                          };
-
-                          html2pdf().set(options).from(printContent).save();
-                      }
-                  }
              }
         </script>
      @endpush
-    @stack('scripts')
+     
+     @push('styles')
+        {{-- CSS ini sudah benar untuk fungsionalitas print standar --}}
+        <style>
+            @media print {
+                .no-print {
+                    display: none !important;
+                }
+                body {
+                    -webkit-print-color-adjust: exact !important;
+                    color-adjust: exact !important;
+                }
+                #payslip-content {
+                    box-shadow: none !important;
+                    border: none !important;
+                }
+            }
+        </style>
+     @endpush
 </x-app-layout>

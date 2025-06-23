@@ -2,55 +2,17 @@
     {{-- CSS Khusus untuk Print --}}
     <style>
         @media print {
-            body * {
-                visibility: hidden;
-            }
-            #printable-area, #printable-area * {
-                visibility: visible;
-            }
-            #printable-area {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                margin: 0 !important;
-                padding: 15px !important;
-                font-size: 9pt;
-            }
-            .no-print {
-                display: none !important;
-            }
-            table {
-                width: 100% !important;
-                border-collapse: collapse !important;
-            }
-            th, td {
-                border: 1px solid #ddd !important;
-                padding: 4px 6px !important;
-                text-align: left !important;
-                word-wrap: break-word;
-            }
-            thead {
-                display: table-header-group; /* Agar header tabel berulang di setiap halaman */
-            }
-            th {
-                background-color: #f2f2f2 !important;
-                -webkit-print-color-adjust: exact;
-                color-adjust: exact;
-            }
-            td span[class*="bg-"] {
-                background-color: transparent !important;
-                color: black !important;
-                border: 1px solid #ccc !important;
-                padding: 1px 3px !important;
-            }
-            a {
-                text-decoration: none !important;
-                color: black !important;
-            }
-            svg {
-                display: none !important;
-            }
+            body * { visibility: hidden; }
+            #printable-area, #printable-area * { visibility: visible; }
+            #printable-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0 !important; padding: 15px !important; font-size: 9pt; }
+            .no-print { display: none !important; }
+            table { width: 100% !important; border-collapse: collapse !important; }
+            th, td { border: 1px solid #ddd !important; padding: 4px 6px !important; text-align: left !important; word-wrap: break-word; }
+            thead { display: table-header-group; }
+            th { background-color: #f2f2f2 !important; -webkit-print-color-adjust: exact; color-adjust: exact; }
+            td span[class*="bg-"] { background-color: transparent !important; color: black !important; border: 1px solid #ccc !important; padding: 1px 3px !important; }
+            a { text-decoration: none !important; color: black !important; }
+            svg { display: none !important; }
         }
     </style>
     
@@ -59,7 +21,6 @@
             initialFilters: {{ Js::from($request->query()) }}
          })"
          x-init="init()"
-         @click.document="handleDelegatedClick($event)"
          class="py-6 px-4 sm:px-6 lg:px-8">
         
         {{-- Header & Tombol Aksi --}}
@@ -87,10 +48,10 @@
 
         {{-- Filter Form --}}
         <div class="mb-6 bg-gray-50 p-4 rounded-md border border-gray-200 no-print">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                <div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+                <div class="lg:col-span-2">
                     <label for="search" class="block text-sm font-medium text-gray-700">Cari</label>
-                    <input type="text" id="search" x-model.debounce.500ms="filters.search" placeholder="Nama task atau pekerja..." class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                    <input type="text" id="search" x-model="filters.search" placeholder="Nama task atau pekerja..." class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
                 </div>
                 <div>
                     <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
@@ -112,34 +73,69 @@
                     </select>
                 </div>
                 <div>
-                    <label for="per_page" class="block text-sm font-medium text-gray-700">Item per Halaman</label>
+                    <label for="per_page" class="block text-sm font-medium text-gray-700">Item/Halaman</label>
                     <select id="per_page" x-model.number="filters.per_page" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
                         @foreach ($perPageOptions as $option)
                             <option value="{{ $option }}">{{ $option }}</option>
                         @endforeach
                     </select>
                 </div>
+                
+                {{-- Filter Periode Tanggal --}}
+                <div class="grid grid-cols-2 gap-4 lg:col-span-2">
+                    <div>
+                        <label for="date_from" class="block text-sm font-medium text-gray-700">Dari Tgl. (Mulai)</label>
+                        <input type="date" id="date_from" x-model="filters.date_from" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="date_to" class="block text-sm font-medium text-gray-700">Sampai Tgl. (Selesai)</label>
+                        <input type="date" id="date_to" x-model="filters.date_to" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                    </div>
+                </div>
             </div>
         </div>
 
-        {{-- Container untuk Tabel & Paginasi --}}
-        <div id="printable-area">
+        {{-- Wadah untuk Tabel dan Paginasi --}}
+        <div id="printable-area" class="relative">
             {{-- Header untuk print --}}
             <div class="hidden print:block mb-4">
                 <h2 class="text-xl font-bold text-center">Rekapitulasi Tugas Proyek</h2>
                 <p class="text-sm text-center">Proyek: {{ $project->name }}</p>
                 <p class="text-sm text-center">Dicetak pada: <span x-text="new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })"></span></p>
+                
+                {{-- Ringkasan Filter yang Aktif --}}
+                <div class="text-xs mt-2 text-gray-600 border-t border-b border-gray-300 py-1 my-2">
+                    <p class="font-medium">Filter Aktif:</p>
+                    <ul class="list-none pl-0">
+                        <li>
+                            Pekerja: 
+                            <span x-text="filters.user_id === 'all' ? 'Semua Pekerja' : (document.getElementById('user_id')?.options[document.getElementById('user_id')?.selectedIndex]?.text || filters.user_id)"></span>
+                        </li>
+                        <li>
+                            Status: 
+                            <span x-text="filters.status === 'all' ? 'Semua Status' : filters.status"></span>
+                        </li>
+                        <li>
+                            Periode: 
+                            <span x-text="filters.date_from || 'Semua'"></span> s/d <span x-text="filters.date_to || 'Semua'"></span>
+                        </li>
+                        <li>
+                            Pencarian: 
+                            <span x-text="filters.search || '-' "></span>
+                        </li>
+                    </ul>
+                </div>
             </div>
             
-            <div x-show="loading" class="text-center py-16 no-print">
-                <svg class="animate-spin -ml-1 mr-3 h-10 w-10 text-indigo-600 inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"> <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle> <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                <span class="text-gray-600">Memuat data...</span>
+            {{-- Loading Overlay --}}
+            <div x-show="loading" x-transition class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10 no-print">
+                <svg class="animate-spin h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"> <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle> <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
             </div>
-
-            <div x-show="!loading">
-                <div id="recap-table-container">
-                    @include('tasks.partials._recap_table_content', ['tasks' => $tasks, 'project' => $project, 'request' => $request])
-                </div>
+            
+            {{-- Kontainer yang akan diisi oleh AJAX --}}
+            <div id="recap-table-wrapper" x-html="tableHtml">
+                {{-- Render awal dari server --}}
+                @include('tasks.partials._recap_table_content', ['tasks' => $tasks, 'project' => $project, 'request' => $request])
             </div>
         </div>
 
@@ -163,6 +159,8 @@
                         search: config.initialFilters.search || '',
                         status: config.initialFilters.status || 'all',
                         user_id: config.initialFilters.user_id || 'all',
+                        date_from: config.initialFilters.date_from || '',
+                        date_to: config.initialFilters.date_to || '',
                         per_page: parseInt(config.initialFilters.per_page) || 15,
                         sort: config.initialFilters.sort || 'created_at',
                         direction: config.initialFilters.direction || 'desc',
@@ -170,19 +168,18 @@
                     },
                     loading: false,
                     isExportingPdf: false,
-                    fetchTimeout: null, // Untuk debounce
+                    tableHtml: '',
 
                     init() {
-                        // Watcher ini sekarang HANYA untuk filter UI (search, select)
-                        // Ini tidak akan dipicu oleh perubahan programatik dari sortBy atau goToPage
-                        this.$watch('filters.search', () => this.applyFilters());
-                        this.$watch('filters.status', () => this.applyFilters());
-                        this.$watch('filters.user_id', () => this.applyFilters());
-                        this.$watch('filters.per_page', () => this.applyFilters());
+                        this.tableHtml = document.getElementById('recap-table-wrapper').innerHTML;
                         
-                        this.updateUrl(false); // Set URL awal
-                        this.attachPaginationListeners(); // Pasang listener untuk paginasi
-
+                        this.$watch('filters.search', debounce(() => this.applyFilters(), 500));
+                        ['status', 'user_id', 'per_page', 'date_from', 'date_to'].forEach(key => {
+                            this.$watch(`filters.${key}`, () => this.applyFilters());
+                        });
+                        
+                        this.updateUrl(false);
+                        
                         window.onpopstate = (event) => {
                             if (event.state) {
                                 Object.assign(this.filters, event.state);
@@ -190,15 +187,27 @@
                             }
                         };
                     },
+                    
+                    handleDelegatedClick(event) {
+                        const sortLink = event.target.closest('#recap-table-container thead a');
+                        const pageLink = event.target.closest('#recap-pagination-container a');
+                        
+                        if (sortLink) {
+                            event.preventDefault();
+                            this.sortBy(sortLink.dataset.sortField);
+                        } else if (pageLink) {
+                            event.preventDefault();
+                            this.goToPage(pageLink.href);
+                        }
+                    },
 
-                    // Ini dipanggil oleh filter UI
                     applyFilters() {
                         this.filters.page = 1;
                         this.fetchData();
                     },
                     
-                    // Ini dipanggil oleh klik header tabel
                     sortBy(field) {
+                        if (!field) return;
                         if (this.filters.sort === field) {
                             this.filters.direction = this.filters.direction === 'asc' ? 'desc' : 'asc';
                         } else {
@@ -209,8 +218,8 @@
                         this.fetchData();
                     },
 
-                    // Ini dipanggil oleh klik link paginasi
                     goToPage(url) {
+                        if (!url) return;
                         try {
                             const page = new URL(url).searchParams.get('page') || 1;
                             this.filters.page = parseInt(page);
@@ -219,24 +228,23 @@
                     },
 
                     fetchData(updateHistory = true) {
-                        // Debounce manual untuk mencegah panggilan beruntun
-                        clearTimeout(this.fetchTimeout);
-                        this.fetchTimeout = setTimeout(() => {
-                            this.loading = true;
-                            if (updateHistory) this.updateUrl();
+                        this.loading = true;
+                        if (updateHistory) this.updateUrl();
 
-                            const fetchUrl = this.buildUrlParams(true);
-
-                            fetch(fetchUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
-                            .then(res => res.ok ? res.json() : Promise.reject(res))
-                            .then(data => {
-                                document.getElementById('recap-table-container').innerHTML = data.table_html;
-                                document.getElementById('recap-pagination-container').innerHTML = data.pagination_html;
-                                this.attachPaginationListeners();
-                            })
-                            .catch(error => console.error('Error fetching data:', error))
-                            .finally(() => { this.loading = false; });
-                        }, 250);
+                        const fetchUrl = this.buildUrlParams(true);
+                        
+                        fetch(fetchUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                        .then(res => res.ok ? res.json() : Promise.reject(res))
+                        .then(data => {
+                            this.tableHtml = data.table_html;
+                        })
+                        .catch(error => {
+                            console.error('Error fetching data:', error);
+                            this.tableHtml = '<div class="p-8 text-center text-red-500">Gagal memuat data.</div>';
+                        })
+                        .finally(() => {
+                            this.loading = false;
+                        });
                     },
 
                     attachPaginationListeners() {

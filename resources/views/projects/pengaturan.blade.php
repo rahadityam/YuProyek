@@ -282,18 +282,6 @@
                                         <fieldset :disabled="isProjectLocked">
                                             <legend class="sr-only">Metode Pembayaran</legend>
                                             <div class="space-y-3">
-                                                {{-- Pilihan Task --}}
-                                                <div class="flex items-start">
-                                                    <div class="flex items-center h-5">
-                                                        <input id="payment_task_fin" name="payment_calculation_type" type="radio" value="task"
-                                                               x-model="project.payment_calculation_type"
-                                                               class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300">
-                                                    </div>
-                                                    <div class="ml-3 text-sm">
-                                                        <label for="payment_task_fin" class="font-medium text-gray-700">Per Task (Default)</label>
-                                                        <p class="text-gray-500 text-xs">Bayar berdasarkan nilai task yang dipilih saat buat slip gaji.</p>
-                                                    </div>
-                                                </div>
                                                 {{-- Pilihan Termin --}}
                                                 <div class="flex items-start">
                                                     <div class="flex items-center h-5">
@@ -302,8 +290,8 @@
                                                                class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300">
                                                     </div>
                                                     <div class="ml-3 text-sm">
-                                                        <label for="payment_termin_fin" class="font-medium text-gray-700">Per Termin/Periode</label>
-                                                        <p class="text-gray-500 text-xs">Definisikan termin pembayaran di bawah ini. Saat buat slip, pilih termin, lalu pilih task yang masuk periode termin tsb.</p>
+                                                        <label for="payment_termin_fin" class="font-medium text-gray-700">Pembayaran Per Termin</label>
+                                                        <p class="text-gray-500 text-xs">Definisikan termin pembayaran di bawah ini. Saat buat slip, pilih termin, lalu pilih task yang masuk periode termin tersebut.</p>
                                                     </div>
                                                 </div>
                                                 {{-- Pilihan Full --}}
@@ -314,8 +302,8 @@
                                                                class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300">
                                                     </div>
                                                     <div class="ml-3 text-sm">
-                                                        <label for="payment_full_fin" class="font-medium text-gray-700">Jumlah Tetap (Tanpa Task)</label>
-                                                        <p class="text-gray-500 text-xs">Langsung masukkan jumlah nominal saat buat slip gaji (selain bonus).</p>
+                                                        <label for="payment_full_fin" class="font-medium text-gray-700">Pembayaran Full</label>
+                                                        <p class="text-gray-500 text-xs">Langsung masukkan jumlah nominal saat buat slip gaji.</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -333,7 +321,7 @@
 
                         {{-- --- BARU: Form Kelola Termin (muncul jika tipe 'termin') --- --}}
                         <div x-show="project.payment_calculation_type === 'termin'" x-transition.opacity class="bg-gray-50 shadow sm:rounded-lg border border-gray-200">
-                            <form action="{{ route('projects.settings.terms.update', $project) }}" method="POST">
+                            <form action="{{ route('projects.settings.terms.update', $project) }}" method="POST" @submit.prevent="validateTerms() && $el.submit()">
                                 @csrf
                                 @method('PATCH')
                                 <div class="px-4 py-5 sm:p-6">
@@ -956,35 +944,105 @@
             },
 
             addTerm() {
-                 let defaultStartDate = this.project.start_date ? this.formatDateForInput(this.project.start_date) : '';
-                 let defaultEndDate = '';
-                 if (this.paymentTerms.length > 0) {
-                     const lastTerm = this.paymentTerms[this.paymentTerms.length - 1];
-                     if (lastTerm.end_date) {
-                          try {
-                             const nextDay = new Date(lastTerm.end_date);
-                             nextDay.setDate(nextDay.getDate() + 1);
-                             defaultStartDate = this.formatDateForInput(nextDay);
-                          } catch (e) {}
-                     }
-                      try {
-                         const endPlusWeek = new Date(defaultStartDate);
-                         endPlusWeek.setDate(endPlusWeek.getDate() + 7);
-                         defaultEndDate = this.formatDateForInput(endPlusWeek);
-                      } catch (e) {}
-                 }
+    // Ensure project has start_date
+    if (!this.project.start_date) {
+        this.showFlashMessage('Proyek harus memiliki tanggal mulai sebelum menambah termin.', false);
+        return;
+    }
 
-                this.paymentTerms.push({
-                    id: null,
-                    name: `Termin ${this.paymentTerms.length + 1}`,
-                    start_date: defaultStartDate,
-                    end_date: defaultEndDate,
-                    markedForDeletion: false
-                });
-                this.$nextTick(() => {
-                     if(this.$refs.termsContainer) this.$refs.termsContainer.scrollTop = this.$refs.termsContainer.scrollHeight;
-                });
-            },
+    let defaultStartDate = '';
+    let defaultEndDate = '';
+
+    // Find the last non-deleted term
+    const activeTerms = this.paymentTerms.filter(term => !term.markedForDeletion);
+    if (activeTerms.length > 0) {
+        const lastTerm = activeTerms[activeTerms.length - 1];
+        if (lastTerm.end_date) {
+            try {
+                const nextDay = new Date(lastTerm.end_date);
+                nextDay.setDate(nextDay.getDate() + 1);
+                // Ensure the suggested start date is within project end_date
+                if (this.project.end_date && nextDay <= new Date(this.project.end_date)) {
+                    defaultStartDate = this.formatDateForInput(nextDay);
+                } else {
+                    this.showFlashMessage('Tidak dapat menambah termin karena melebihi tanggal akhir proyek.', false);
+                    return;
+                }
+            } catch (e) {
+                console.error('Error calculating next term start date:', e);
+            }
+        }
+    } else {
+        // If no terms exist, start from project start_date
+        defaultStartDate = this.formatDateForInput(this.project.start_date);
+    }
+
+    // Suggest end date (e.g., 7 days after start date or project end_date)
+    if (defaultStartDate) {
+        try {
+            const endPlusWeek = new Date(defaultStartDate);
+            endPlusWeek.setDate(endPlusWeek.getDate() + 7);
+            const projectEndDate = new Date(this.project.end_date);
+            defaultEndDate = this.formatDateForInput(
+                endPlusWeek <= projectEndDate ? endPlusWeek : projectEndDate
+            );
+        } catch (e) {
+            console.error('Error calculating default end date:', e);
+        }
+    }
+
+    this.paymentTerms.push({
+        id: null,
+        name: `Termin ${this.paymentTerms.length + 1}`,
+        start_date: defaultStartDate,
+        end_date: defaultEndDate,
+        markedForDeletion: false
+    });
+
+    this.$nextTick(() => {
+        if (this.$refs.termsContainer) {
+            this.$refs.termsContainer.scrollTop = this.$refs.termsContainer.scrollHeight;
+        }
+    });
+},
+validateTerms() {
+    this.errors = {};
+    const activeTerms = this.paymentTerms.filter(term => !term.markedForDeletion);
+    const sortedTerms = [...activeTerms].sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+
+    // Check project date boundaries
+    const projectStart = new Date(this.project.start_date);
+    const projectEnd = new Date(this.project.end_date);
+
+    sortedTerms.forEach((term, index) => {
+        const startDate = new Date(term.start_date);
+        const endDate = new Date(term.end_date);
+
+        // Validate within project dates
+        if (startDate < projectStart) {
+            this.errors[`terms.${index}.start_date`] = ['Tanggal mulai termin harus di atau setelah tanggal mulai proyek.'];
+        }
+        if (endDate > projectEnd) {
+            this.errors[`terms.${index}.end_date`] = ['Tanggal akhir termin tidak boleh melebihi tanggal selesai proyek.'];
+        }
+        if (endDate < startDate) {
+            this.errors[`terms.${index}.end_date`] = ['Tanggal akhir harus di atau setelah tanggal mulai.'];
+        }
+
+        // Check overlaps with next term
+        if (index < sortedTerms.length - 1) {
+            const nextTerm = sortedTerms[index + 1];
+            const nextStartDate = new Date(nextTerm.start_date);
+            if (nextStartDate <= endDate) {
+                this.errors[`terms.${this.paymentTerms.indexOf(nextTerm)}.start_date`] = [
+                    `Tanggal mulai termin '${nextTerm.name}' tidak boleh sebelum atau sama dengan tanggal akhir '${term.name}'.`
+                ];
+            }
+        }
+    });
+
+    return Object.keys(this.errors).length === 0;
+},
             removeTerm(index) {
                  if (this.paymentTerms[index].id) {
                      this.$set(this.paymentTerms[index], 'markedForDeletion', true);

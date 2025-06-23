@@ -468,249 +468,253 @@ class PaymentController extends Controller
     }
 
     public function showPayrollCalculation(Request $request, Project $project)
-    {
-        $currentUser = Auth::user();
-        $isProjectOwner = $currentUser->isProjectOwner($project);
+{
+    $currentUser = Auth::user();
+    $isProjectOwner = $currentUser->isProjectOwner($project);
 
-        $taskQuery = Task::query()
-            ->where('tasks.project_id', $project->id)
-            ->where('tasks.status', 'Done')
-            ->select(
-                'tasks.*',
-                'users.name as assigned_user_name',
-                'd_levels.value as difficulty_value',
-                'p_levels.value as priority_value'
-            )
-            ->join('users', 'tasks.assigned_to', '=', 'users.id')
-            ->leftJoin('difficulty_levels as d_levels', 'tasks.difficulty_level_id', '=', 'd_levels.id')
-            ->leftJoin('priority_levels as p_levels', 'tasks.priority_level_id', '=', 'p_levels.id')
-            ->with(['payment']);
+    $taskQuery = Task::query()
+        ->where('tasks.project_id', $project->id)
+        ->where('tasks.status', 'Done')
+        ->select(
+            'tasks.*',
+            'users.name as assigned_user_name',
+            'd_levels.value as difficulty_value',
+            'p_levels.value as priority_value'
+        )
+        ->join('users', 'tasks.assigned_to', '=', 'users.id')
+        ->leftJoin('difficulty_levels as d_levels', 'tasks.difficulty_level_id', '=', 'd_levels.id')
+        ->leftJoin('priority_levels as p_levels', 'tasks.priority_level_id', '=', 'p_levels.id')
+        ->with(['payment']);
 
-        if (!$isProjectOwner) {
-            if ($currentUser->isProjectMember($project)) {
-                $taskQuery->where('tasks.assigned_to', $currentUser->id);
-            } else {
-                $taskQuery->whereRaw('1 = 0');
-            }
-        }
-
-        $selectedWorkerIdInput = $request->input('worker_id');
-        $selectedWorkerId = $isProjectOwner ? ($selectedWorkerIdInput === 'all' ? null : $selectedWorkerIdInput) : ($currentUser->isProjectMember($project) ? $currentUser->id : null);
-
-        if ($selectedWorkerId) {
-            $taskQuery->where('tasks.assigned_to', $selectedWorkerId);
-        }
-        if ($request->input('payment_status')) {
-            if ($request->input('payment_status') === 'paid') $taskQuery->whereNotNull('tasks.payment_id');
-            elseif ($request->input('payment_status') === 'unpaid') $taskQuery->whereNull('tasks.payment_id');
-        }
-        if ($request->input('search')) {
-            $searchTerm = $request->input('search');
-            $taskQuery->where(function (Builder $q) use ($searchTerm) {
-                $q->where('tasks.title', 'like', "%{$searchTerm}%")
-                ->orWhere('users.name', 'like', "%{$searchTerm}%");
-            });
-        }
-
-        $sortField = $request->input('sort', 'updated_at');
-        $sortDirection = $request->input('direction', 'desc');
-        $allowedSorts = [
-            'title' => 'tasks.title',
-            'assigned_user_name' => 'users.name',
-            'difficulty_value' => 'd_levels.value',
-            'priority_value' => 'p_levels.value',
-            'achievement_percentage' => 'tasks.achievement_percentage',
-            'payment_status' => DB::raw('CASE WHEN tasks.payment_id IS NULL THEN 0 ELSE 1 END'),
-            'updated_at' => 'tasks.updated_at',
-        ];
-
-        if (array_key_exists($sortField, $allowedSorts)) {
-            $taskQuery->orderBy($allowedSorts[$sortField], $sortDirection);
-            if ($sortField !== 'updated_at') {
-                $taskQuery->orderBy('tasks.updated_at', 'desc');
-            }
+    if (!$isProjectOwner) {
+        if ($currentUser->isProjectMember($project)) {
+            $taskQuery->where('tasks.assigned_to', $currentUser->id);
         } else {
+            $taskQuery->whereRaw('1 = 0');
+        }
+    }
+
+    $selectedWorkerIdInput = $request->input('worker_id');
+    $selectedWorkerId = $isProjectOwner ? ($selectedWorkerIdInput === 'all' ? null : $selectedWorkerIdInput) : ($currentUser->isProjectMember($project) ? $currentUser->id : null);
+
+    if ($selectedWorkerId) {
+        $taskQuery->where('tasks.assigned_to', $selectedWorkerId);
+    }
+
+    if ($request->input('payment_status')) {
+        if ($request->input('payment_status') === 'paid') $taskQuery->whereNotNull('tasks.payment_id');
+        elseif ($request->input('payment_status') === 'unpaid') $taskQuery->whereNull('tasks.payment_id');
+    }
+
+    // Add date filters
+    if ($request->filled('start_date')) {
+        $taskQuery->whereDate('tasks.updated_at', '>=', $request->input('start_date'));
+    }
+    if ($request->filled('end_date')) {
+        $taskQuery->whereDate('tasks.updated_at', '<=', $request->input('end_date'));
+    }
+
+    // Restrict search to task title only
+    if ($request->input('search')) {
+        $searchTerm = $request->input('search');
+        $taskQuery->where('tasks.title', 'like', "%{$searchTerm}%");
+    }
+
+    $sortField = $request->input('sort', 'updated_at');
+    $sortDirection = $request->input('direction', 'desc');
+    $allowedSorts = [
+        'title' => 'tasks.title',
+        'assigned_user_name' => 'users.name',
+        'difficulty_value' => 'd_levels.value',
+        'priority_value' => 'p_levels.value',
+        'achievement_percentage' => 'tasks.achievement_percentage',
+        'payment_status' => DB::raw('CASE WHEN tasks.payment_id IS NULL THEN 0 ELSE 1 END'),
+        'updated_at' => 'tasks.updated_at',
+    ];
+
+    if (array_key_exists($sortField, $allowedSorts)) {
+        $taskQuery->orderBy($allowedSorts[$sortField], $sortDirection);
+        if ($sortField !== 'updated_at') {
             $taskQuery->orderBy('tasks.updated_at', 'desc');
         }
-
-        $totalFilteredTaskPayroll = 0;
-        $tasksForSumCalculationQuery = clone $taskQuery;
-        $filteredTaskIds = $tasksForSumCalculationQuery->pluck('tasks.id');
-        if ($filteredTaskIds->isNotEmpty()) {
-            $allFilteredTasks = Task::with([
-                                    'difficultyLevel', 'priorityLevel',
-                                    'projectUserMembership.wageStandard', 'project'
-                                ])->findMany($filteredTaskIds);
-            $totalFilteredTaskPayroll = $allFilteredTasks->sum('calculated_value');
-        }
-
-        $perPageOptions = [10, 15, 25, 50, 100];
-        $perPage = $request->input('per_page', 10);
-        if (!in_array($perPage, $perPageOptions)) $perPage = 10;
-        $tasks = $taskQuery->paginate($perPage)->withQueryString();
-
-        $otherPaymentQuery = Payment::query()->from('payments as p')
-                                    ->where('p.project_id', $project->id)
-                                    ->whereIn('p.payment_type', ['other', 'full']);
-        if (!$isProjectOwner && $currentUser->isProjectMember($project)) {
-            $otherPaymentQuery->where('p.user_id', $currentUser->id);
-        } elseif ($isProjectOwner && $selectedWorkerId) {
-            $otherPaymentQuery->where('p.user_id', $selectedWorkerId);
-        } elseif (!$isProjectOwner && !$currentUser->isProjectMember($project)) {
-             $otherPaymentQuery->whereRaw('1 = 0');
-        }
-        if ($request->input('search')) {
-            $searchTerm = $request->input('search');
-            $otherPaymentQuery->join('users as u', 'p.user_id', '=', 'u.id')
-                            ->where(function (Builder $q) use ($searchTerm) {
-                                $q->where('p.payment_name', 'like', "%{$searchTerm}%")
-                                    ->orWhere('p.notes', 'like', "%{$searchTerm}%")
-                                    ->orWhere('u.name', 'like', "%{$searchTerm}%");
-                            })->select('p.*');
-        }
-        $totalFilteredOtherPayments = $otherPaymentQuery->sum('p.amount');
-
-        $filteredPaidTaskQuery = Payment::query()->from('payments as p')
-                                        ->where('p.project_id', $project->id)
-                                        ->whereIn('p.payment_type', ['task', 'termin'])
-                                        ->where('p.status', Payment::STATUS_APPROVED);
-        if (!$isProjectOwner && $currentUser->isProjectMember($project)) {
-            $filteredPaidTaskQuery->where('p.user_id', $currentUser->id);
-        } elseif ($isProjectOwner && $selectedWorkerId) {
-            $filteredPaidTaskQuery->where('p.user_id', $selectedWorkerId);
-        } elseif (!$isProjectOwner && !$currentUser->isProjectMember($project)) {
-             $filteredPaidTaskQuery->whereRaw('1 = 0');
-        }
-
-        if ($request->input('search')) {
-            $searchTerm = $request->input('search');
-            $filteredPaidTaskQuery->join('users as u', 'p.user_id', '=', 'u.id')
-                                ->where(function (Builder $q) use ($searchTerm) {
-                                    $q->where('p.payment_name', 'like', "%{$searchTerm}%")
-                                        ->orWhere('p.notes', 'like', "%{$searchTerm}%")
-                                        ->orWhere('u.name', 'like', "%{$searchTerm}%");
-                                })->select('p.*');
-        }
-        $totalFilteredPaidTaskAmount = $filteredPaidTaskQuery->sum('p.amount');
-
-        $filteredPaidOtherQuery = Payment::query()->from('payments as p')
-                                        ->where('p.project_id', $project->id)
-                                        ->whereIn('p.payment_type', ['other', 'full'])
-                                        ->where('p.status', Payment::STATUS_APPROVED);
-        if (!$isProjectOwner && $currentUser->isProjectMember($project)) {
-            $filteredPaidOtherQuery->where('p.user_id', $currentUser->id);
-        } elseif ($isProjectOwner && $selectedWorkerId) {
-            $filteredPaidOtherQuery->where('p.user_id', $selectedWorkerId);
-        } elseif (!$isProjectOwner && !$currentUser->isProjectMember($project)) {
-             $filteredPaidOtherQuery->whereRaw('1 = 0');
-        }
-        if ($request->input('search')) {
-            $searchTerm = $request->input('search');
-            $filteredPaidOtherQuery->join('users as u', 'p.user_id', '=', 'u.id')
-                                ->where(function (Builder $q) use ($searchTerm) {
-                                    $q->where('p.payment_name', 'like', "%{$searchTerm}%")
-                                        ->orWhere('p.notes', 'like', "%{$searchTerm}%")
-                                        ->orWhere('u.name', 'like', "%{$searchTerm}%");
-                                })->select('p.*');
-        }
-        $totalFilteredPaidOtherAmount = $filteredPaidOtherQuery->sum('p.amount');
-
-        $totalOverallTaskPayroll = 0; $totalOverallOtherPayments = 0; $totalOverallPaidTaskAmount = 0;
-        $totalOverallPaidOtherAmount = 0; $totalOverallPayroll = 0; $budgetDifference = 0;
-        if ($isProjectOwner) {
-            $allDoneTasks = Task::where('project_id', $project->id)->where('status', 'Done')->with(['difficultyLevel', 'priorityLevel', 'projectUserMembership.wageStandard', 'project'])->get();
-            $totalOverallTaskPayroll = $allDoneTasks->sum('calculated_value');
-            $totalOverallOtherPayments = Payment::where('project_id', $project->id)->whereIn('payment_type', ['other', 'full'])->sum('amount');
-            $totalOverallPaidTaskAmount = Payment::where('project_id', $project->id)->whereIn('payment_type', ['task', 'termin'])->where('status', Payment::STATUS_APPROVED)->sum('amount');
-            $totalOverallPaidOtherAmount = Payment::where('project_id', $project->id)->whereIn('payment_type', ['other', 'full'])->where('status', Payment::STATUS_APPROVED)->sum('amount');
-            $totalOverallPayroll = $totalOverallTaskPayroll + $totalOverallOtherPayments;
-            $budget = $project->budget ?? 0;
-            $budgetDifference = $budget - $totalOverallPayroll;
-        } else {
-            $totalOverallTaskPayroll = $totalFilteredTaskPayroll;
-            $totalOverallOtherPayments = $totalFilteredOtherPayments;
-            $totalOverallPaidTaskAmount = $totalFilteredPaidTaskAmount;
-            $totalOverallPaidOtherAmount = $totalFilteredPaidOtherAmount;
-            $totalOverallPayroll = $totalOverallTaskPayroll + $totalOverallOtherPayments;
-        }
-
-        $workersForFilter = collect();
-        if ($isProjectOwner) {
-            $workersForFilter = $project->workers()->wherePivot('status', 'accepted')->orderBy('name')->get();
-        } else {
-            if ($currentUser->isProjectMember($project)) {
-                $workersForFilter = collect([$currentUser]);
-            }
-        }
-
-        $modalWorkers = $project->workers()->wherePivot('status', 'accepted')->orderBy('name')->get() ?? collect();
-        $modalPaymentCalculationType = $project->payment_calculation_type ?? 'task';
-        $modalPaymentTerms = collect();
-        if ($modalPaymentCalculationType === 'termin') {
-            $modalPaymentTerms = $project->paymentTerms()
-                                     ->select('id', 'name', 'start_date', 'end_date')
-                                     ->orderBy('start_date')->get()
-                                     ->map(fn ($term) => [
-                                         'id' => $term->id,
-                                         'name' => $term->name,
-                                         'start_date_formatted' => $term->start_date ? $term->start_date->toDateString() : null,
-                                         'end_date_formatted' => $term->end_date ? $term->end_date->toDateString() : null,
-                                     ]) ?? collect();
-        }
-        $modalUnpaidTasksQuery = Task::where('project_id', $project->id)
-            ->where('status', 'Done')->whereNull('payment_id')->whereNotNull('updated_at')
-            ->select('id', 'title', 'assigned_to', 'achievement_percentage', 'difficulty_level_id', 'priority_level_id', 'project_id', 'updated_at')
-            ->with(['assignedUser:id,name', 'difficultyLevel:id,value', 'priorityLevel:id,value', 'projectUserMembership.wageStandard:id,task_price']);
-
-        $modalUnpaidTasks = $modalUnpaidTasksQuery->get()
-            ->map(function ($task) use ($project) {
-                if (!$task->relationLoaded('project')) $task->setRelation('project', $project);
-                $task->wsm_score = $task->wsm_score;
-                $task->calculated_value = $task->calculated_value;
-                $task->finished_date = $task->updated_at ? Carbon::parse($task->updated_at)->toDateString() : null;
-                return $task;
-            }) ?? collect();
-        $modalUnpaidTasksGrouped = $modalUnpaidTasks->groupBy('assigned_to') ?? collect();
-
-        $nextTerminNumber = 1;
-        $modalDefaultTerminName = '';
-        if ($modalPaymentCalculationType === 'termin') {
-            $lastTermin = Payment::where('project_id', $project->id)
-                ->where('payment_type', 'termin')->where('payment_name', 'like', 'Termin %')
-                ->orderByRaw('CAST(SUBSTRING_INDEX(payment_name, " ", -1) AS UNSIGNED) DESC, created_at DESC')->first();
-            if ($lastTermin && preg_match('/Termin (\d+)/', $lastTermin->payment_name, $matches)) {
-                $nextTerminNumber = intval($matches[1]) + 1;
-            }
-            $modalDefaultTerminName = "Termin " . $nextTerminNumber;
-        }
-
-
-        if ($request->ajax()) {
-            $tableHtml = view('penggajian._payroll_table_content', compact('project','tasks', 'request'))->render();
-            return response()->json([
-                'html' => $tableHtml,
-                'totalFilteredTaskPayroll' => $totalFilteredTaskPayroll,
-                'totalFilteredOtherPayments' => $totalFilteredOtherPayments,
-                'totalPaidTaskAmount' => $totalFilteredPaidTaskAmount,
-                'totalPaidOtherAmount' => $totalFilteredPaidOtherAmount,
-                'totalOverallTaskPayroll' => $totalOverallTaskPayroll,
-                'totalOverallOtherPayments' => $totalOverallOtherPayments,
-                'totalOverallPaidTaskAmount' => $totalOverallPaidTaskAmount,
-                'totalOverallPaidOtherAmount' => $totalOverallPaidOtherAmount,
-            ]);
-        }
-
-        return view('penggajian.calculate', compact(
-            'project', 'tasks',
-            'workersForFilter',
-            'isProjectOwner',
-            'totalFilteredTaskPayroll', 'totalFilteredOtherPayments',
-            'totalFilteredPaidTaskAmount', 'totalFilteredPaidOtherAmount',
-            'totalOverallTaskPayroll', 'totalOverallOtherPayments', 'totalOverallPayroll',
-            'totalOverallPaidTaskAmount', 'totalOverallPaidOtherAmount',
-            'budgetDifference', 'perPageOptions', 'request',
-            'modalWorkers', 'modalPaymentCalculationType', 'modalPaymentTerms',
-            'modalUnpaidTasksGrouped', 'modalDefaultTerminName'
-        ));
+    } else {
+        $taskQuery->orderBy('tasks.updated_at', 'desc');
     }
+
+    $totalFilteredTaskPayroll = 0;
+    $tasksForSumCalculationQuery = clone $taskQuery;
+    $filteredTaskIds = $tasksForSumCalculationQuery->pluck('tasks.id');
+    if ($filteredTaskIds->isNotEmpty()) {
+        $allFilteredTasks = Task::with([
+            'difficultyLevel', 'priorityLevel',
+            'projectUserMembership.wageStandard', 'project'
+        ])->findMany($filteredTaskIds);
+        $totalFilteredTaskPayroll = $allFilteredTasks->sum('calculated_value');
+    }
+
+    $perPageOptions = [10, 15, 25, 50, 100];
+    $perPage = $request->input('per_page', 10);
+    if (!in_array($perPage, $perPageOptions)) $perPage = 10;
+    $tasks = $taskQuery->paginate($perPage)->withQueryString();
+
+    // Other payments query (remove search since it shouldn't apply to payments)
+    $otherPaymentQuery = Payment::query()->from('payments as p')
+        ->where('p.project_id', $project->id)
+        ->whereIn('p.payment_type', ['other', 'full']);
+    if (!$isProjectOwner && $currentUser->isProjectMember($project)) {
+        $otherPaymentQuery->where('p.user_id', $currentUser->id);
+    } elseif ($isProjectOwner && $selectedWorkerId) {
+        $otherPaymentQuery->where('p.user_id', $selectedWorkerId);
+    } elseif (!$isProjectOwner && !$currentUser->isProjectMember($project)) {
+        $otherPaymentQuery->whereRaw('1 = 0');
+    }
+    $totalFilteredOtherPayments = $otherPaymentQuery->sum('p.amount');
+
+    // Filtered paid task query (remove search since it shouldn't apply)
+    $filteredPaidTaskQuery = Payment::query()->from('payments as p')
+        ->where('p.project_id', $project->id)
+        ->whereIn('p.payment_type', ['task', 'termin'])
+        ->where('p.status', Payment::STATUS_APPROVED);
+    if (!$isProjectOwner && $currentUser->isProjectMember($project)) {
+        $filteredPaidTaskQuery->where('p.user_id', $currentUser->id);
+    } elseif ($isProjectOwner && $selectedWorkerId) {
+        $filteredPaidTaskQuery->where('p.user_id', $selectedWorkerId);
+    } elseif (!$isProjectOwner && !$currentUser->isProjectMember($project)) {
+        $filteredPaidTaskQuery->whereRaw('1 = 0');
+    }
+    $totalFilteredPaidTaskAmount = $filteredPaidTaskQuery->sum('p.amount');
+
+    // Filtered paid other query (remove search since it shouldn't apply)
+    $filteredPaidOtherQuery = Payment::query()->from('payments as p')
+        ->where('p.project_id', $project->id)
+        ->whereIn('p.payment_type', ['other', 'full'])
+        ->where('p.status', Payment::STATUS_APPROVED);
+    if (!$isProjectOwner && $currentUser->isProjectMember($project)) {
+        $filteredPaidOtherQuery->where('p.user_id', $currentUser->id);
+    } elseif ($isProjectOwner && $selectedWorkerId) {
+        $filteredPaidOtherQuery->where('p.user_id', $selectedWorkerId);
+    } elseif (!$isProjectOwner && !$currentUser->isProjectMember($project)) {
+        $filteredPaidOtherQuery->whereRaw('1 = 0');
+    }
+    $totalFilteredPaidOtherAmount = $filteredPaidOtherQuery->sum('p.amount');
+
+    $totalOverallTaskPayroll = 0;
+    $totalOverallOtherPayments = 0;
+    $totalOverallPaidTaskAmount = 0;
+    $totalOverallPaidOtherAmount = 0;
+    $totalOverallPayroll = 0;
+    $budgetDifference = 0;
+    if ($isProjectOwner) {
+        $allDoneTasks = Task::where('project_id', $project->id)
+            ->where('status', 'Done')
+            ->when($request->filled('start_date'), fn($q) => $q->whereDate('updated_at', '>=', $request->input('start_date')))
+            ->when($request->filled('end_date'), fn($q) => $q->whereDate('updated_at', '<=', $request->input('end_date')))
+            ->with(['difficultyLevel', 'priorityLevel', 'projectUserMembership.wageStandard', 'project'])
+            ->get();
+        $totalOverallTaskPayroll = $allDoneTasks->sum('calculated_value');
+        $totalOverallOtherPayments = Payment::where('project_id', $project->id)
+            ->whereIn('payment_type', ['other', 'full'])
+            ->sum('amount');
+        $totalOverallPaidTaskAmount = Payment::where('project_id', $project->id)
+            ->whereIn('payment_type', ['task', 'termin'])
+            ->where('status', Payment::STATUS_APPROVED)
+            ->sum('amount');
+        $totalOverallPaidOtherAmount = Payment::where('project_id', $project->id)
+            ->whereIn('payment_type', ['other', 'full'])
+            ->where('status', Payment::STATUS_APPROVED)
+            ->sum('amount');
+        $totalOverallPayroll = $totalOverallTaskPayroll + $totalOverallOtherPayments;
+        $budget = $project->budget ?? 0;
+        $budgetDifference = $budget - $totalOverallPayroll;
+    } else {
+        $totalOverallTaskPayroll = $totalFilteredTaskPayroll;
+        $totalOverallOtherPayments = $totalFilteredOtherPayments;
+        $totalOverallPaidTaskAmount = $totalFilteredPaidTaskAmount;
+        $totalOverallPaidOtherAmount = $totalFilteredPaidOtherAmount;
+        $totalOverallPayroll = $totalOverallTaskPayroll + $totalOverallOtherPayments;
+    }
+
+    $workersForFilter = collect();
+    if ($isProjectOwner) {
+        $workersForFilter = $project->workers()->wherePivot('status', 'accepted')->orderBy('name')->get();
+    } else {
+        if ($currentUser->isProjectMember($project)) {
+            $workersForFilter = collect([$currentUser]);
+        }
+    }
+
+    $modalWorkers = $project->workers()->wherePivot('status', 'accepted')->orderBy('name')->get() ?? collect();
+    $modalPaymentCalculationType = $project->payment_calculation_type ?? 'task';
+    $modalPaymentTerms = collect();
+    if ($modalPaymentCalculationType === 'termin') {
+        $modalPaymentTerms = $project->paymentTerms()
+            ->select('id', 'name', 'start_date', 'end_date')
+            ->orderBy('start_date')
+            ->get()
+            ->map(fn ($term) => [
+                'id' => $term->id,
+                'name' => $term->name,
+                'start_date_formatted' => $term->start_date ? $term->start_date->toDateString() : null,
+                'end_date_formatted' => $term->end_date ? $term->end_date->toDateString() : null,
+            ]) ?? collect();
+    }
+    $modalUnpaidTasksQuery = Task::where('project_id', $project->id)
+        ->where('status', 'Done')
+        ->whereNull('payment_id')
+        ->whereNotNull('updated_at')
+        ->select('id', 'title', 'assigned_to', 'achievement_percentage', 'difficulty_level_id', 'priority_level_id', 'project_id', 'updated_at')
+        ->with(['assignedUser:id,name', 'difficultyLevel:id,value', 'priorityLevel:id,value', 'projectUserMembership.wageStandard:id,task_price']);
+
+    $modalUnpaidTasks = $modalUnpaidTasksQuery->get()
+        ->map(function ($task) use ($project) {
+            if (!$task->relationLoaded('project')) $task->setRelation('project', $project);
+            $task->wsm_score = $task->wsm_score;
+            $task->calculated_value = $task->calculated_value;
+            $task->finished_date = $task->updated_at ? Carbon::parse($task->updated_at)->toDateString() : null;
+            return $task;
+        }) ?? collect();
+    $modalUnpaidTasksGrouped = $modalUnpaidTasks->groupBy('assigned_to') ?? collect();
+
+    $nextTerminNumber = 1;
+    $modalDefaultTerminName = '';
+    if ($modalPaymentCalculationType === 'termin') {
+        $lastTermin = Payment::where('project_id', $project->id)
+            ->where('payment_type', 'termin')
+            ->where('payment_name', 'like', 'Termin %')
+            ->orderByRaw('CAST(SUBSTRING_INDEX(payment_name, " ", -1) AS UNSIGNED) DESC, created_at DESC')
+            ->first();
+        if ($lastTermin && preg_match('/Termin (\d+)/', $lastTermin->payment_name, $matches)) {
+            $nextTerminNumber = intval($matches[1]) + 1;
+        }
+        $modalDefaultTerminName = "Termin " . $nextTerminNumber;
+    }
+
+    if ($request->ajax()) {
+        $tableHtml = view('penggajian._payroll_table_content', compact('project', 'tasks', 'request'))->render();
+        return response()->json([
+            'html' => $tableHtml,
+            'totalFilteredTaskPayroll' => $totalFilteredTaskPayroll,
+            'totalFilteredOtherPayments' => $totalFilteredOtherPayments,
+            'totalPaidTaskAmount' => $totalFilteredPaidTaskAmount,
+            'totalPaidOtherAmount' => $totalFilteredPaidOtherAmount,
+            'totalOverallTaskPayroll' => $totalOverallTaskPayroll,
+            'totalOverallOtherPayments' => $totalOverallOtherPayments,
+            'totalOverallPaidTaskAmount' => $totalOverallPaidTaskAmount,
+            'totalOverallPaidOtherAmount' => $totalOverallPaidOtherAmount,
+        ]);
+    }
+
+    return view('penggajian.calculate', compact(
+        'project', 'tasks',
+        'workersForFilter',
+        'isProjectOwner',
+        'totalFilteredTaskPayroll', 'totalFilteredOtherPayments',
+        'totalFilteredPaidTaskAmount', 'totalFilteredPaidOtherAmount',
+        'totalOverallTaskPayroll', 'totalOverallOtherPayments', 'totalOverallPayroll',
+        'totalOverallPaidTaskAmount', 'totalOverallPaidOtherAmount',
+        'budgetDifference', 'perPageOptions', 'request',
+        'modalWorkers', 'modalPaymentCalculationType', 'modalPaymentTerms',
+        'modalUnpaidTasksGrouped', 'modalDefaultTerminName'
+    ));
+}
 }

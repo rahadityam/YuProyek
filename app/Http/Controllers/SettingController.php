@@ -193,105 +193,186 @@ public function updateProjectInfo(Request $request, Project $project)
                          ->with('active_tab', 'financial'); // <-- Kembalikan ke tab financial
     }
 
-    // --- BARU: Method untuk Update Payment Terms ---
     public function updatePaymentTerms(Request $request, Project $project)
     {
-        if (Auth::id() !== $project->owner_id) { abort(403); }
+        // Authorization check
+        if (Auth::id() !== $project->owner_id) {
+            abort(403, 'Unauthorized action.');
+        }
 
         $input = $request->all();
         $terms = $input['terms'] ?? [];
         $errors = [];
 
-        // Validasi setiap termin
+        // Ensure project has valid start and end dates
+        if (!$project->start_date || !$project->end_date) {
+            return back()->withErrors(['general' => 'Proyek harus memiliki tanggal mulai dan selesai yang valid.'])
+                ->withInput()
+                ->with('active_tab', 'financial');
+        }
+
+        // Collect term names for uniqueness check
+        $termNames = collect($terms)->pluck('name')->map('strtolower');
+        $existingNames = PaymentTerm::where('project_id', $project->id)
+            ->whereNotIn('id', collect($terms)->pluck('id')->filter())
+            ->pluck('name')->map('strtolower');
+
+        // Sort terms by start_date for overlap and gap checks
+        $sortedTerms = collect($terms)->sortBy('start_date')->values()->all();
+
+        // Validate each term
         foreach ($terms as $index => $termData) {
             $validator = Validator::make($termData, [
                 'name' => 'required|string|max:255',
-                'start_date' => 'required|date',
-                'end_date' => 'required|date|after_or_equal:start_date',
-                'id' => 'nullable|integer|exists:payment_terms,id,project_id,' . $project->id, // Validasi ID jika ada
-                'delete' => 'nullable|boolean', // Untuk flag hapus
+                'start_date' => [
+                    'required',
+                    'date',
+                    'after_or_equal:' . $project->start_date->toDateString(),
+                    'before_or_equal:' . $project->end_date->toDateString(),
+                ],
+                'end_date' => [
+                    'required',
+                    'date',
+                    'after_or_equal:start_date',
+                    'before_or_equal:' . $project->end_date->toDateString(),
+                ],
+                'id' => 'nullable|integer|exists:payment_terms,id,project_id,' . $project->id,
+                'delete' => 'nullable|boolean',
+            ], [
+                'start_date.after_or_equal' => 'Tanggal mulai termin harus berada di atau setelah tanggal mulai proyek.',
+                'start_date.before_or_equal' => 'Tanggal mulai termin tidak boleh melebihi tanggal selesai proyek.',
+                'end_date.after_or_equal' => 'Tanggal akhir termin harus berada di atau setelah tanggal mulai termin.',
+                'end_date.before_or_equal' => 'Tanggal akhir termin tidak boleh melebihi tanggal selesai proyek.',
             ]);
 
             if ($validator->fails()) {
-                foreach ($validator->errors()->messages() as $field => $message) {
-                    $errors["terms.$index.$field"] = $message;
+                foreach ($validator->errors()->messages() as $field => $messages) {
+                    $errors["terms.$index.$field"] = $messages;
                 }
             }
-        }
 
-        // Validasi nama termin unik dalam request (dan terhadap yang sudah ada di DB)
-        $termNames = collect($terms)->pluck('name')->map('strtolower');
-        $existingNames = PaymentTerm::where('project_id', $project->id)
-            ->whereNotIn('id', collect($terms)->pluck('id')->filter()) // Exclude yang diedit
-            ->pluck('name')->map('strtolower');
-
-        foreach ($terms as $index => $termData) {
-            if (!isset($termData['delete']) || !$termData['delete']) { // Hanya cek yang tidak dihapus
+            // Check for unique term names within request
+            if (!isset($termData['delete']) || !$termData['delete']) {
                 $currentNameLower = strtolower($termData['name']);
-                // Cek duplikat dalam request
                 if ($termNames->filter(fn($name) => $name === $currentNameLower)->count() > 1) {
                     $errors["terms.$index.name"][] = 'Nama termin tidak boleh duplikat dalam satu proyek.';
                 }
-                // Cek duplikat dengan yang sudah ada di DB (kecuali dirinya sendiri jika edit)
                 if ($existingNames->contains($currentNameLower)) {
                     $errors["terms.$index.name"][] = 'Nama termin sudah ada dalam proyek ini.';
                 }
             }
         }
 
+        // Validate no overlaps and ensure dates are sequential
+        for ($i = 0; $i < count($sortedTerms) - 1; $i++) {
+            if (isset($sortedTerms[$i]['delete']) && $sortedTerms[$i]['delete']) {
+                continue; // Skip terms marked for deletion
+            }
 
+            $currentTerm = $sortedTerms[$i];
+            $nextTerm = $sortedTerms[$i + 1];
+
+            if (isset($nextTerm['delete']) && $nextTerm['delete']) {
+                continue; // Skip if next term is marked for deletion
+            }
+
+            $currentEndDate = new \DateTime($currentTerm['end_date']);
+            $nextStartDate = new \DateTime($nextTerm['start_date']);
+
+            // Check for overlap (next term starts before current term ends)
+            if ($nextStartDate <= $currentEndDate) {
+                $errors["terms." . array_search($nextTerm, $terms) . ".start_date"][] = 
+                    "Tanggal mulai termin '{$nextTerm['name']}' tidak boleh sebelum atau sama dengan tanggal akhir termin sebelumnya ('{$currentTerm['name']}').";
+            }
+
+            // Optional: Check for gaps between terms (uncomment if gaps are not allowed)
+            /*
+            $nextDayAfterCurrent = (clone $currentEndDate)->modify('+1 day');
+            if ($nextStartDate > $nextDayAfterCurrent) {
+                $errors["terms." . array_search($nextTerm, $terms) . ".start_date"][] = 
+                    "Tanggal mulai termin '{$nextTerm['name']}' harus tepat sehari setelah tanggal akhir termin sebelumnya ('{$currentTerm['name']}').";
+            }
+            */
+        }
+
+        // Return validation errors if any
         if (!empty($errors)) {
             return back()->withErrors($errors)->withInput()->with('active_tab', 'financial');
         }
 
-        DB::beginTransaction();
-        try {
-            $existingTermIds = [];
-            foreach ($terms as $termData) {
-                $termData['project_id'] = $project->id;
+        Log::info("Memulai updatePaymentTerms untuk Proyek ID: {$project->id}");
+    Log::info("Data termin yang diterima dari request:", $request->input('terms', []));
 
-                if (isset($termData['id']) && $termData['id']) {
-                     $existingTermIds[] = $termData['id'];
-                     $term = PaymentTerm::find($termData['id']);
-                     if ($term) {
-                          if (isset($termData['delete']) && $termData['delete']) {
-                                // Cek jika ada payment terkait sebelum hapus? (Opsional, tergantung kebijakan)
-                                // if ($term->payments()->exists()) {
-                                //     throw new \Exception("Tidak dapat menghapus termin '{$term->name}' karena sudah ada pembayaran terkait.");
-                                // }
-                               $term->delete();
-                          } else {
-                               // Update data term yang ada
-                               $term->update([
-                                   'name' => $termData['name'],
-                                   'start_date' => $termData['start_date'],
-                                   'end_date' => $termData['end_date'],
-                               ]);
-                          }
-                     }
-                } elseif (!isset($termData['delete']) || !$termData['delete']) {
-                    // Buat termin baru (hanya jika tidak ada flag delete)
-                    PaymentTerm::create([
+    DB::beginTransaction();
+    try {
+        $termsData = $request->input('terms', []);
+        $idsFromRequest = []; // Array untuk menampung ID dari termin yang di-request
+
+        foreach ($termsData as $index => $termData) {
+            
+            // Logika untuk UPDATE atau CREATE
+            if (!empty($termData['id'])) {
+                // UPDATE: term yang sudah ada
+                $term = PaymentTerm::find($termData['id']);
+                if ($term) {
+                    $idsFromRequest[] = $term->id; // Tambahkan ID ke daftar yang valid
+
+                    if (isset($termData['delete']) && $termData['delete'] == '1') {
+                        Log::info("Menandai untuk menghapus termin ID: {$term->id}");
+                        $term->delete();
+                    } else {
+                        Log::info("Memperbarui termin ID: {$term->id}");
+                        $term->update([
+                            'name' => $termData['name'],
+                            'start_date' => $termData['start_date'],
+                            'end_date' => $termData['end_date'],
+                        ]);
+                    }
+                }
+            } else {
+                // CREATE: term baru
+                if (!isset($termData['delete']) || !$termData['delete']) {
+                    Log::info("Membuat termin baru. Data:", $termData);
+                    $newTerm = PaymentTerm::create([
                         'project_id' => $project->id,
                         'name' => $termData['name'],
                         'start_date' => $termData['start_date'],
                         'end_date' => $termData['end_date'],
                     ]);
+                    // ===== PERBAIKAN KUNCI: Tambahkan ID baru ke daftar =====
+                    $idsFromRequest[] = $newTerm->id; 
                 }
             }
-
-            DB::commit();
-            return redirect()->route('projects.pengaturan', $project)
-                ->with('success_financial', 'Data termin pembayaran berhasil diperbarui.')
-                ->with('active_tab', 'financial');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error("Failed to update payment terms for project {$project->id}: " . $e->getMessage());
-            return back()->withErrors(['general' => 'Gagal memperbarui termin: ' . $e->getMessage()])->withInput()->with('active_tab', 'financial');
         }
-    }
 
+        // ===== PERBAIKAN LOGIKA PENGHAPUSAN =====
+        // Hapus hanya termin yang ada di DB tapi tidak ada di daftar ID yang kita proses
+        // (baik yang di-update maupun yang baru dibuat).
+        Log::info("ID termin yang diproses (tidak akan dihapus):", $idsFromRequest);
+        
+        $termsToDelete = PaymentTerm::where('project_id', $project->id)->whereNotIn('id', $idsFromRequest)->get();
+        if ($termsToDelete->isNotEmpty()) {
+            foreach ($termsToDelete as $term) {
+                Log::info("Menghapus termin usang (tidak ada di request & tidak baru dibuat) ID: {$term->id}, Nama: {$term->name}");
+                $term->delete();
+            }
+        } else {
+            Log::info("Tidak ada termin usang yang perlu dihapus.");
+        }
+
+        DB::commit();
+        Log::info("Transaksi berhasil di-commit untuk Proyek ID: {$project->id}");
+
+        return redirect()->route('projects.pengaturan', $project)
+            ->with('success_financial', 'Data termin pembayaran berhasil diperbarui.')
+            ->with('active_tab', 'financial');
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error("Gagal memperbarui termin untuk Proyek ID {$project->id}: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+        return back()->withErrors(['general' => 'Gagal memperbarui termin: ' . $e->getMessage()])->withInput()->with('active_tab', 'financial');
+    }
+}
 
     // HAPUS Method 'update' yang lama jika sudah tidak dipakai (jika semua update dipecah)
     // public function update(Request $request, Project $project) { ... }

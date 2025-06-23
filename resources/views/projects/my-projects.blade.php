@@ -1,16 +1,16 @@
 <x-app-layout>
     <div x-data="myProjectsPage({
-            initialProjects: {{ Js::from($projects->items()) }},
-            projectsPagination: {{ Js::from($projects->links('vendor.pagination.tailwind')->toHtml()) }},
-            isOwner: {{ Js::from($isOwner) }},
-            projectStoreUrl: '{{ route('projects.store') }}',
-            csrfToken: '{{ csrf_token() }}',
-            // Data untuk filter dan sort
-            filterSearch: '{{ request('search', '') }}',
-            filterStatus: '{{ request('status', 'all') }}',
-            filterSort: '{{ request('sort', 'created_at') }}'
-        })"
-         x-init="initPage" class="container mx-auto px-4 py-8">
+        initialProjects: {{ Js::from($projects->items()) }},
+        projectsPagination: {{ Js::from($projects->links('vendor.pagination.tailwind')->render()) }},
+        isOwner: {{ Js::from($isOwner) }},
+        projectStoreUrl: '{{ route('projects.store') }}',
+        csrfToken: '{{ csrf_token() }}',
+        filterSearch: '{{ request('search', '') }}',
+        filterStatus: '{{ request('status', 'all') }}',
+        filterSort: '{{ request('sort', 'created_at') }}',
+        filterDirection: '{{ request('direction', 'desc') }}'
+    })"
+     x-init="initPage" class="container mx-auto px-4 py-8">
 
         <div class="flex justify-between items-center mb-8">
             <h1 class="text-3xl font-bold text-gray-800" x-text="isOwner ? 'Proyek yang Saya Kelola' : 'Proyek yang Saya Ikuti'"></h1>
@@ -66,18 +66,30 @@
                     </select>
                 </div>
 
-                <!-- Sorting -->
                 <div>
-                    <label for="sort_filter" class="block text-sm font-medium text-gray-700 mb-1">Urutkan Berdasarkan</label>
-                    <select name="sort" id="sort_filter" 
-                            x-model="filterSort"
-                            @change="submitFilterForm"
-                            class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="created_at">Terbaru</option>
-                        <option value="name">Nama Proyek</option>
-                        <option value="start_date">Tanggal Mulai</option>
-                    </select>
-                </div>
+    <label for="sort_filter" class="block text-sm font-medium text-gray-700 mb-1">Urutkan Berdasarkan</label>
+    <div class="flex space-x-2">
+        <!-- Pilih kolom untuk sorting -->
+        <select name="sort" id="sort_filter" 
+                x-model="filterSort"
+                @change="submitFilterForm"
+                class="w-2/3 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="created_at">Terbaru</option>
+            <option value="name">Nama Proyek</option>
+            <option value="start_date">Tanggal Mulai</option>
+            <option value="end_date">Tanggal Selesai</option>
+            <!-- <option value="budget">Anggaran</option> -->
+        </select>
+        <!-- Pilih arah sorting -->
+        <select name="direction" id="direction_filter" 
+                x-model="filterDirection"
+                @change="submitFilterForm"
+                class="w-1/3 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="desc">Descending</option>
+            <option value="asc">Ascending</option>
+        </select>
+    </div>
+</div>
                 
                 {{-- Tombol Terapkan Filter Dihapus --}}
                 {{-- Tombol Reset Filter bisa tetap ada --}}
@@ -290,8 +302,8 @@
                                                     class="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 sm:text-sm" 
                                                     :class="{'border-red-500': createFormErrors.payment_calculation_type}">
                                                 {{-- <option value="task">Per Task (Default)</option> --}} {{-- HILANGKAN INI --}}
-                                                <option value="termin">Per Termin/Periode</option>
-                                                <option value="full">Jumlah Tetap (Tanpa Task)</option>
+                                                <option value="termin">Pembayaran Per Termin/Periode</option>
+                                                <option value="full">Pembayaran Full</option>
                                             </select>
                                             <template x-if="createFormErrors.payment_calculation_type"><p class="mt-1 text-xs text-red-500" x-text="createFormErrors.payment_calculation_type[0]"></p></template>
                                             <template x-if="createFormErrors.payment_terms && newProject.payment_calculation_type === 'termin'"><p class="mt-1 text-xs text-red-500" x-text="createFormErrors.payment_terms[0]"></p></template>
@@ -396,6 +408,7 @@
             filterSearch: config.filterSearch,
             filterStatus: config.filterStatus,
             filterSort: config.filterSort,
+            filterDirection: config.filterDirection,
 
             // State untuk Modal Buat Proyek
             isCreateProjectModalOpen: false,

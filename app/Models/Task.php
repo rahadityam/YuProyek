@@ -23,6 +23,7 @@ class Task extends Model
         'order',
         'difficulty_level_id',
         'priority_level_id',
+        'progress_percentage',
         'achievement_percentage',
         'payment_id',
     ];
@@ -30,6 +31,7 @@ class Task extends Model
     protected $casts = [
         'start_time' => 'datetime',
         'end_time' => 'datetime',
+        'progress_percentage' => 'integer',
         'achievement_percentage' => 'integer',
     ];
 

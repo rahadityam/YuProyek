@@ -52,23 +52,16 @@ class TaskPolicy
 
     public function update(User $user, Task $task)
     {
-        // Project owner bisa update semua (sudah dihandle `before`, kecuali jika paid)
-        // Jika task sudah dibayar (payment_id ada & payment status approved), tidak boleh diupdate field apapun oleh siapapun.
+        // Jika task sudah dibayar, tidak boleh diupdate oleh siapapun.
         if ($task->payment_id !== null) {
             $payment = $task->payment()->first();
             if ($payment && $payment->status === Payment::STATUS_APPROVED) {
-                Log::debug("TaskPolicy@update: Attempt to update PAID task {$task->id} by user {$user->id}. Denied.");
                 return false;
             }
         }
-        // Jika belum dibayar, project owner bisa update.
-        // Untuk worker, tergantung kebutuhan (misal hanya field tertentu, bukan yang krusial).
-        // Saat ini, logic `before` sudah mengizinkan owner. Jika ingin worker juga bisa update (selama belum paid),
-        // Anda bisa tambahkan `|| $user->id === $task->assigned_to` di sini.
-        // Namun, dengan adanya `before` untuk owner, baris ini efektifnya hanya untuk worker.
-        // Kita asumsikan worker tidak bisa update field umum, hanya status (melalui updateStatus).
-        // return $user->id === $task->assigned_to;
-        return $user->isProjectOwner($task->project); // Owner bisa update jika belum paid (worker tidak)
+        
+        // Izinkan update jika user adalah PEMILIK PROYEK ATAU ASSIGNEE dari tugas tersebut.
+        return $user->isProjectOwner($task->project) || $user->id === $task->assigned_to;
     }
 
     public function updateStatus(User $user, Task $task)
@@ -98,6 +91,12 @@ class TaskPolicy
             Log::warning("TaskPolicy@updateStatus: User {$user->id} is NOT authorized to update status for task {$task->id} (not assigned).");
         }
         return $isAssigned; // Hanya worker yang diassign (dan task belum dibayar)
+    }
+
+    public function updateProgress(User $user, Task $task)
+    {
+        // Izinkan jika user adalah pemilik proyek ATAU user yang di-assign ke tugas ini
+        return $user->isProjectOwner($task->project) || $user->id === $task->assigned_to;
     }
 
     public function delete(User $user, Task $task)

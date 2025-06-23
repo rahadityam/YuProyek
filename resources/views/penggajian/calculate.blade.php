@@ -172,22 +172,24 @@
     </style>
 
     <div class="py-6 px-4 sm:px-6 lg:px-8" x-data="payrollCalculator(
-                '{{ route('projects.payroll.calculate', $project) }}',
-                '{{ old('worker_id', $request->input('worker_id', ($isProjectOwner ? 'all' : auth()->id()))) }}',
-                '{{ old('payment_status', $request->input('payment_status', 'all')) }}',
-                '{{ old('search', $request->input('search', '')) }}',
-                {{ old('per_page', $request->input('per_page', 10)) }},
-                '{{ old('sort', $request->input('sort', 'updated_at')) }}',
-                '{{ old('direction', $request->input('direction', 'desc')) }}',
-                {{ $totalFilteredTaskPayroll ?? 0 }},
-                {{ $totalFilteredOtherPayments ?? 0 }},
-                {{ $totalOverallTaskPayroll ?? 0 }},
-                {{ $totalOverallOtherPayments ?? 0 }},
-                {{ $totalFilteredPaidTaskAmount ?? 0 }},
-                {{ $totalFilteredPaidOtherAmount ?? 0 }},
-                {{ $totalOverallPaidTaskAmount ?? 0 }},
-                {{ $totalOverallPaidOtherAmount ?? 0 }}
-            )" x-init="init()">
+    '{{ route('projects.payroll.calculate', $project) }}',
+    '{{ old('worker_id', $request->input('worker_id', ($isProjectOwner ? 'all' : auth()->id()))) }}',
+    '{{ old('payment_status', $request->input('payment_status', 'all')) }}',
+    '{{ old('search', $request->input('search', '')) }}',
+    {{ old('per_page', $request->input('per_page', 10)) }},
+    '{{ old('sort', $request->input('sort', 'updated_at')) }}',
+    '{{ old('direction', $request->input('direction', 'desc')) }}',
+    {{ $totalFilteredTaskPayroll ?? 0 }},
+    {{ $totalFilteredOtherPayments ?? 0 }},
+    {{ $totalOverallTaskPayroll ?? 0 }},
+    {{ $totalOverallOtherPayments ?? 0 }},
+    {{ $totalFilteredPaidTaskAmount ?? 0 }},
+    {{ $totalFilteredPaidOtherAmount ?? 0 }},
+    {{ $totalOverallPaidTaskAmount ?? 0 }},
+    {{ $totalOverallPaidOtherAmount ?? 0 }},
+    '{{ old('start_date', $request->input('start_date', '')) }}',
+    '{{ old('end_date', $request->input('end_date', '')) }}'
+)" x-init="init()">
 
         {{-- Header Halaman & Tombol Aksi --}}
         <div class="mb-6 flex justify-between items-center no-print">
@@ -229,65 +231,77 @@
             </nav>
         </div>
 
-        {{-- Filters, Search, and Controls (Tidak Berubah) ... --}}
-        <div class="mb-6 bg-gray-50 p-4 rounded-md border border-gray-200 no-print">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {{-- Worker Filter --}}
-                <div>
-                    <label for="worker_id" class="block text-sm font-medium text-gray-700">Pekerja</label>
-                    <select name="worker_id" id="worker_id" x-model="filters.worker_id" @change="applyFilters()"
-                        class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                        {{ !$isProjectOwner ? 'disabled' : '' }}> {{-- Disable jika bukan owner --}}
-                        @if($isProjectOwner)
-                            <option value="all">Semua Pekerja</option>
-                        @endif
-                        @foreach ($workersForFilter as $worker)
-                            <option value="{{ $worker->id }}">
-                                {{ $worker->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @if(!$isProjectOwner)
-                        <p class="text-xs text-gray-500 mt-1 italic">Menampilkan data untuk Anda.</p>
-                    @endif
-                </div>
-
-                {{-- Task Payment Status Filter --}}
-                <div>
-                    <label for="payment_status" class="block text-sm font-medium text-gray-700">Status Pembayaran Task</label>
-                    <select name="payment_status" id="payment_status" x-model="filters.payment_status" @change="applyFilters()"
-                        class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                        <option value="all">Semua Status</option>
-                        <option value="unpaid">Belum Dibayar</option>
-                        <option value="paid">Sudah Dibayar</option>
-                    </select>
-                </div>
-
-                {{-- Search Input --}}
-                <div>
-                    <label for="search" class="block text-sm font-medium text-gray-700">Cari Task / Pekerja / Bonus</label>
-                    <input type="text" name="search" id="search" x-model="filters.search" @input.debounce.500ms="applyFilters()" placeholder="Masukkan kata kunci..."
-                        class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
-                </div>
-
-                {{-- Per Page Selector --}}
-                <div>
-                    <label for="per_page" class="block text-sm font-medium text-gray-700">Item per Halaman (Task)</label>
-                    <select name="per_page" id="per_page" x-model="filters.per_page" @change="applyFilters()"
-                        class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                        @foreach ($perPageOptions as $option)
-                            <option value="{{ $option }}">{{ $option }}</option>
-                        @endforeach
-                    </select>
-                </div>
-            </div>
-            <div class="mt-4 flex justify-end space-x-2">
-                <button type="button" @click="resetFilters()"
-                    class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                    Reset Filter
-                </button>
-            </div>
+        {{-- Filters, Search, and Controls --}}
+<div class="mb-6 bg-gray-50 p-4 rounded-md border border-gray-200 no-print">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {{-- Worker Filter --}}
+        <div>
+            <label for="worker_id" class="block text-sm font-medium text-gray-700">Pekerja</label>
+            <select name="worker_id" id="worker_id" x-model="filters.worker_id" @change="applyFilters()"
+                class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                {{ !$isProjectOwner ? 'disabled' : '' }}>
+                @if($isProjectOwner)
+                    <option value="all">Semua Pekerja</option>
+                @endif
+                @foreach ($workersForFilter as $worker)
+                    <option value="{{ $worker->id }}">{{ $worker->name }}</option>
+                @endforeach
+            </select>
+            @if(!$isProjectOwner)
+                <p class="text-xs text-gray-500 mt-1 italic">Menampilkan data untuk Anda.</p>
+            @endif
         </div>
+
+        {{-- Task Payment Status Filter --}}
+        <div>
+            <label for="payment_status" class="block text-sm font-medium text-gray-700">Status Pembayaran Task</label>
+            <select name="payment_status" id="payment_status" x-model="filters.payment_status" @change="applyFilters()"
+                class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                <option value="all">Semua Status</option>
+                <option value="unpaid">Belum Dibayar</option>
+                <option value="paid">Sudah Dibayar</option>
+            </select>
+        </div>
+
+        {{-- Start Date Filter --}}
+        <div>
+            <label for="start_date" class="block text-sm font-medium text-gray-700">Tanggal Awal</label>
+            <input type="date" name="start_date" id="start_date" x-model="filters.start_date" @input="applyFilters()"
+                class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+        </div>
+
+        {{-- End Date Filter --}}
+        <div>
+            <label for="end_date" class="block text-sm font-medium text-gray-700">Tanggal Akhir</label>
+            <input type="date" name="end_date" id="end_date" x-model="filters.end_date" @input="applyFilters()"
+                class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+        </div>
+
+        {{-- Search Input (Task Name Only) --}}
+        <div>
+            <label for="search" class="block text-sm font-medium text-gray-700">Cari Nama Task</label>
+            <input type="text" name="search" id="search" x-model="filters.search" @input.debounce.500ms="applyFilters()" placeholder="Masukkan nama task..."
+                class="mt-1 focus:ring-indigo-500 focus:border-indigo-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md">
+        </div>
+
+        {{-- Per Page Selector --}}
+        <div>
+            <label for="per_page" class="block text-sm font-medium text-gray-700">Item per Halaman (Task)</label>
+            <select name="per_page" id="per_page" x-model="filters.per_page" @change="applyFilters()"
+                class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                @foreach ($perPageOptions as $option)
+                    <option value="{{ $option }}">{{ $option }}</option>
+                @endforeach
+            </select>
+        </div>
+    </div>
+    <div class="mt-4 flex justify-end space-x-2">
+        <button type="button" @click="resetFilters()"
+            class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            Reset Filter
+        </button>
+    </div>
+</div>
 
         <div id="printable-content">
             
@@ -350,24 +364,25 @@
                 </div>
             </div>
             {{-- Header Cetak (Tidak Berubah) ... --}}
-             <div class="hidden print:block mb-4">
-                <h2 class="text-xl font-bold text-center">Laporan Perhitungan Penggajian</h2>
-                <p class="text-sm text-center">Proyek: {{ $project->name }}</p>
-                <p class="text-sm text-center">Tanggal Cetak/Export: <span x-text="new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })"></span></p>
-                <div class="text-xs mt-2 text-gray-600 border-t border-b border-gray-300 py-1 my-2">
-                    <p class="font-medium">Filter Aktif:</p>
-                    <ul class="list-none pl-0">
-                        <li>Pekerja: <span
-                                x-text="filters.worker_id === 'all' || {{ Js::from(!$isProjectOwner) }} ? ({{ Js::from(!$isProjectOwner) }} ? '{{ Auth::user()->name }}' : 'Semua Pekerja') : (document.getElementById('worker_id')?.options[document.getElementById('worker_id')?.selectedIndex]?.text || filters.worker_id)"></span>
-                        </li>
-                        <li>Status Task: <span
-                                x-text="filters.payment_status === 'all' ? 'Semua' : (filters.payment_status === 'paid' ? 'Dibayar' : 'Belum Dibayar')"></span>
-                        </li>
-                        <li>Pencarian: <span x-text="filters.search || '-'"></span></li>
-                        <li>Urutan: <span x-text="filters.sort + ' (' + filters.direction + ')'"></span></li>
-                    </ul>
-                </div>
-            </div>
+            <div class="hidden print:block mb-4">
+    <h2 class="text-xl font-bold text-center">Laporan Perhitungan Penggajian</h2>
+    <p class="text-sm text-center">Proyek: {{ $project->name }}</p>
+    <p class="text-sm text-center" x-show="filters.start_date || filters.end_date">
+        Periode: <span x-text="filters.start_date ? new Date(filters.start_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '-'"></span>
+        s.d. <span x-text="filters.end_date ? new Date(filters.end_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '-'"></span>
+    </p>
+    <p class="text-sm text-center">Tanggal Cetak/Export: <span x-text="new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })"></span></p>
+    <div class="text-xs mt-2 text-gray-600 border-t border-b border-gray-300 py-1 my-2">
+        <p class="font-medium">Filter Aktif:</p>
+        <ul class="list-none pl-0">
+            <li>Pekerja: <span x-text="filters.worker_id === 'all' || {{ Js::from(!$isProjectOwner) }} ? ({{ Js::from(!$isProjectOwner) }} ? '{{ Auth::user()->name }}' : 'Semua Pekerja') : (document.getElementById('worker_id')?.options[document.getElementById('worker_id')?.selectedIndex]?.text || filters.worker_id)"></span></li>
+            <li>Status Task: <span x-text="filters.payment_status === 'all' ? 'Semua' : (filters.payment_status === 'paid' ? 'Dibayar' : 'Belum Dibayar')"></span></li>
+            <li>Pencarian: <span x-text="filters.search || '-'"></span></li>
+            <li>Urutan: <span x-text="filters.sort + ' (' + filters.direction + ')'"></span></li>
+            <li>Periode: <span x-text="filters.start_date ? new Date(filters.start_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'"></span> s.d. <span x-text="filters.end_date ? new Date(filters.end_date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'"></span></li>
+        </ul>
+    </div>
+</div>
 
             <h3 class="text-lg font-medium text-gray-800 mb-3 print:text-base pt-4">Rekap Task</h3>
             <div id="payroll-table-container" x-ref="tableContainer">
@@ -402,146 +417,158 @@
         {{-- JavaScript untuk Payroll Calculator --}}
         <script>
             function payrollCalculator(baseUrl, initialWorker, initialStatus, initialSearch, initialPerPage, initialSort, initialDirection,
-                initialTotalFilteredTask, initialTotalFilteredOther, initialTotalOverallTask, initialTotalOverallOther,
-                initialTotalFilteredPaidTask, initialTotalFilteredPaidOther,
-                initialTotalOverallPaidTask, initialTotalOverallPaidOther)
-            {
-                return {
-                    // ... (properti dan method yang ada di payrollCalculator tetap sama) ...
-                    // ... (seperti filters, loading, tableHtml, totals, init, buildUrl, fetchData, applyFilters, sortBy, goToPage, resetFilters, formatCurrency, printReport, exportToPdf)
-                    baseUrl: baseUrl,
-                    filters: {
-                        worker_id: initialWorker,
-                        payment_status: initialStatus,
-                        search: initialSearch,
-                        per_page: parseInt(initialPerPage) || 10,
-                        sort: initialSort,
-                        direction: initialDirection,
-                        page: 1,
-                    },
-                    loading: false,
-                    tableHtml: '', // Ini akan diisi oleh AJAX
-                    totals: {
-                        filteredTask: parseFloat(initialTotalFilteredTask) || 0,
-                        filteredOther: parseFloat(initialTotalFilteredOther) || 0,
-                        overallTask: parseFloat(initialTotalOverallTask) || 0,
-                        overallOther: parseFloat(initialTotalOverallOther) || 0,
-                        filteredPaidTask: parseFloat(initialTotalFilteredPaidTask) || 0,
-                        filteredPaidOther: parseFloat(initialTotalFilteredPaidOther) || 0,
-                        overallPaidTask: parseFloat(initialTotalOverallPaidTask) || 0,
-                        overallPaidOther: parseFloat(initialTotalOverallPaidOther) || 0
-                    },
-                    currentUrl: '',
-                    isExportingPdf: false,
-                    isProjectOwner: {{ Js::from($isProjectOwner) }},
+    initialTotalFilteredTask, initialTotalFilteredOther, initialTotalOverallTask, initialTotalOverallOther,
+    initialTotalFilteredPaidTask, initialTotalFilteredPaidOther,
+    initialTotalOverallPaidTask, initialTotalOverallPaidOther, initialStartDate, initialEndDate)
+{
+    return {
+        baseUrl: baseUrl,
+        filters: {
+            worker_id: initialWorker,
+            payment_status: initialStatus,
+            search: initialSearch,
+            per_page: parseInt(initialPerPage) || 10,
+            sort: initialSort,
+            direction: initialDirection,
+            page: 1,
+            start_date: initialStartDate,
+            end_date: initialEndDate
+        },
+        loading: false,
+        tableHtml: '',
+        totals: {
+            filteredTask: parseFloat(initialTotalFilteredTask) || 0,
+            filteredOther: parseFloat(initialTotalFilteredOther) || 0,
+            overallTask: parseFloat(initialTotalOverallTask) || 0,
+            overallOther: parseFloat(initialTotalOverallOther) || 0,
+            filteredPaidTask: parseFloat(initialTotalFilteredPaidTask) || 0,
+            filteredPaidOther: parseFloat(initialTotalFilteredPaidOther) || 0,
+            overallPaidTask: parseFloat(initialTotalOverallPaidTask) || 0,
+            overallPaidOther: parseFloat(initialTotalOverallPaidOther) || 0
+        },
+        currentUrl: '',
+        isExportingPdf: false,
+        isProjectOwner: {{ Js::from($isProjectOwner) }},
 
-                    init() {
-                        this.tableHtml = this.$refs.tableContainer.querySelector('[x-html="tableHtml"]').innerHTML;
-                         if (!this.isProjectOwner) { this.filters.worker_id = '{{ auth()->id() }}'; }
-                        this.currentUrl = this.buildUrl();
-                        history.replaceState({ ...this.filters }, '', this.currentUrl);
+        init() {
+            this.tableHtml = this.$refs.tableContainer.querySelector('[x-html="tableHtml"]').innerHTML;
+            if (!this.isProjectOwner) { this.filters.worker_id = '{{ auth()->id() }}'; }
+            this.currentUrl = this.buildUrl();
+            history.replaceState({ ...this.filters }, '', this.currentUrl);
 
-                        this.$refs.tableContainer.addEventListener('click', (e) => {
-                            const paginationLink = e.target.closest('.pagination a, a.relative[href*="page="]');
-                            if (paginationLink && paginationLink.href) {
-                                e.preventDefault();
-                                this.goToPage(paginationLink.href);
-                            }
-                        });
-                        window.addEventListener('popstate', (event) => {
-                            if (event.state) {
-                                this.filters = { ...this.filters, ...event.state };
-                                if (!this.isProjectOwner) { this.filters.worker_id = '{{ auth()->id() }}'; }
-                                this.filters.per_page = parseInt(this.filters.per_page) || 10;
-                                this.filters.page = parseInt(this.filters.page) || 1;
-                                this.fetchData(false);
-                            }
-                        });
-                    },
+            this.$refs.tableContainer.addEventListener('click', (e) => {
+                const paginationLink = e.target.closest('.pagination a, a.relative[href*="page="]');
+                if (paginationLink && paginationLink.href) {
+                    e.preventDefault();
+                    this.goToPage(paginationLink.href);
+                }
+            });
+            window.addEventListener('popstate', (event) => {
+                if (event.state) {
+                    this.filters = { ...this.filters, ...event.state };
+                    if (!this.isProjectOwner) { this.filters.worker_id = '{{ auth()->id() }}'; }
+                    this.filters.per_page = parseInt(this.filters.per_page) || 10;
+                    this.filters.page = parseInt(this.filters.page) || 1;
+                    this.fetchData(false);
+                }
+            });
+        },
 
-                    buildUrl() {
-                        const activeFilters = {};
-                        for (const key in this.filters) {
-                            if (!this.isProjectOwner && key === 'worker_id') { activeFilters[key] = '{{ auth()->id() }}'; continue; }
-                            if (this.filters[key] !== null && this.filters[key] !== '' && this.filters[key] !== 'all') {
-                                if (key === 'page' && this.filters[key] === 1) continue;
-                                activeFilters[key] = this.filters[key];
-                            }
-                        }
-                        const params = new URLSearchParams(activeFilters).toString();
-                        return `${this.baseUrl}${params ? '?' + params : ''}`;
-                    },
-
-                    fetchData(updateHistory = true) {
-                        this.loading = true;
-                        const fetchUrl = this.buildUrl();
-                        fetch(fetchUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
-                            .then(response => {
-                                if (!response.ok) return response.json().catch(() => response.text()).then(errData => { /* ... error handling ... */ throw new Error('Fetch error'); });
-                                return response.json();
-                            })
-                            .then(data => {
-                                this.tableHtml = data.html;
-                                this.totals.filteredTask = parseFloat(data.totalFilteredTaskPayroll) || 0;
-                                this.totals.filteredOther = parseFloat(data.totalFilteredOtherPayments) || 0;
-                                this.totals.filteredPaidTask = parseFloat(data.totalPaidTaskAmount) || 0;
-                                this.totals.filteredPaidOther = parseFloat(data.totalPaidOtherAmount) || 0;
-                                // Update overall totals jika dikirim dari backend
-                                if (data.hasOwnProperty('totalOverallTaskPayroll')) this.totals.overallTask = parseFloat(data.totalOverallTaskPayroll) || 0;
-                                if (data.hasOwnProperty('totalOverallOtherPayments')) this.totals.overallOther = parseFloat(data.totalOverallOtherPayments) || 0;
-                                if (data.hasOwnProperty('totalOverallPaidTaskAmount')) this.totals.overallPaidTask = parseFloat(data.totalOverallPaidTaskAmount) || 0;
-                                if (data.hasOwnProperty('totalOverallPaidOtherAmount')) this.totals.overallPaidOther = parseFloat(data.totalOverallPaidOtherAmount) || 0;
-
-                                if (updateHistory && fetchUrl !== this.currentUrl) {
-                                    history.pushState({ ...this.filters }, '', fetchUrl);
-                                    this.currentUrl = fetchUrl;
-                                }
-                            })
-                            .catch(error => { /* ... error handling ... */ this.tableHtml = `<div class="text-red-600 p-4">Error loading data.</div>`; })
-                            .finally(() => { this.loading = false; });
-                    },
-                    applyFilters() { this.filters.page = 1; this.fetchData(); },
-                    sortBy(field) {
-                        const validDbSortFields = ['title', 'assigned_user_name', 'difficulty_value', 'priority_value', 'achievement_percentage', 'payment_status', 'updated_at'];
-                        if (!validDbSortFields.includes(field)) { console.warn(`Sorting by field "${field}" is not implemented.`); return; }
-                        let newDirection = 'asc';
-                        if (this.filters.sort === field && this.filters.direction === 'asc') { newDirection = 'desc'; }
-                        this.filters.sort = field; this.filters.direction = newDirection;
-                        this.filters.page = 1; this.fetchData();
-                    },
-                    goToPage(url) {
-                        try { const targetUrl = new URL(url); const page = targetUrl.searchParams.get('page') || 1; this.filters.page = parseInt(page); this.fetchData(); }
-                        catch (e) { console.error("Invalid URL for pagination:", url, e); }
-                    },
-                    resetFilters() {
-                        const defaultPerPage = 10; const defaultSort = 'updated_at'; const defaultDirection = 'desc';
-                        this.filters.worker_id = this.isProjectOwner ? 'all' : '{{ auth()->id() }}';
-                        this.filters.payment_status = 'all'; this.filters.search = '';
-                        this.filters.per_page = defaultPerPage; this.filters.sort = defaultSort;
-                        this.filters.direction = defaultDirection; this.filters.page = 1; this.fetchData();
-                    },
-                    formatCurrency(value) {
-                        if (value === null || value === undefined || isNaN(value)) return 'Rp 0';
-                        return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
-                    },
-                    printReport() { window.print(); },
-                    exportToPdf() {
-                        if (this.isExportingPdf) return; this.isExportingPdf = true;
-                        const element = document.getElementById('printable-content');
-                        if (!element) { console.error("#printable-content not found!"); this.isExportingPdf = false; return; }
-                        const workerSelect = document.getElementById('worker_id');
-                        let workerNamePart = 'SemuaPekerja';
-                        if (this.filters.worker_id !== 'all') {
-                            if (this.isProjectOwner) workerNamePart = workerSelect?.options[workerSelect?.selectedIndex]?.text.replace(/[^a-zA-Z0-9]/g, '-') || 'Pekerja';
-                            else workerNamePart = '{{ Auth::user()->name }}'.replace(/[^a-zA-Z0-9]/g, '-');
-                        }
-                        const date = new Date().toISOString().slice(0, 10);
-                        const filename = `Laporan-Penggajian-${workerNamePart}-${date}.pdf`;
-                        const opt = { margin: [10, 10, 15, 10], filename: filename, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, logging: false }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } };
-                        html2pdf().set(opt).from(element).save().then(() => { this.isExportingPdf = false; }).catch(err => { console.error("PDF export error:", err); this.isExportingPdf = false; });
-                    }
+        buildUrl() {
+            const activeFilters = {};
+            for (const key in this.filters) {
+                if (!this.isProjectOwner && key === 'worker_id') { activeFilters[key] = '{{ auth()->id() }}'; continue; }
+                if (this.filters[key] !== null && this.filters[key] !== '' && this.filters[key] !== 'all') {
+                    if (key === 'page' && this.filters[key] === 1) continue;
+                    activeFilters[key] = this.filters[key];
                 }
             }
+            const params = new URLSearchParams(activeFilters).toString();
+            return `${this.baseUrl}${params ? '?' + params : ''}`;
+        },
+
+        fetchData(updateHistory = true) {
+            this.loading = true;
+            const fetchUrl = this.buildUrl();
+            fetch(fetchUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                .then(response => {
+                    if (!response.ok) return response.json().catch(() => response.text()).then(errData => { throw new Error('Fetch error'); });
+                    return response.json();
+                })
+                .then(data => {
+                    this.tableHtml = data.html;
+                    this.totals.filteredTask = parseFloat(data.totalFilteredTaskPayroll) || 0;
+                    this.totals.filteredOther = parseFloat(data.totalFilteredOtherPayments) || 0;
+                    this.totals.filteredPaidTask = parseFloat(data.totalPaidTaskAmount) || 0;
+                    this.totals.filteredPaidOther = parseFloat(data.totalPaidOtherAmount) || 0;
+                    if (data.hasOwnProperty('totalOverallTaskPayroll')) this.totals.overallTask = parseFloat(data.totalOverallTaskPayroll) || 0;
+                    if (data.hasOwnProperty('totalOverallOtherPayments')) this.totals.overallOther = parseFloat(data.totalOverallOtherPayments) || 0;
+                    if (data.hasOwnProperty('totalOverallPaidTaskAmount')) this.totals.overallPaidTask = parseFloat(data.totalOverallPaidTaskAmount) || 0;
+                    if (data.hasOwnProperty('totalOverallPaidOtherAmount')) this.totals.overallPaidOther = parseFloat(data.totalOverallPaidOtherAmount) || 0;
+
+                    if (updateHistory && fetchUrl !== this.currentUrl) {
+                        history.pushState({ ...this.filters }, '', fetchUrl);
+                        this.currentUrl = fetchUrl;
+                    }
+                })
+                .catch(error => { this.tableHtml = `<div class="text-red-600 p-4">Error loading data.</div>`; })
+                .finally(() => { this.loading = false; });
+        },
+
+        applyFilters() { this.filters.page = 1; this.fetchData(); },
+
+        sortBy(field) {
+            const validDbSortFields = ['title', 'assigned_user_name', 'difficulty_value', 'priority_value', 'achievement_percentage', 'payment_status', 'updated_at'];
+            if (!validDbSortFields.includes(field)) { console.warn(`Sorting by field "${field}" is not implemented.`); return; }
+            let newDirection = 'asc';
+            if (this.filters.sort === field && this.filters.direction === 'asc') { newDirection = 'desc'; }
+            this.filters.sort = field; this.filters.direction = newDirection;
+            this.filters.page = 1; this.fetchData();
+        },
+
+        goToPage(url) {
+            try { const targetUrl = new URL(url); const page = targetUrl.searchParams.get('page') || 1; this.filters.page = parseInt(page); this.fetchData(); }
+            catch (e) { console.error("Invalid URL for pagination:", url, e); }
+        },
+
+        resetFilters() {
+            const defaultPerPage = 10; const defaultSort = 'updated_at'; const defaultDirection = 'desc';
+            this.filters.worker_id = this.isProjectOwner ? 'all' : '{{ auth()->id() }}';
+            this.filters.payment_status = 'all';
+            this.filters.search = '';
+            this.filters.per_page = defaultPerPage;
+            this.filters.sort = defaultSort;
+            this.filters.direction = defaultDirection;
+            this.filters.page = 1;
+            this.filters.start_date = '';
+            this.filters.end_date = '';
+            this.fetchData();
+        },
+
+        formatCurrency(value) {
+            if (value === null || value === undefined || isNaN(value)) return 'Rp 0';
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+        },
+
+        printReport() { window.print(); },
+
+        exportToPdf() {
+            if (this.isExportingPdf) return; this.isExportingPdf = true;
+            const element = document.getElementById('printable-content');
+            if (!element) { console.error("#printable-content not found!"); this.isExportingPdf = false; return; }
+            const workerSelect = document.getElementById('worker_id');
+            let workerNamePart = 'SemuaPekerja';
+            if (this.filters.worker_id !== 'all') {
+                if (this.isProjectOwner) workerNamePart = workerSelect?.options[workerSelect?.selectedIndex]?.text.replace(/[^a-zA-Z0-9]/g, '-') || 'Pekerja';
+                else workerNamePart = '{{ Auth::user()->name }}'.replace(/[^a-zA-Z0-9]/g, '-');
+            }
+            const date = new Date().toISOString().slice(0, 10);
+            const filename = `Laporan-Penggajian-${workerNamePart}-${date}.pdf`;
+            const opt = { margin: [10, 10, 15, 10], filename: filename, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, logging: false }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } };
+            html2pdf().set(opt).from(element).save().then(() => { this.isExportingPdf = false; }).catch(err => { console.error("PDF export error:", err); this.isExportingPdf = false; });
+        }
+    }
+}
         </script>
 
         {{-- JavaScript untuk Modal Pembuatan Slip Gaji --}}

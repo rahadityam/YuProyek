@@ -486,23 +486,34 @@
             },
 
             onMove: function (evt) {
-                    // evt.to adalah list tujuan
-                    // evt.dragged adalah item yang di-drag
-                    const targetList = evt.to;
-                    const wipLimit = self.wipLimit;
-                    const inProgressStatusName = 'In Progress';
+                        const targetList = evt.to;
+                        const draggedItem = evt.dragged;
+                        const wipLimit = self.wipLimit;
+                        const inProgressStatusName = 'In Progress';
 
-                    if (wipLimit > 0 && targetList.dataset.status === inProgressStatusName) {
-                        // Hitung jumlah task di kolom tujuan (tidak termasuk 'ghost' element)
-                        const currentCount = targetList.querySelectorAll('.task:not(.sortable-ghost)').length;
-                        
-                        if (currentCount >= wipLimit) {
-                            self.showStatusMessage(`WIP Limit (${wipLimit}) tercapai, tidak bisa menambah tugas lagi.`, false);
-                            return false; // Mencegah perpindahan
+                        if (wipLimit > 0 && targetList.dataset.status === inProgressStatusName) {
+                            const assigneeId = draggedItem.dataset.assignedUserId;
+
+                            // Hanya validasi jika tugas punya assignee
+                            if (assigneeId) {
+                                let countForUser = 0;
+                                // Hitung semua tugas di kolom tujuan yang sudah ada untuk assignee yang sama
+                                targetList.querySelectorAll('.task').forEach(taskEl => {
+                                    if (taskEl.dataset.assignedUserId === assigneeId) {
+                                        countForUser++;
+                                    }
+                                });
+                                
+                                // Jika jumlahnya sudah mencapai atau melebihi limit, batalkan perpindahan
+                                if (countForUser >= wipLimit) {
+                                    const assigneeName = draggedItem.querySelector('.text-xs.font-bold').title.replace('Assigned to: ', '');
+                                    self.showStatusMessage(`WIP Limit per orang (${wipLimit}) untuk '${assigneeName}' telah tercapai.`, false);
+                                    return false; // Mencegah perpindahan
+                                }
+                            }
                         }
-                    }
-                    return true; // Izinkan perpindahan
-                },
+                        return true; // Izinkan perpindahan
+                    },
 
             onEnd: (evt) => { // onEnd sudah ada dan seharusnya OK
                         console.log('[KanbanApp onEnd] Drag ended. Event details:', evt);

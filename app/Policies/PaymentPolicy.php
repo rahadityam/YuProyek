@@ -11,9 +11,9 @@ class PaymentPolicy
 {
     use HandlesAuthorization;
 
-    public function viewAny(User $user, Project $project) // Untuk melihat riwayat slip gaji
+    public function viewAny(User $user, Project $project)
     {
-        return $user->id === $project->owner_id;
+        return $user->isProjectMember($project);
     }
 
     public function view(User $user, Payment $payment)
