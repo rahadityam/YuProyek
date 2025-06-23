@@ -20,7 +20,10 @@ class AdminDashboardController extends Controller
 
         $totalProjects = Project::count();
         $totalProjectsStarted = Project::whereNotNull('start_date')->count();
-        $totalProjectsEnded = Project::whereNotNull('end_date')->count();
+        $totalProjectsEnded = Project::whereNotNull('end_date')
+            ->whereDate('end_date', '<=', Carbon::today())
+            ->count();
+
 
         // WEEKLY (daily)
         $startOfWeek = Carbon::now()->startOfWeek(); // Monday
