@@ -48,14 +48,18 @@
 
         {{-- Filter Form --}}
         <div class="mb-6 bg-gray-50 p-4 rounded-md border border-gray-200 no-print">
+            {{-- Form tidak perlu submit, jadi kita bisa hilangkan --}}
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
                 <div class="lg:col-span-2">
                     <label for="search" class="block text-sm font-medium text-gray-700">Cari</label>
-                    <input type="text" id="search" x-model="filters.search" placeholder="Nama task atau pekerja..." class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                    <input type="text" id="search" x-model.debounce.500ms="filters.search" 
+                           placeholder="Nama task atau pekerja..." 
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
                 </div>
                 <div>
                     <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
-                    <select id="status" x-model="filters.status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                    <select id="status" x-model="filters.status"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
                         <option value="all">Semua Status</option>
                         <option value="To Do">To Do</option>
                         <option value="In Progress">In Progress</option>
@@ -65,7 +69,8 @@
                 </div>
                 <div>
                     <label for="user_id" class="block text-sm font-medium text-gray-700">Pekerja</label>
-                    <select id="user_id" x-model="filters.user_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                    <select id="user_id" x-model="filters.user_id" 
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
                         <option value="all">Semua Pekerja</option>
                         @foreach($projectUsers as $user)
                             <option value="{{ $user->id }}">{{ $user->name }}</option>
@@ -74,22 +79,24 @@
                 </div>
                 <div>
                     <label for="per_page" class="block text-sm font-medium text-gray-700">Item/Halaman</label>
-                    <select id="per_page" x-model.number="filters.per_page" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                    <select id="per_page" x-model.number="filters.per_page" 
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
                         @foreach ($perPageOptions as $option)
                             <option value="{{ $option }}">{{ $option }}</option>
                         @endforeach
                     </select>
                 </div>
                 
-                {{-- Filter Periode Tanggal --}}
                 <div class="grid grid-cols-2 gap-4 lg:col-span-2">
                     <div>
                         <label for="date_from" class="block text-sm font-medium text-gray-700">Dari Tgl. (Mulai)</label>
-                        <input type="date" id="date_from" x-model="filters.date_from" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                        <input type="date" id="date_from" x-model="filters.date_from" 
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
                     </div>
                     <div>
                         <label for="date_to" class="block text-sm font-medium text-gray-700">Sampai Tgl. (Selesai)</label>
-                        <input type="date" id="date_to" x-model="filters.date_to" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                        <input type="date" id="date_to" x-model="filters.date_to"
+                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
                     </div>
                 </div>
             </div>
@@ -144,150 +151,210 @@
     @push('scripts')
         <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
         <script>
-            function debounce(func, wait) {
-                let timeout;
-                return function(...args) {
-                    clearTimeout(timeout);
-                    timeout = setTimeout(() => func.apply(this, args), wait);
-                };
-            }
-
             function recapPage(config) {
-                return {
-                    baseUrl: config.baseUrl,
-                    filters: {
-                        search: config.initialFilters.search || '',
-                        status: config.initialFilters.status || 'all',
-                        user_id: config.initialFilters.user_id || 'all',
-                        date_from: config.initialFilters.date_from || '',
-                        date_to: config.initialFilters.date_to || '',
-                        per_page: parseInt(config.initialFilters.per_page) || 15,
-                        sort: config.initialFilters.sort || 'created_at',
-                        direction: config.initialFilters.direction || 'desc',
-                        page: parseInt(config.initialFilters.page) || 1,
-                    },
-                    loading: false,
-                    isExportingPdf: false,
-                    tableHtml: '',
+    return {
+        // Properti data tetap sama
+        baseUrl: config.baseUrl,
+        filters: {
+            search: config.initialFilters.search || '',
+            status: config.initialFilters.status || 'all',
+            user_id: config.initialFilters.user_id || 'all',
+            date_from: config.initialFilters.date_from || '',
+            date_to: config.initialFilters.date_to || '',
+            per_page: parseInt(config.initialFilters.per_page) || 15,
+            sort: config.initialFilters.sort || 'created_at',
+            direction: config.initialFilters.direction || 'desc',
+            page: parseInt(config.initialFilters.page) || 1,
+        },
+        loading: false,
+        isExportingPdf: false,
+        tableHtml: '',
 
-                    init() {
-                        this.tableHtml = document.getElementById('recap-table-wrapper').innerHTML;
-                        
-                        this.$watch('filters.search', debounce(() => this.applyFilters(), 500));
-                        ['status', 'user_id', 'per_page', 'date_from', 'date_to'].forEach(key => {
-                            this.$watch(`filters.${key}`, () => this.applyFilters());
-                        });
-                        
-                        this.updateUrl(false);
-                        
-                        window.onpopstate = (event) => {
-                            if (event.state) {
-                                Object.assign(this.filters, event.state);
-                                this.fetchData(false);
-                            }
-                        };
-                    },
-                    
-                    handleDelegatedClick(event) {
-                        const sortLink = event.target.closest('#recap-table-container thead a');
-                        const pageLink = event.target.closest('#recap-pagination-container a');
-                        
-                        if (sortLink) {
-                            event.preventDefault();
-                            this.sortBy(sortLink.dataset.sortField);
-                        } else if (pageLink) {
-                            event.preventDefault();
-                            this.goToPage(pageLink.href);
-                        }
-                    },
+        init() {
+            this.tableHtml = document.getElementById('recap-table-wrapper').innerHTML;
+            
+            // Fix untuk watch dengan debounce
+            let searchTimeout;
+            this.$watch('filters.search', (newValue, oldValue) => {
+                if (newValue !== oldValue) {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(() => {
+                        this.applyFilters();
+                    }, 500);
+                }
+            });
+            
+            // Watch untuk filter lainnya tanpa debounce
+            this.$watch('filters.status', (newValue, oldValue) => {
+                if (newValue !== oldValue) {
+                    this.applyFilters();
+                }
+            });
+            
+            this.$watch('filters.user_id', (newValue, oldValue) => {
+                if (newValue !== oldValue) {
+                    this.applyFilters();
+                }
+            });
+            
+            this.$watch('filters.per_page', (newValue, oldValue) => {
+                if (newValue !== oldValue) {
+                    this.applyFilters();
+                }
+            });
+            
+            this.$watch('filters.date_from', (newValue, oldValue) => {
+                if (newValue !== oldValue) {
+                    this.applyFilters();
+                }
+            });
+            
+            this.$watch('filters.date_to', (newValue, oldValue) => {
+                if (newValue !== oldValue) {
+                    this.applyFilters();
+                }
+            });
+            
+            // Attach event listener ke elemen dinamis (tabel dan pagination)
+            this.$el.addEventListener('click', (e) => this.handleDelegatedClick(e));
 
-                    applyFilters() {
-                        this.filters.page = 1;
-                        this.fetchData();
-                    },
-                    
-                    sortBy(field) {
-                        if (!field) return;
-                        if (this.filters.sort === field) {
-                            this.filters.direction = this.filters.direction === 'asc' ? 'desc' : 'asc';
-                        } else {
-                            this.filters.sort = field;
-                            this.filters.direction = 'asc';
-                        }
-                        this.filters.page = 1;
-                        this.fetchData();
-                    },
+            // Initial URL update
+            this.updateUrl(false);
+            
+            // Handle browser back/forward
+            window.onpopstate = (event) => {
+                if (event.state) {
+                    Object.assign(this.filters, event.state);
+                    this.fetchData(false);
+                }
+            };
+        },
+        
+        handleDelegatedClick(event) {
+            const sortLink = event.target.closest('#recap-table-wrapper thead a');
+            const pageLink = event.target.closest('#recap-table-wrapper .pagination a');
+            
+            if (sortLink) {
+                event.preventDefault();
+                this.sortBy(sortLink.dataset.sortField || new URL(sortLink.href).searchParams.get('sort'));
+            } else if (pageLink) {
+                event.preventDefault();
+                this.goToPage(pageLink.href);
+            }
+        },
 
-                    goToPage(url) {
-                        if (!url) return;
-                        try {
-                            const page = new URL(url).searchParams.get('page') || 1;
-                            this.filters.page = parseInt(page);
-                            this.fetchData();
-                        } catch (e) { console.error("Invalid pagination URL:", url, e); }
-                    },
+        applyFilters() {
+            console.log('Applying filters:', this.filters); // Debug log
+            this.filters.page = 1;
+            this.fetchData();
+        },
+        
+        sortBy(field) {
+            if (!field) return;
+            if (this.filters.sort === field) {
+                this.filters.direction = this.filters.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                this.filters.sort = field;
+                this.filters.direction = 'asc';
+            }
+            this.filters.page = 1;
+            this.fetchData();
+        },
 
-                    fetchData(updateHistory = true) {
-                        this.loading = true;
-                        if (updateHistory) this.updateUrl();
+        goToPage(url) {
+            if (!url) return;
+            try {
+                const page = new URL(url).searchParams.get('page') || 1;
+                this.filters.page = parseInt(page);
+                this.fetchData();
+            } catch (e) { 
+                console.error("Invalid pagination URL:", url, e); 
+            }
+        },
 
-                        const fetchUrl = this.buildUrlParams(true);
-                        
-                        fetch(fetchUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
-                        .then(res => res.ok ? res.json() : Promise.reject(res))
-                        .then(data => {
-                            this.tableHtml = data.table_html;
-                        })
-                        .catch(error => {
-                            console.error('Error fetching data:', error);
-                            this.tableHtml = '<div class="p-8 text-center text-red-500">Gagal memuat data.</div>';
-                        })
-                        .finally(() => {
-                            this.loading = false;
-                        });
-                    },
+        fetchData(updateHistory = true) {
+            console.log('Fetching data with filters:', this.filters); // Debug log
+            this.loading = true;
+            if (updateHistory) this.updateUrl();
 
-                    attachPaginationListeners() {
-                        this.$nextTick(() => {
-                            document.querySelectorAll('#recap-pagination-container a').forEach(link => {
-                                link.addEventListener('click', (e) => {
-                                    e.preventDefault();
-                                    this.goToPage(link.href);
-                                });
-                            });
-                        });
-                    },
+            const fetchUrl = this.buildUrlParams(true);
+            console.log('Fetch URL:', fetchUrl); // Debug log
+            
+            fetch(fetchUrl, { 
+                headers: { 
+                    'X-Requested-With': 'XMLHttpRequest', 
+                    'Accept': 'application/json' 
+                } 
+            })
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+                return res.json();
+            })
+            .then(data => {
+                // Update tabel dengan HTML baru dari server
+                this.tableHtml = data.table_html;
+            })
+            .catch(error => {
+                console.error('Error fetching data:', error);
+                this.tableHtml = '<div class="p-8 text-center text-red-500">Gagal memuat data. Error: ' + error.message + '</div>';
+            })
+            .finally(() => {
+                this.loading = false;
+            });
+        },
 
-                    buildUrlParams(fullPath = false) {
-                        const params = new URLSearchParams();
-                        for (const key in this.filters) {
-                            if (this.filters[key] && this.filters[key] !== 'all' && !(key === 'page' && this.filters[key] === 1)) {
-                                params.append(key, this.filters[key]);
-                            }
-                        }
-                        const paramString = params.toString();
-                        return fullPath ? `${this.baseUrl}${paramString ? '?' + paramString : ''}` : paramString;
-                    },
-
-                    updateUrl() {
-                        const newUrl = this.buildUrlParams(true);
-                        history.pushState({ ...this.filters }, '', newUrl);
-                    },
-                    
-                    exportToPdf() {
-                        if (this.isExportingPdf) return; this.isExportingPdf = true;
-                        const element = document.getElementById('printable-area');
-                        if (!element) { this.isExportingPdf = false; return; }
-                        const date = new Date().toISOString().slice(0, 10);
-                        const filename = `Rekap-Tugas-{{ Str::slug($project->name) }}-${date}.pdf`;
-                        const opt = {
-                            margin: [10, 5, 10, 5], filename: filename, image: { type: 'jpeg', quality: 0.98 },
-                            html2canvas: { scale: 2, useCORS: true, logging: false }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-                        };
-                        html2pdf().set(opt).from(element).save().then(() => { this.isExportingPdf = false; }).catch(err => { this.isExportingPdf = false; });
-                    }
+        buildUrlParams(fullPath = false) {
+            const params = new URLSearchParams();
+            for (const key in this.filters) {
+                const value = this.filters[key];
+                // Include all non-empty values, even 'all' for debugging
+                if (value && value !== '') {
+                    // Skip default page value
+                    if (key === 'page' && value === 1) continue;
+                    params.append(key, value);
                 }
             }
+            const paramString = params.toString();
+            return fullPath ? `${this.baseUrl}${paramString ? '?' + paramString : ''}` : paramString;
+        },
+
+        updateUrl(pushState = true) {
+            const newUrl = this.buildUrlParams(true);
+            if (pushState) {
+                history.pushState({ ...this.filters }, '', newUrl);
+            }
+        },
+        
+        exportToPdf() {
+            if (this.isExportingPdf) return; 
+            this.isExportingPdf = true;
+            const element = document.getElementById('printable-area');
+            if (!element) { 
+                this.isExportingPdf = false; 
+                return; 
+            }
+            const date = new Date().toISOString().slice(0, 10);
+            const filename = `Rekap-Tugas-${date}.pdf`;
+            const opt = {
+                margin: [10, 5, 10, 5], 
+                filename: filename, 
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true, logging: false }, 
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+            };
+            html2pdf().set(opt).from(element).save()
+                .then(() => { 
+                    this.isExportingPdf = false; 
+                })
+                .catch(err => { 
+                    console.error('PDF export error:', err);
+                    this.isExportingPdf = false; 
+                });
+        }
+    }
+}
         </script>
     @endpush
 </x-app-layout>
