@@ -16,9 +16,24 @@
         }
     </style>
     
+    {{-- PERBAIKAN: Sanitasi data filter di sini --}}
+    @php
+        $initialFiltersConfig = [
+            'search' => $request->query('search', ''),
+            'status' => $request->query('status', 'all'),
+            'user_id' => $request->query('user_id', 'all'),
+            'date_from' => $request->query('date_from', ''),
+            'date_to' => $request->query('date_to', ''),
+            'per_page' => (int) $request->query('per_page', 15),
+            'sort' => $request->query('sort', 'created_at'),
+            'direction' => $request->query('direction', 'desc'),
+            'page' => (int) $request->query('page', 1),
+        ];
+    @endphp
+
     <div x-data="recapPage({
             baseUrl: '{{ route('projects.tasks.recap', $project) }}',
-            initialFilters: {{ Js::from($request->query()) }}
+            initialFilters: {{ Js::from($initialFiltersConfig) }}
          })"
          x-init="init()"
          class="py-6 px-4 sm:px-6 lg:px-8">
@@ -81,7 +96,6 @@
                     </select>
                 </div>
                 
-                {{-- Filter Periode Tanggal --}}
                 <div class="grid grid-cols-2 gap-4 lg:col-span-2">
                     <div>
                         <label for="date_from" class="block text-sm font-medium text-gray-700">Dari Tgl. (Mulai)</label>
@@ -102,27 +116,13 @@
                 <h2 class="text-xl font-bold text-center">Rekapitulasi Tugas Proyek</h2>
                 <p class="text-sm text-center">Proyek: {{ $project->name }}</p>
                 <p class="text-sm text-center">Dicetak pada: <span x-text="new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })"></span></p>
-                
-                {{-- Ringkasan Filter yang Aktif --}}
                 <div class="text-xs mt-2 text-gray-600 border-t border-b border-gray-300 py-1 my-2">
                     <p class="font-medium">Filter Aktif:</p>
                     <ul class="list-none pl-0">
-                        <li>
-                            Pekerja: 
-                            <span x-text="filters.user_id === 'all' ? 'Semua Pekerja' : (document.getElementById('user_id')?.options[document.getElementById('user_id')?.selectedIndex]?.text || filters.user_id)"></span>
-                        </li>
-                        <li>
-                            Status: 
-                            <span x-text="filters.status === 'all' ? 'Semua Status' : filters.status"></span>
-                        </li>
-                        <li>
-                            Periode: 
-                            <span x-text="filters.date_from || 'Semua'"></span> s/d <span x-text="filters.date_to || 'Semua'"></span>
-                        </li>
-                        <li>
-                            Pencarian: 
-                            <span x-text="filters.search || '-' "></span>
-                        </li>
+                        <li>Pekerja: <span x-text="filters.user_id === 'all' ? 'Semua Pekerja' : (document.getElementById('user_id')?.options[document.getElementById('user_id')?.selectedIndex]?.text || filters.user_id)"></span></li>
+                        <li>Status: <span x-text="filters.status === 'all' ? 'Semua Status' : filters.status"></span></li>
+                        <li>Periode: <span x-text="filters.date_from || 'Semua'"></span> s/d <span x-text="filters.date_to || 'Semua'"></span></li>
+                        <li>Pencarian: <span x-text="filters.search || '-' "></span></li>
                     </ul>
                 </div>
             </div>
@@ -132,9 +132,8 @@
                 <svg class="animate-spin h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"> <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle> <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
             </div>
             
-            {{-- Kontainer yang akan diisi oleh AJAX --}}
-            <div id="recap-table-wrapper" x-html="tableHtml">
-                {{-- Render awal dari server --}}
+            <div id="recap-table-wrapper">
+                {{-- Kontainer ini sekarang dibungkus dengan x-html di parent, jadi kita hanya perlu render partialnya --}}
                 @include('tasks.partials._recap_table_content', ['tasks' => $tasks, 'project' => $project, 'request' => $request])
             </div>
         </div>
@@ -155,31 +154,16 @@
             function recapPage(config) {
                 return {
                     baseUrl: config.baseUrl,
-                    filters: {
-                        search: config.initialFilters.search || '',
-                        status: config.initialFilters.status || 'all',
-                        user_id: config.initialFilters.user_id || 'all',
-                        date_from: config.initialFilters.date_from || '',
-                        date_to: config.initialFilters.date_to || '',
-                        per_page: parseInt(config.initialFilters.per_page) || 15,
-                        sort: config.initialFilters.sort || 'created_at',
-                        direction: config.initialFilters.direction || 'desc',
-                        page: parseInt(config.initialFilters.page) || 1,
-                    },
+                    filters: { ...config.initialFilters }, // Clone the object
                     loading: false,
                     isExportingPdf: false,
                     tableHtml: '',
 
                     init() {
                         this.tableHtml = document.getElementById('recap-table-wrapper').innerHTML;
-                        
-                        this.$watch('filters.search', debounce(() => this.applyFilters(), 500));
-                        ['status', 'user_id', 'per_page', 'date_from', 'date_to'].forEach(key => {
-                            this.$watch(`filters.${key}`, () => this.applyFilters());
-                        });
-                        
+                        this.setupFilterWatchers();
+                        this.$el.addEventListener('click', (e) => this.handleDelegatedClick(e));
                         this.updateUrl(false);
-                        
                         window.onpopstate = (event) => {
                             if (event.state) {
                                 Object.assign(this.filters, event.state);
@@ -187,10 +171,17 @@
                             }
                         };
                     },
+
+                    setupFilterWatchers() {
+                        this.$watch('filters.search', debounce(() => this.applyFilters(), 500));
+                        ['status', 'user_id', 'per_page', 'date_from', 'date_to'].forEach(key => {
+                            this.$watch(`filters.${key}`, () => this.applyFilters());
+                        });
+                    },
                     
                     handleDelegatedClick(event) {
-                        const sortLink = event.target.closest('#recap-table-container thead a');
-                        const pageLink = event.target.closest('#recap-pagination-container a');
+                        const sortLink = event.target.closest('#recap-table-wrapper thead a');
+                        const pageLink = event.target.closest('#recap-table-wrapper .pagination a');
                         
                         if (sortLink) {
                             event.preventDefault();
@@ -230,48 +221,43 @@
                     fetchData(updateHistory = true) {
                         this.loading = true;
                         if (updateHistory) this.updateUrl();
-
+                        
                         const fetchUrl = this.buildUrlParams(true);
                         
                         fetch(fetchUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
                         .then(res => res.ok ? res.json() : Promise.reject(res))
                         .then(data => {
-                            this.tableHtml = data.table_html;
+                            const wrapper = document.getElementById('recap-table-wrapper');
+                            if (wrapper) wrapper.innerHTML = data.table_html;
                         })
                         .catch(error => {
-                            console.error('Error fetching data:', error);
-                            this.tableHtml = '<div class="p-8 text-center text-red-500">Gagal memuat data.</div>';
+                            const wrapper = document.getElementById('recap-table-wrapper');
+                            if (wrapper) wrapper.innerHTML = '<div class="p-8 text-center text-red-500">Gagal memuat data.</div>';
                         })
                         .finally(() => {
                             this.loading = false;
                         });
                     },
 
-                    attachPaginationListeners() {
-                        this.$nextTick(() => {
-                            document.querySelectorAll('#recap-pagination-container a').forEach(link => {
-                                link.addEventListener('click', (e) => {
-                                    e.preventDefault();
-                                    this.goToPage(link.href);
-                                });
-                            });
-                        });
-                    },
-
                     buildUrlParams(fullPath = false) {
                         const params = new URLSearchParams();
-                        for (const key in this.filters) {
-                            if (this.filters[key] && this.filters[key] !== 'all' && !(key === 'page' && this.filters[key] === 1)) {
-                                params.append(key, this.filters[key]);
+                        Object.entries(this.filters).forEach(([key, value]) => {
+                             if (value && value !== 'all' && !(key === 'page' && value === 1)) {
+                                params.append(key, value);
                             }
-                        }
+                        });
                         const paramString = params.toString();
                         return fullPath ? `${this.baseUrl}${paramString ? '?' + paramString : ''}` : paramString;
                     },
 
-                    updateUrl() {
+                    updateUrl(replace = false) {
                         const newUrl = this.buildUrlParams(true);
-                        history.pushState({ ...this.filters }, '', newUrl);
+                        const state = { ...this.filters };
+                        if (replace) {
+                            history.replaceState(state, '', newUrl);
+                        } else {
+                            history.pushState(state, '', newUrl);
+                        }
                     },
                     
                     exportToPdf() {

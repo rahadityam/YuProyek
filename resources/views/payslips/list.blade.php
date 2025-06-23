@@ -1,11 +1,26 @@
 <x-app-layout>
-    <div id="payslip-list-component" {{-- Tambahkan ID unik --}}
+    {{-- PERBAIKAN: Sanitasi data filter di sini untuk menghindari error "could not be cloned" --}}
+    @php
+        $initialFiltersConfig = [
+            'search' => $request->query('search', ''),
+            'user_id' => $request->query('user_id', ''),
+            'payment_type' => $request->query('payment_type', ''),
+            'status' => $request->query('status', ''),
+            'date_from' => $request->query('date_from', ''),
+            'date_to' => $request->query('date_to', ''),
+            'sort' => $request->query('sort', 'updated_at'),
+            'direction' => $request->query('direction', 'desc'),
+            'page' => (int) $request->query('page', 1),
+        ];
+    @endphp
+
+    <div id="payslip-list-component"
          x-data="payslipListFilter({
             baseUrl: '{{ route('projects.payslips.history', $project) }}',
-            initialFilters: {{ Js::from($request->query()) }},
+            initialFilters: {{ Js::from($initialFiltersConfig) }},
             isProjectOwner: {{ Js::from($isProjectOwner) }}
          })"
-         @click.document="handleDelegatedClick($event)"
+         x-init="init()"
          class="py-6 px-4 sm:px-6 lg:px-8">
 
         <div class="mb-6 flex justify-between items-center">
@@ -38,148 +53,135 @@
               </div>
           @endif
 
-        {{-- Filter Form --}}
-         <div class="mb-6 bg-gray-50 p-4 rounded-md border border-gray-200">
-     <form @submit.prevent>
-         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
-             <div>
-                 <label for="filter_search" class="block text-sm font-medium text-gray-700">Cari</label>
-                 {{-- UBAH: Tambahkan @input untuk memicu fetch --}}
-                 <input type="text" name="search" id="filter_search" 
-                        x-model.debounce.500ms="filters.search" 
-                        @input.debounce.500ms="onFilterChange()" 
-                        placeholder="Nama slip/pekerja..." 
-                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
-             </div>
-             @if($isProjectOwner)
-             <div>
-                <label for="filter_user_id" class="block text-sm font-medium text-gray-700">Pekerja</label>
-                {{-- UBAH: Tambahkan @change untuk memicu fetch --}}
-                <select name="user_id" id="filter_user_id" x-model="filters.user_id" @change="onFilterChange()" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
-                            <option value="">Semua Pekerja</option>
-                            @foreach ($workersForFilter as $worker)
-                                <option value="{{ $worker->id }}">{{ $worker->name }}</option>
-                            @endforeach
-                        </select>
-                     </div>
-                     @endif
-                     <div>
-                         <label for="filter_payment_type" class="block text-sm font-medium text-gray-700">Tipe Slip</label>
-                 {{-- UBAH: Tambahkan @change untuk memicu fetch --}}
-                 <select name="payment_type" id="filter_payment_type" x-model="filters.payment_type" @change="onFilterChange()" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
-                             <option value="">Semua Tipe</option>
-                              @foreach ($paymentTypes as $type)
-                                 <option value="{{ $type }}">{{ ucfirst($type) }}</option>
-                              @endforeach
-                         </select>
-                     </div>
-                      @if($isProjectOwner)
-                     <div>
-                         <label for="filter_status" class="block text-sm font-medium text-gray-700">Status Slip</label>
-                 {{-- UBAH: Tambahkan @change untuk memicu fetch --}}
-                 <select name="status" id="filter_status" x-model="filters.status" @change="onFilterChange()" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
-                             <option value="">Semua Status</option>
-                             @foreach ($statusesForFilter as $value => $label)
-                                <option value="{{ $value }}">{{ $label }}</option>
-                             @endforeach
-                         </select>
-                     </div>
-                     @endif
-                     <div class="grid grid-cols-2 gap-2 {{ $isProjectOwner ? '' : 'lg:col-span-2' }}">
-                 <div>
-                     <label for="filter_date_from" class="block text-sm font-medium text-gray-700">Dari Tgl.</label>
-                     {{-- UBAH: Tambahkan @change untuk memicu fetch --}}
-                     <input type="date" name="date_from" id="filter_date_from" x-model="filters.date_from" @change="onFilterChange()" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
-                 </div>
-                 <div>
-                     <label for="filter_date_to" class="block text-sm font-medium text-gray-700">Sampai Tgl.</label>
-                     {{-- UBAH: Tambahkan @change untuk memicu fetch --}}
-                     <input type="date" name="date_to" id="filter_date_to" x-model="filters.date_to" @change="onFilterChange()" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
-                 </div>
-             </div>
-             <div class="{{ $isProjectOwner ? 'lg:col-span-5' : 'lg:col-span-1' }} flex justify-end">
-                <button type="button" @click="resetFilters()" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
-                    Reset
-                </button>
-             </div>
-         </div>
-     </form>
- </div>
-
-        <div class="relative">
-        {{-- Loading Overlay --}}
-        <div x-show="loading" x-transition class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
-            <svg class="animate-spin h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"> <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle> <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+        {{-- PERBAIKAN: Hapus @submit.prevent dan trigger @input/@change --}}
+        <div class="mb-6 bg-gray-50 p-4 rounded-md border border-gray-200">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+                <div>
+                    <label for="filter_search" class="block text-sm font-medium text-gray-700">Cari</label>
+                    <input type="text" name="search" id="filter_search" 
+                           x-model.debounce.500ms="filters.search" 
+                           placeholder="Nama slip/pekerja..." 
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                </div>
+                @if($isProjectOwner)
+                <div>
+                   <label for="filter_user_id" class="block text-sm font-medium text-gray-700">Pekerja</label>
+                   <select name="user_id" id="filter_user_id" x-model="filters.user_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                               <option value="">Semua Pekerja</option>
+                               @foreach ($workersForFilter as $worker)
+                                   <option value="{{ $worker->id }}">{{ $worker->name }}</option>
+                               @endforeach
+                           </select>
+                        </div>
+                        @endif
+                        <div>
+                            <label for="filter_payment_type" class="block text-sm font-medium text-gray-700">Tipe Slip</label>
+                    <select name="payment_type" id="filter_payment_type" x-model="filters.payment_type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                                <option value="">Semua Tipe</option>
+                                 @foreach ($paymentTypes as $type)
+                                    <option value="{{ $type }}">{{ ucfirst($type) }}</option>
+                                 @endforeach
+                            </select>
+                        </div>
+                         @if($isProjectOwner)
+                        <div>
+                            <label for="filter_status" class="block text-sm font-medium text-gray-700">Status Slip</label>
+                    <select name="status" id="filter_status" x-model="filters.status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                                <option value="">Semua Status</option>
+                                @foreach ($statusesForFilter as $value => $label)
+                                   <option value="{{ $value }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        @endif
+                        <div class="grid grid-cols-2 gap-2 {{ $isProjectOwner ? '' : 'lg:col-span-2' }}">
+                    <div>
+                        <label for="filter_date_from" class="block text-sm font-medium text-gray-700">Dari Tgl.</label>
+                        <input type="date" name="date_from" id="filter_date_from" x-model="filters.date_from" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="filter_date_to" class="block text-sm font-medium text-gray-700">Sampai Tgl.</label>
+                        <input type="date" name="date_to" id="filter_date_to" x-model="filters.date_to" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                    </div>
+                </div>
+                <div class="{{ $isProjectOwner ? 'lg:col-span-5' : 'lg:col-span-1' }} flex justify-end">
+                   <button type="button" @click="resetFilters()" class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                       Reset
+                   </button>
+                </div>
+            </div>
         </div>
 
-        <div id="table-wrapper">
-             <div id="payslip-list-table-container" x-html="tableHtml">
-                  @include('payslips.partials._list_table_content', ['payslips' => $payslips, 'project' => $project, 'request' => $request, 'isProjectOwner' => $isProjectOwner])
-             </div>
-             <div id="payslip-list-pagination-container" class="px-6 py-4 border-t border-gray-200 bg-white" x-html="paginationHtml">
-                 @if ($payslips->hasPages())
-                    {{ $payslips->links('vendor.pagination.tailwind') }}
-                 @endif
-             </div>
+        <div class="relative">
+            {{-- Loading Overlay --}}
+            <div x-show="loading" x-transition class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-10">
+                <svg class="animate-spin h-8 w-8 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"> <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle> <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            </div>
+
+            {{-- PERBAIKAN: Satu wrapper untuk tabel dan pagination --}}
+            <div id="table-wrapper">
+                {{-- Render awal dari server --}}
+                @include('payslips.partials._list_table_content', ['payslips' => $payslips, 'project' => $project, 'request' => $request, 'isProjectOwner' => $isProjectOwner])
+                <div class="px-6 py-4 border-t border-gray-200 bg-white">
+                     @if ($payslips->hasPages())
+                        {{ $payslips->links('vendor.pagination.tailwind') }}
+                     @endif
+                </div>
+            </div>
         </div>
     </div>
     
     @push('scripts')
     <script>
-        // UBAH: GANTI SELURUH FUNGSI LAMA DENGAN INI
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
         function payslipListFilter(config) {
             return {
                 baseUrl: config.baseUrl,
-                filters: {
-                    search: config.initialFilters.search || '',
-                    user_id: config.initialFilters.user_id || '',
-                    payment_type: config.initialFilters.payment_type || '',
-                    status: config.initialFilters.status || '',
-                    date_from: config.initialFilters.date_from || '',
-                    date_to: config.initialFilters.date_to || '',
-                    sort: config.initialFilters.sort || 'updated_at',
-                    direction: config.initialFilters.direction || 'desc',
-                    page: parseInt(config.initialFilters.page) || 1
-                },
+                filters: { ...config.initialFilters }, // Clone
                 isProjectOwner: config.isProjectOwner,
                 loading: false,
-                tableHtml: '',
-                paginationHtml: '',
-
-                // PERUBAHAN: Hapus fetchTimeout, debounce akan dihandle x-model
                 
                 init() {
-                    console.log("[INIT] Payslip list component initializing...");
-                    // Mengambil konten awal yang sudah dirender oleh server
-                    this.tableHtml = document.getElementById('payslip-list-table-container').innerHTML;
-                    this.paginationHtml = document.getElementById('payslip-list-pagination-container').innerHTML;
-                    
-                    if (!this.isProjectOwner && {{ Auth::check() ? 'true' : 'false' }}) {
+                    // Cek jika user bukan owner, set filter user_id secara default
+                    if (!this.isProjectOwner) {
                         this.filters.user_id = '{{ Auth::id() }}';
                     }
+                    this.setupFilterWatchers();
+                    this.$el.addEventListener('click', (e) => this.handleDelegatedClick(e));
+                    this.updateUrl(false);
 
-                    // Menangani navigasi back/forward browser
                     window.onpopstate = (event) => {
                         if (event.state) {
-                            console.log("[POPSTATE] Browser navigation detected. Updating filters from state.");
                             Object.assign(this.filters, event.state);
-                            // Tidak perlu panggil fetchData, karena browser akan me-render ulang halaman dari cache atau turbo
+                            this.fetchData(false);
                         }
                     };
-
-                    console.log("[INIT] Initial filters state:", JSON.parse(JSON.stringify(this.filters)));
                 },
 
-                // Fungsi ini dipanggil setiap kali nilai filter berubah di UI
-                onFilterChange() {
-                    console.log("[FILTER CHANGE] A filter value changed. Resetting to page 1 and fetching data.");
+                // PERBAIKAN: Implementasi watcher terpusat
+                setupFilterWatchers() {
+                    this.$watch('filters.search', debounce(() => this.applyFilters(), 500));
+
+                    ['user_id', 'payment_type', 'status', 'date_from', 'date_to'].forEach(key => {
+                        this.$watch(`filters.${key}`, () => this.applyFilters());
+                    });
+                },
+
+                applyFilters() {
                     this.filters.page = 1;
                     this.fetchData();
                 },
                 
                 handleDelegatedClick(event) {
-                    const sortLink = event.target.closest('#payslip-list-table-container thead a');
-                    const pageLink = event.target.closest('#payslip-list-pagination-container a');
+                    const sortLink = event.target.closest('#table-wrapper thead a');
+                    const pageLink = event.target.closest('#table-wrapper .pagination a');
                     
                     if (sortLink) {
                         event.preventDefault();
@@ -192,7 +194,6 @@
                 
                 sortBy(field) {
                     if (!field) return;
-                    console.log(`[SORT] Sorting by: ${field}`);
                     this.filters.direction = (this.filters.sort === field && this.filters.direction === 'asc') ? 'desc' : 'asc';
                     this.filters.sort = field;
                     this.filters.page = 1;
@@ -200,14 +201,14 @@
                 },
 
                 getSortIndicator(field) {
-                    if (this.filters.sort !== field) return '↕';
+                    if (this.filters.sort !== field) return '↕'; // Indikator default
                     return this.filters.direction === 'asc' ? '↑' : '↓';
                 },
 
                 goToPage(url) {
+                    if(!url) return;
                     try {
                         const page = new URL(url).searchParams.get('page') || 1;
-                        console.log(`[PAGINATION] Going to page: ${page}`);
                         this.filters.page = parseInt(page);
                         this.fetchData();
                     } catch (e) { console.error("Invalid pagination URL:", url, e); }
@@ -218,24 +219,16 @@
                     if (updateHistory) this.updateUrl();
 
                     const fetchUrl = this.buildUrlParams(true);
-                    console.log(`[FETCH] Fetching data from: ${fetchUrl}`);
-
+                    
                     fetch(fetchUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
-                    .then(res => {
-                        if (!res.ok) {
-                            console.error('Server responded with an error:', res.status, res.statusText);
-                            return Promise.reject(res);
-                        }
-                        return res.json();
-                    })
+                    .then(res => res.ok ? res.json() : Promise.reject(res))
                     .then(data => {
-                        this.tableHtml = data.table_html;
-                        this.paginationHtml = data.pagination_html;
+                        const wrapper = document.getElementById('table-wrapper');
+                        if (wrapper) wrapper.innerHTML = data.table_html + data.pagination_html;
                     })
                     .catch(error => {
-                        console.error('Error fetching data:', error);
-                        this.tableHtml = `<tr><td colspan="8" class="text-center py-10 text-red-500 font-semibold">Gagal memuat data. Silakan coba lagi.</td></tr>`;
-                        this.paginationHtml = '';
+                        const wrapper = document.getElementById('table-wrapper');
+                        if (wrapper) wrapper.innerHTML = `<div class="bg-white p-6 rounded-md shadow"><p class="text-center text-red-500 font-semibold">Gagal memuat data. Silakan coba lagi.</p></div>`;
                     })
                     .finally(() => {
                         this.loading = false;
@@ -253,17 +246,16 @@
                     return fullPath ? `${this.baseUrl}${paramString ? '?' + paramString : ''}` : paramString;
                 },
 
-                updateUrl(push = true) {
+                updateUrl(replace = false) {
                     const newUrl = this.buildUrlParams(true);
-                    if (push) {
-                        history.pushState({ ...this.filters }, '', newUrl);
-                    } else {
+                    if (replace) {
                         history.replaceState({ ...this.filters }, '', newUrl);
+                    } else {
+                        history.pushState({ ...this.filters }, '', newUrl);
                     }
                 },
 
                 resetFilters() {
-                    console.log("[RESET] Resetting all filters.");
                     this.filters.search = '';
                     this.filters.user_id = this.isProjectOwner ? '' : '{{ Auth::id() }}';
                     this.filters.payment_type = '';

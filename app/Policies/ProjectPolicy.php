@@ -31,6 +31,11 @@ class ProjectPolicy
 
     public function view(User $user, Project $project)
     {
+        // Allow CEO to view any project
+        if ($user->role === 'ceo') {
+            return true;
+        }
+
         // Owner bisa lihat, worker bisa lihat jika dia member proyek itu
         return $user->isProjectOwner($project) || $project->workers()->where('user_id', $user->id)->wherePivot('status', 'accepted')->exists();
     }
@@ -54,6 +59,11 @@ class ProjectPolicy
 
     public function viewKanban(User $user, Project $project)
     {
+        // Allow CEO to view any project's kanban board
+        if ($user->role === 'ceo') {
+            return true;
+        }
+        
         // Owner dan member proyek bisa lihat kanban
         return $user->isProjectOwner($project) || $project->workers()->where('user_id', $user->id)->wherePivot('status', 'accepted')->exists();
     }
