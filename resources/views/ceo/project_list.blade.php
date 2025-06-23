@@ -31,37 +31,6 @@
             @include('ceo.sidebar_ceo')
             <div class="container mx-auto p-6">
                 <div class="bg-white rounded-lg shadow-lg p-6">
-                    <!-- Ringkasan Kartu Baris -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <!-- Pekerja Aktif -->
-                        <div class="bg-green-100 p-4 rounded-lg shadow flex items-center justify-between">
-                            <div>
-                                <p class="text-sm text-gray-600">Active Workers</p>
-                                <p class="text-2xl font-bold text-green-700">{{ $activeWorkersCount }}</p>
-                            </div>
-                            <i class="bi bi-person-check-fill text-green-600 text-3xl"></i>
-                        </div>
-
-                        <!-- Pekerja Tidak Aktif -->
-                        <div class="bg-yellow-100 p-4 rounded-lg shadow flex items-center justify-between">
-                            <div>
-                                <p class="text-sm text-gray-600">Inactive Workers</p>
-                                <p class="text-2xl font-bold text-yellow-700">{{ $inactiveWorkersCount }}</p>
-                            </div>
-                            <i class="bi bi-person-dash-fill text-yellow-600 text-3xl"></i>
-                        </div>
-
-                        <!-- Ringkasan Proyek -->
-                        <div class="bg-blue-100 p-4 rounded-lg shadow">
-                            <p class="text-sm text-gray-600">Project Summary</p>
-                            <ul class="text-sm mt-1 text-blue-700 font-medium space-y-1">
-                                <li>Total: {{ $totalProjects }}</li>
-                                <li>Started: {{ $totalProjectsStarted }}</li>
-                                <li>Ended: {{ $totalProjectsEnded }}</li>
-                            </ul>
-                        </div>
-                    </div>
-
                     <h1 class="text-3xl font-bold text-gray-800 mb-6">List of Project</h1>
                     <div class="w-full mb-4" style="height: 2px; background-color: #E5E5EF;"></div>
                     <div class="overflow-x-auto bg-white rounded-lg shadow-lg">
@@ -75,18 +44,18 @@
                                         <th class="px-6 py-4 border-r">End Date</th>
                                         <th class="px-6 py-4 border-r">Budget</th>
                                         <th class="px-6 py-4 border-r">Status</th>
-                                        <th class="px-6 py-4">Action</th>
+                                        <th class="px-6 py-4 text-center">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach($projects as $project)
+                                    @forelse($projects as $project)
                                     <tr class="border-t border-gray-200">
                                         <td class="px-6 py-4 border-r">{{ $project->name }}</td>
-                                        <td class="px-6 py-4 border-r">{{ $project->description }}</td>
+                                        <td class="px-6 py-4 border-r">{{ \Illuminate\Support\Str::limit($project->description, 50) }}</td>
                                         <td class="px-6 py-4 border-r">{{ \Carbon\Carbon::parse($project->start_date)->format('d M Y') }}</td>
                                         <td class="px-6 py-4 border-r">{{ \Carbon\Carbon::parse($project->end_date)->format('d M Y') }}</td>
-                                        <td class="px-6 py-4 border-r">{{ $project->budget }}</td>
-                                        <td class="px-4 py-2 border">
+                                        <td class="px-6 py-4 border-r">Rp {{ number_format($project->budget, 0, ',', '.') }}</td>
+                                        <td class="px-6 py-4 border-r">
                                             @php
                                             $status = strtolower($project->status);
                                             $map = [
@@ -103,37 +72,25 @@
                                                 {{ $info[1] }}
                                             </span>
                                         </td>
-                                        <td class="px-4 py-2 border text-center">
+                                        <td class="px-6 py-4 text-center">
                                             <button type="button" data-project='@json($project)' class="text-blue-600 hover:text-blue-800 show-project-modal">
-                                                <i class="bi bi-eye-fill"></i>
+                                                <i class="bi bi-eye-fill text-xl"></i>
                                             </button>
                                         </td>
                                     </tr>
-                                    @endforeach
+                                    @empty
                                     <tr>
-                                        <td colspan="7" class="px-4 py-3 border-t">
-                                            <div class="flex justify-between items-center">
-                                                <div>
-                                                    Showing {{ $projects->firstItem() }} to {{ $projects->lastItem() }} of {{ $projects->total() }} entries
-                                                </div>
-                                                <div class="flex space-x-1">
-                                                    @if ($projects->onFirstPage())
-                                                    <span class="px-3 py-1 bg-gray-200 text-gray-500 rounded">&laquo;</span>
-                                                    @else
-                                                    <a href="{{ $projects->previousPageUrl() }}" class="px-3 py-1 bg-white border rounded hover:bg-gray-100">&laquo;</a>
-                                                    @endif
-                                                    @for ($i = 1; $i <= $projects->lastPage(); $i++)
-                                                        <a href="{{ $projects->url($i) }}" class="px-3 py-1 border rounded {{ $projects->currentPage() == $i ? 'bg-red-500 text-white' : 'bg-white hover:bg-gray-100' }}">{{ $i }}</a>
-                                                        @endfor
-                                                        @if ($projects->hasMorePages())
-                                                        <a href="{{ $projects->nextPageUrl() }}" class="px-3 py-1 bg-white border rounded hover:bg-gray-100">&raquo;</a>
-                                                        @else
-                                                        <span class="px-3 py-1 bg-gray-200 text-gray-500 rounded">&raquo;</span>
-                                                        @endif
-                                                </div>
-                                            </div>
+                                        <td colspan="7" class="text-center py-6 border-t">No projects found.</td>
+                                    </tr>
+                                    @endforelse
+
+                                    @if ($projects->hasPages())
+                                    <tr>
+                                        <td colspan="7" class="px-6 py-4 border-t">
+                                            {{ $projects->links() }}
                                         </td>
                                     </tr>
+                                    @endif
                                 </tbody>
                             </table>
                         </div>
@@ -163,56 +120,70 @@
                     Back
                 </button>
                 <a id="manage-project-link" href="kanban" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded">
-                    View Detail Project
+                    View Kanban Board
                 </a>
             </div>
         </div>
     </div>
 
+    <!-- ========================================================== -->
+    <!-- == SCRIPT YANG BENAR DITAMBAHKAN DI SINI == -->
+    <!-- ========================================================== -->
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const showButtons = document.querySelectorAll('.show-project-modal');
-            const modal = document.getElementById('project-modal');
-            const closeButtons = [
-                document.getElementById('close-project-modal'),
-                document.getElementById('close-project-modal-btn')
-            ];
+        // Menggunakan Event Delegation untuk menangani semua klik secara efisien
+        document.addEventListener('click', function(event) {
 
-            showButtons.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const project = JSON.parse(this.dataset.project);
-                    document.getElementById('modal-project-name').textContent = project.name;
-                    document.getElementById('modal-project-description').textContent = project.description;
-                    document.getElementById('modal-project-start').textContent = new Date(project.start_date).toLocaleDateString();
-                    document.getElementById('modal-project-end').textContent = new Date(project.end_date).toLocaleDateString();
-                    document.getElementById('modal-project-budget').textContent = project.budget;
+            // Cek apakah yang diklik adalah tombol untuk MENAMPILKAN modal
+            const showButton = event.target.closest('.show-project-modal');
+            if (showButton) {
+                const project = JSON.parse(showButton.dataset.project);
+                const modal = document.getElementById('project-modal');
 
-                    const statusMap = {
-                        'active': ['#40E745', 'Active'],
-                        'blocked': ['#F05', 'Blocked'],
-                        'cancelled': ['#F05', 'Cancelled'],
-                        'inprogress': ['#F99E26', 'In Progress'],
-                        'open': ['#69D3F7', 'Open'],
-                        'completed': ['#92D65C', 'Completed']
-                    };
-                    const status = project.status.toLowerCase();
-                    const [bg, label] = statusMap[status] || ['#999', status];
-                    const statusEl = document.getElementById('modal-project-status');
-                    statusEl.textContent = label;
-                    statusEl.style.backgroundColor = bg;
+                document.getElementById('modal-project-name').textContent = project.name;
+                document.getElementById('modal-project-description').textContent = project.description;
 
-                    const manageLink = document.getElementById('manage-project-link');
-                    manageLink.href = `/ceo/projects/${project.id}/kanban`;
-
-                    modal.classList.remove('hidden');
+                const startDate = new Date(project.start_date).toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric'
                 });
-            });
-
-            closeButtons.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    modal.classList.add('hidden');
+                const endDate = new Date(project.end_date).toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric'
                 });
-            });
+                const budget = 'Rp ' + new Intl.NumberFormat('id-ID').format(project.budget);
+
+                document.getElementById('modal-project-start').textContent = startDate;
+                document.getElementById('modal-project-end').textContent = endDate;
+                document.getElementById('modal-project-budget').textContent = budget;
+
+                const statusMap = {
+                    'active': ['#40E745', 'Active'],
+                    'blocked': ['#F05', 'Blocked'],
+                    'cancelled': ['#F05', 'Cancelled'],
+                    'inprogress': ['#F99E26', 'In Progress'],
+                    'open': ['#69D3F7', 'Open'],
+                    'completed': ['#92D65C', 'Completed']
+                };
+                const status = project.status.toLowerCase();
+                const [bg, label] = statusMap[status] || ['#999', status];
+                const statusEl = document.getElementById('modal-project-status');
+                statusEl.textContent = label;
+                statusEl.style.backgroundColor = bg;
+
+                const manageLink = document.getElementById('manage-project-link');
+                manageLink.href = `/ceo/projects/${project.id}/kanban`;
+
+                modal.classList.remove('hidden');
+            }
+
+            // Cek apakah yang diklik adalah tombol untuk MENUTUP modal
+            const closeButton = event.target.closest('#close-project-modal, #close-project-modal-btn');
+            if (closeButton) {
+                document.getElementById('project-modal').classList.add('hidden');
+            }
+
         });
     </script>
 </x-app-layout>

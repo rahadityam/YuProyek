@@ -11,7 +11,7 @@
                     </a>
                 </div>
 
-               @if(Auth::user()->role !== 'admin')
+               @if(Auth::user()->role !== 'admin' && Auth::user()->role !== 'ceo')
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex items-end h-16">
                     <x-nav-link :href="route('projects.my-projects')" :active="request()->routeIs(['projects.my-projects', 'dashboard'])">
                         {{ __('Home') }}
@@ -101,9 +101,9 @@
             </a>
         </li>
     </template>
-</ul>
-        </div>
-    </div>
+   </ul>
+</div>
+</div>
                 <x-dropdown align="right" width="48">
     <x-slot name="trigger">
         <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150">
