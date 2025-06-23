@@ -84,7 +84,6 @@
                                     </tr>
                                     @endforelse
 
-                                    {{-- Pagination Row - Ditempatkan SETELAH loop @forelse --}}
                                     @if ($projects->hasPages())
                                     <tr>
                                         <td colspan="7" class="px-6 py-4 border-t">
@@ -127,50 +126,64 @@
         </div>
     </div>
 
+    <!-- ========================================================== -->
+    <!-- == SCRIPT YANG BENAR DITAMBAHKAN DI SINI == -->
+    <!-- ========================================================== -->
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const showButtons = document.querySelectorAll('.show-project-modal');
-            const modal = document.getElementById('project-modal');
-            const closeButtons = [
-                document.getElementById('close-project-modal'),
-                document.getElementById('close-project-modal-btn')
-            ];
+        // Menggunakan Event Delegation untuk menangani semua klik secara efisien
+        document.addEventListener('click', function(event) {
 
-            showButtons.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const project = JSON.parse(this.dataset.project);
-                    document.getElementById('modal-project-name').textContent = project.name;
-                    document.getElementById('modal-project-description').textContent = project.description;
-                    document.getElementById('modal-project-start').textContent = new Date(project.start_date).toLocaleDateString();
-                    document.getElementById('modal-project-end').textContent = new Date(project.end_date).toLocaleDateString();
-                    document.getElementById('modal-project-budget').textContent = project.budget;
+            // Cek apakah yang diklik adalah tombol untuk MENAMPILKAN modal
+            const showButton = event.target.closest('.show-project-modal');
+            if (showButton) {
+                const project = JSON.parse(showButton.dataset.project);
+                const modal = document.getElementById('project-modal');
 
-                    const statusMap = {
-                        'active': ['#40E745', 'Active'],
-                        'blocked': ['#F05', 'Blocked'],
-                        'cancelled': ['#F05', 'Cancelled'],
-                        'inprogress': ['#F99E26', 'In Progress'],
-                        'open': ['#69D3F7', 'Open'],
-                        'completed': ['#92D65C', 'Completed']
-                    };
-                    const status = project.status.toLowerCase();
-                    const [bg, label] = statusMap[status] || ['#999', status];
-                    const statusEl = document.getElementById('modal-project-status');
-                    statusEl.textContent = label;
-                    statusEl.style.backgroundColor = bg;
+                document.getElementById('modal-project-name').textContent = project.name;
+                document.getElementById('modal-project-description').textContent = project.description;
 
-                    const manageLink = document.getElementById('manage-project-link');
-                    manageLink.href = `/ceo/projects/${project.id}/kanban`;
-
-                    modal.classList.remove('hidden');
+                const startDate = new Date(project.start_date).toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric'
                 });
-            });
-
-            closeButtons.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    modal.classList.add('hidden');
+                const endDate = new Date(project.end_date).toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric'
                 });
-            });
+                const budget = 'Rp ' + new Intl.NumberFormat('id-ID').format(project.budget);
+
+                document.getElementById('modal-project-start').textContent = startDate;
+                document.getElementById('modal-project-end').textContent = endDate;
+                document.getElementById('modal-project-budget').textContent = budget;
+
+                const statusMap = {
+                    'active': ['#40E745', 'Active'],
+                    'blocked': ['#F05', 'Blocked'],
+                    'cancelled': ['#F05', 'Cancelled'],
+                    'inprogress': ['#F99E26', 'In Progress'],
+                    'open': ['#69D3F7', 'Open'],
+                    'completed': ['#92D65C', 'Completed']
+                };
+                const status = project.status.toLowerCase();
+                const [bg, label] = statusMap[status] || ['#999', status];
+                const statusEl = document.getElementById('modal-project-status');
+                statusEl.textContent = label;
+                statusEl.style.backgroundColor = bg;
+
+                const manageLink = document.getElementById('manage-project-link');
+                manageLink.href = `/ceo/projects/${project.id}/kanban`;
+
+                modal.classList.remove('hidden');
+            }
+
+            // Cek apakah yang diklik adalah tombol untuk MENUTUP modal
+            const closeButton = event.target.closest('#close-project-modal, #close-project-modal-btn');
+            if (closeButton) {
+                document.getElementById('project-modal').classList.add('hidden');
+            }
+
         });
     </script>
 </x-app-layout>
