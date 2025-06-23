@@ -22,7 +22,7 @@
             <div class="container mx-auto">
                 {{-- Search and Filter section --}}
                 <div class="flex justify-between items-center mb-3">
-                    
+                    @if(Auth::user()->role !== 'ceo')
                     <a href="{{ route('projects.tasks.recap', $project) }}" 
                        class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -30,6 +30,9 @@
                         </svg>
                         Assignment Recap
                     </a>
+                    @else
+                    <div></div> {{-- Placeholder to maintain layout alignment --}}
+                    @endif
                     <div x-data="{ showFilters: false }" class="relative">
                         {{-- Search and Filter Toggle --}}
                         <div class="flex items-center gap-2">
