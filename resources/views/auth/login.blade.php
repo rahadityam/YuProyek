@@ -16,8 +16,7 @@
             <img src="{{ asset('images/logo_yuproyek-cropped.svg') }}" alt="YuProyek Logo" class="h-10 w-auto mr-2">
         </div>
         <div class="flex gap-6 items-center">
-            <a href="{{ route('login') }}" class="bg-indigo-500 text-white px-4 py-2 rounded-md font-semibold hover:bg-indigo-600">Login</a>
-            <a href="{{ route('register') }}" class="bg-indigo-500 text-white px-4 py-2 rounded-md font-semibold hover:bg-indigo-600">Register</a>
+            <a href="{{ route('login') }}" class="bg-indigo-500 text-white px-4 py-2 rounded-md font-semibold hover:bg-indigo-600">Login</a
         </div>
     </nav>
 
@@ -77,21 +76,10 @@
                             <div class="text-red-600 mt-1">{{ $message }}</div>
                         @enderror
 
-                        <div class="mt-1 text-right w-full">
-                            <a class="text-sm text-indigo-600 hover:underline" href="{{ route('password.request') }}">
-                                Recover Password ?
-                            </a>
-                        </div>
                     </div>
 
                     <!-- Remember Me -->
-                    <div class="w-full">
-                        <label for="remember_me" class="inline-flex items-center">
-                            <input id="remember_me" type="checkbox" name="remember"
-                                class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500">
-                            <span class="ml-2 text-sm text-gray-600">Remember me</span>
-                        </label>
-                    </div>
+                    
 
                     <!-- Submit Button -->
                     <div class="w-full">
@@ -101,21 +89,10 @@
                     </div>
 
                     <!-- Register link -->
-                    <div class="w-full text-center">
-                        <span class="text-sm text-gray-600">Don't have an account?</span>
-                        <a href="{{ route('register') }}" class="text-indigo-600 font-semibold hover:underline">Register</a>
-                    </div>
+                   
 
                     <!-- Divider -->
-                    <div class="w-full flex items-center justify-center">
-                        <span class="text-sm text-gray-400">Or Continue with</span>
-                    </div>
-
-                    <!-- Google Button -->
-                    <div class="w-full flex items-center justify-center">
-                    <button type="button" class="p-3 border rounded-full shadow hover:bg-gray-100 transition text-2xl text-red-500">
-                        <i class="bi bi-google"></i>
-                    </button>
+                   
                 </div>
 
                 </form>
