@@ -30,7 +30,7 @@ class ceoDashboardController extends Controller
         $totalInactiveProjects = Project::whereNotIn('status', $activeProjectStatuses)->count();
 
         // === LOGIKA BARU: Ringkasan User & Worker ===
-        $totalUsers = User::count();
+        $totalWorkers = User::where('role', '!=', 'ceo')->count();
         $workerQuery = User::where('role', '!=', 'ceo');
         $activeWorkersCount = (clone $workerQuery)->whereHas('projects', function ($q) use ($activeProjectStatuses) {
             $q->whereIn('projects.status', $activeProjectStatuses);
@@ -48,7 +48,7 @@ class ceoDashboardController extends Controller
             ->get()
             ->map(function ($project) {
                 $totalTasks = $project->tasks->count();
-                $completedTasks = $project->tasks->where('status', 'done')->count();
+                $completedTasks = $project->tasks->where('status', 'Done')->count();
                 $progress = $totalTasks > 0 ? round(($completedTasks / $totalTasks) * 100) : 0;
                 return [
                     'name' => $project->name,
@@ -84,7 +84,7 @@ class ceoDashboardController extends Controller
 
         // --- Kirim ke view ---
         return view('ceo.dashboard', [
-            'totalUsers' => $totalUsers,
+            'totalWorkers' => $totalWorkers,
             'userStatus' => $userStatus,
             'totalProjects' => $totalProjects,
             'totalActiveProjects' => $totalActiveProjects,

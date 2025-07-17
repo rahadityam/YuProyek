@@ -54,8 +54,8 @@
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div class="bg-white rounded shadow p-4 flex justify-between items-start">
                                 <div class="text-left -translate-y-1">
-                                    <h2 class="text-lg font-semibold text-gray-700">Total Users</h2>
-                                    <p class="text-black text-2xl font-bold -translate-y-1">{{ $totalUsers }}</p>
+                                    <h2 class="text-lg font-semibold text-gray-700">Total Workers</h2>
+                                    <p class="text-black text-2xl font-bold -translate-y-1">{{ $totalWorkers }}</p>
                                 </div>
                                 <div class="bg-gray-400 rounded-[6px] p-2"><i class="bi bi-people-fill text-white text-2xl"></i></div>
                             </div>
@@ -80,26 +80,36 @@
                     <!-- == PERBAIKAN LAYOUT DIMULAI DI SINI == -->
                     <!-- ============================================== -->
 
-                    <!-- Project Progress Summary -->
-                    <!-- DIV ini disederhanakan, dihapus bg-white, shadow, dan p-6 -->
-                    <div class="mb-6 max-w-7xl mx-auto w-full">
-                        <h2 class="text-xl font-bold mb-4 text-gray-800">Summary Project</h2>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            @forelse($projectsProgress as $project)
-                            <div class="border rounded-lg p-4 bg-gray-50">
-                                <h3 class="font-semibold text-lg text-gray-700 mb-1">{{ $project['name'] }}</h3>
-                                <p class="text-sm text-gray-500 mb-2">{{ \Carbon\Carbon::parse($project['start_date'])->format('d M Y') }} - {{ \Carbon\Carbon::parse($project['end_date'])->format('d M Y') }}</p>
-                                <div class="mb-1 flex justify-between text-xs text-gray-600">
-                                    <span>{{ $project['completed_tasks'] }}/{{ $project['total_tasks'] }} selesai</span>
-                                    <span>{{ $project['progress_percent'] }}%</span>
-                                </div>
-                                <div class="w-full bg-gray-200 rounded-full h-2"><div class="bg-blue-500 h-2 rounded-full" style="width: {{ $project['progress_percent'] }}%"></div></div>
-                            </div>
-                            @empty
-                            <p class="text-sm text-gray-500">Tidak ada proyek berjalan.</p>
-                            @endforelse
-                        </div>
-                    </div>
+   <!-- Container untuk Summary Project -->
+<div class="mb-6 max-w-7xl mx-auto w-full">
+    <h2 class="text-xl font-bold mb-4 text-gray-800">Summary Project</h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        @forelse($projectsProgress as $project)
+            <div class="border rounded-lg p-4 bg-gray-50">
+                <h3 class="font-semibold text-lg text-gray-700 mb-1">{{ $project['name'] }}</h3>
+
+                <p class="text-sm text-gray-500 mb-2">
+                    {{ \Carbon\Carbon::parse($project['start_date'])->format('d M Y') }} - 
+                    {{ \Carbon\Carbon::parse($project['end_date'])->format('d M Y') }}
+                </p>
+
+                <div class="mb-1 flex justify-between text-xs text-gray-600">
+                    <span>{{ $project['completed_tasks'] }}/{{ $project['total_tasks'] }} selesai</span>
+                    <span class="text-right font-semibold text-gray-700">
+                        {{ $project['progress_percent'] }}%
+                    </span>
+                </div>
+
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="bg-blue-500 h-2 rounded-full" style="width: {{ $project['progress_percent'] }}%"></div>
+                </div>
+            </div>
+        @empty
+            <p class="text-sm text-gray-500">Tidak ada proyek berjalan.</p>
+        @endforelse
+    </div>
+</div>
 
                     <!-- Charts -->
                     <!-- DIV ini disederhanakan, dihapus flex-1 -->
