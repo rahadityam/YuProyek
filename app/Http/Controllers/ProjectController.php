@@ -108,6 +108,14 @@ class ProjectController extends Controller
     // Get categories for filter dropdown
     $categories = Category::all();
 
+    if ($request->wantsJson() || $request->ajax()) {
+        // Untuk API, kita juga bisa menggunakan paginasi
+        $projects = $query->paginate($request->input('per_page', 15));
+        
+        return response()->json($projects);
+    }
+    
+
     return view('projects.index', compact('projects', 'categories'));
 }
 
@@ -282,6 +290,14 @@ class ProjectController extends Controller
             $project->categories()->detach();
         }
 
+        if ($request->wantsJson()) { // <--- Header 'Accept: application/json' akan membuat ini TRUE
+    return response()->json([
+        'success' => true,
+        'message' => 'Proyek berhasil diperbarui!',
+        'project' => $project->fresh()
+    ]);
+}
+
         return redirect()->route('projects.index')->with('success', 'Proyek berhasil diperbarui!');
     }
 
@@ -337,6 +353,12 @@ class ProjectController extends Controller
         $sortDirection = in_array(strtolower($sortDirection), ['asc', 'desc']) ? $sortDirection : 'desc';
 
         $query->orderBy($sortField, $sortDirection);
+
+        // Jika request datang dari API, kembalikan JSON
+        if ($request->wantsJson()) {
+            $projects = $query->paginate($request->input('per_page', 15))->withQueryString();
+            return response()->json($projects);
+        }
 
         // Paginate results
         $projects = $query->paginate(9)->withQueryString();
@@ -505,6 +527,30 @@ class ProjectController extends Controller
             ]
         ];
 
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'project' => $project->only('id', 'name', 'status', 'start_date', 'end_date'),
+                    'is_owner' => $isOwner,
+                    'stats' => [
+                        'tasks' => $taskStats,
+                        'financial' => $financialStats,
+                    ],
+                    'charts' => [
+                        'task_status' => $taskStatusChartData,
+                        'task_progress' => $progressChartData,
+                        // Anda bisa tambahkan data chart finansial di sini jika perlu
+                    ],
+                    'lists' => [
+                        'recent_activities' => $recentActivities,
+                        'in_progress_tasks' => $inProgressTasks,
+                        'team_members' => $acceptedWorkers,
+                    ]
+                ]
+            ]);
+        }
+
         // --- 5. Kirim Data ke View ---
         return view('projects.dashboard', compact(
             'project',
@@ -528,7 +574,7 @@ class ProjectController extends Controller
      * @param  \App\Models\Project  $project
      * @return \Illuminate\Http\Response
      */
-    public function teamMembers(Project $project)
+    public function teamMembers(Request $request, Project $project)
 {
     $this->authorize('view', $project); // Pastikan ada policy untuk view project team
 
@@ -545,6 +591,14 @@ class ProjectController extends Controller
         ->wherePivot('status', 'invited') // Ganti 'applied' menjadi 'invited'
         ->withPivot('position') // Asumsi 'position' juga diisi saat invite
         ->get();
+
+    if ($request->wantsJson()) {
+            return response()->json([
+                'owner' => $owner,
+                'members' => $members,
+                'pending_invitations' => $pendingInvitations
+            ]);
+        }
 
     $wageStandards = $project->wageStandards()->orderBy('job_category')->get();
 

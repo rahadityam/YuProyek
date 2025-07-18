@@ -129,4 +129,4 @@ Route::middleware(['auth', 'ceo'])->prefix('ceo')->name('ceo.')->group(function 
     Route::get('/projects/{project}/kanban', [TaskController::class, 'kanban'])->name('kanban');
 });
 
-require __DIR__ . '/auth.php';
+require_once __DIR__ . '/auth.php';

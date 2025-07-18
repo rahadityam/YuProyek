@@ -22,7 +22,7 @@
             </div>
             <h2 class="text-xl font-bold mb-2">Succeed</h2>
             <p class="text-gray-700 mb-4">Account Created Successfully</p>
-            <button onclick="window.location='{{ route('admin.users.index') }}'" class="px-4 py-2 rounded-[8px]" style="background-color: #5F65DB; color: white; hover:bg-indigo-700;">
+            <button onclick="window.location='{{ route('admin.users.index') }}'" class="px-4 py-2 rounded-[8px] bg-[#5F65DB] text-white hover:bg-indigo-700 transition-colors duration-150">
               OK
             </button>
           </div>

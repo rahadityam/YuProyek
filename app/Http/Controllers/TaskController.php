@@ -24,39 +24,43 @@ use App\Notifications\TaskUpdatedNotification;
 use App\Notifications\NewCommentOnTaskNotification;
 use App\Notifications\TaskStatusChangedNotification;
 use Illuminate\Database\Eloquent\Builder;
+use App\Notifications\WipLimitExceededNotification;
 
 class TaskController extends Controller
 {
-    // Kanban View (Load necessary data)
-    // Update this method in TaskController.php
-public function kanban(Project $project)
-{
-    $this->authorize('viewKanban', $project);
-    // Eager load relationships needed for cards and modals + counts
-    $tasks = $project->tasks()
-                    ->with([
-                        'difficultyLevel:id,name,value,color', // Include color
-                        'priorityLevel:id,name,value,color',   // Include color
-                        'assignedUser:id,name',
-                    ])
-                    ->withCount('attachments')
-                    ->orderBy('order')
-                    ->get();
+    public function kanban(Request $request, Project $project)
+    {
+        // Otorisasi: bisa dilihat oleh PM, PW, dan CEO.
+        // Policy 'viewKanban' Anda harus sudah menghandle ini.
+        $this->authorize('viewKanban', $project);
+        
+        // Query dasar untuk tasks
+        $tasksQuery = $project->tasks()
+                        ->with([
+                            'difficultyLevel:id,name,value,color',
+                            'priorityLevel:id,name,value,color',
+                            'assignedUser:id,name',
+                        ])
+                        ->withCount('attachments')
+                        ->orderBy('order');
 
-    // Get users for this project
-    $users = $this->getProjectUsers($project);
+        // Jika request dari API, kembalikan data tasks dalam format JSON.
+        if ($request->wantsJson()) {
+            $tasks = $tasksQuery->get(); // Ambil semua data tanpa paginasi untuk Kanban
+            return response()->json([
+                'success' => true,
+                'data' => $tasks
+            ]);
+        }
 
-    // Get levels specific to this project with ordering by display_order (not value)
-    $difficultyLevels = $project->difficultyLevels()
-                                ->orderBy('display_order')
-                                ->get(['id', 'name', 'value', 'color', 'display_order']);
-                                
-    $priorityLevels = $project->priorityLevels()
-                              ->orderBy('display_order')
-                              ->get(['id', 'name', 'value', 'color', 'display_order']);
+        // Jika request dari web, lanjutkan ke view seperti biasa.
+        $tasks = $tasksQuery->get();
+        $users = $this->getProjectUsers($project);
+        $difficultyLevels = $project->difficultyLevels()->orderBy('display_order')->get(['id', 'name', 'value', 'color', 'display_order']);
+        $priorityLevels = $project->priorityLevels()->orderBy('display_order')->get(['id', 'name', 'value', 'color', 'display_order']);
 
-    return view('kanban.index', compact('project', 'tasks', 'users', 'difficultyLevels', 'priorityLevels'));
-}
+        return view('kanban.index', compact('project', 'tasks', 'users', 'difficultyLevels', 'priorityLevels'));
+    }
 
     // NEW: Get Full Task Details for Modal
     public function show(Task $task)
@@ -144,7 +148,7 @@ public function kanban(Project $project)
         }
 
         // Log Activity
-        ActivityLogger::log('created', $task, $project->id, 'created task "' . $task->title . '"');
+        ActivityLogger::log('created', $project->id, 'created task "' . $task->title . '"', $task);
 
         // Reload relations for the card view
         $task->load(['assignedUser', 'difficultyLevel', 'priorityLevel'])->loadCount('attachments');
@@ -243,7 +247,13 @@ public function kanban(Project $project)
         if (!empty($changes)) {
             unset($changes['updated_at']);
             if (!empty($changes)) {
-                ActivityLogger::log('updated', $task, $task->project_id, 'updated task "' . $task->title . '"', ['changed' => $changes, 'original' => array_intersect_key($originalData, $changes)]);
+                ActivityLogger::log(
+                    'updated', 
+                    $task->project_id, 
+                    'updated task "' . $task->title . '"', 
+                    $task, 
+                    ['changed' => $changes, 'original' => array_intersect_key($originalData, $changes)]
+                );
             }
         }
 
@@ -344,7 +354,7 @@ public function kanban(Project $project)
         }
 
          // Log Activity
-         ActivityLogger::log('commented', $task, $task->project_id, 'commented on task "' . $task->title . '"');
+         ActivityLogger::log('commented', $task->project_id, 'commented on task "' . $task->title . '"', $task);
 
 
         $comment->load('user:id,name'); // Load user for the response
@@ -385,7 +395,7 @@ public function kanban(Project $project)
                 $uploadedAttachments[] = $attachment;
 
                  // Log Activity
-                 ActivityLogger::log('attached', $task, $task->project_id, 'uploaded attachment "' . $file->getClientOriginalName() . '" to task "' . $task->title . '"');
+                 ActivityLogger::log('attached', $task->project_id, 'uploaded attachment "' . $file->getClientOriginalName() . '" to task "' . $task->title . '"', $task);
 
              }
              DB::commit();
@@ -430,7 +440,7 @@ public function kanban(Project $project)
              DB::commit();
 
               // Log Activity
-             ActivityLogger::log('detached', $task, $projectId, 'deleted attachment "' . $fileName . '" from task "' . $taskTitle . '"');
+             ActivityLogger::log('detached', $projectId, 'deleted attachment "' . $fileName . '" from task "' . $taskTitle . '"', $task);
 
 
              return response()->json(['success' => true, 'message' => 'Attachment deleted.']);
@@ -475,156 +485,157 @@ public function kanban(Project $project)
      * Batch update tasks status and order
      */
     public function batchUpdate(Request $request)
-{
-    $orderData = $request->input('data');
-    $projectId = $request->input('project_id');
+    {
+        $orderData = $request->input('data');
+        $projectId = $request->input('project_id');
 
-    if (!$projectId || !is_numeric($projectId)) {
-        return response()->json(['success' => false, 'message' => 'Project ID is required.'], 400);
-    }
-    if (!$orderData || !is_array($orderData)) {
-        return response()->json(['success' => false, 'message' => 'Task data is malformed.'], 400);
-    }
+        if (!$projectId || !is_numeric($projectId)) {
+            return response()->json(['success' => false, 'message' => 'Project ID is required.'], 400);
+        }
+        if (!$orderData || !is_array($orderData)) {
+            return response()->json(['success' => false, 'message' => 'Task data is malformed.'], 400);
+        }
 
-    $project = Project::find($projectId);
-    if (!$project) {
-        return response()->json(['success' => false, 'message' => 'Project not found.'], 404);
-    }
+        $project = Project::find($projectId);
+        if (!$project) {
+            return response()->json(['success' => false, 'message' => 'Project not found.'], 404);
+        }
 
-    $currentUser = Auth::user();
-    $wipLimit = $project->wip_limits;
-    $inProgressStatusName = 'In Progress';
+        $currentUser = Auth::user();
+        $wipLimit = $project->wip_limits;
+        $inProgressStatusName = 'In Progress';
 
-    DB::beginTransaction();
-    try {
-        $draggedTaskId = $request->input('dragged_task_id', null);
+        DB::beginTransaction();
+        try {
+            $draggedTaskId = $request->input('dragged_task_id', null);
 
-        foreach ($orderData as $newStatus => $tasksInStatus) {
-            if (!is_array($tasksInStatus)) continue;
+            foreach ($orderData as $newStatus => $tasksInStatus) {
+                if (!is_array($tasksInStatus)) continue;
 
-            foreach ($tasksInStatus as $taskData) {
-                if (!isset($taskData['id']) || !isset($taskData['order'])) continue;
+                foreach ($tasksInStatus as $taskData) {
+                    if (!isset($taskData['id']) || !isset($taskData['order'])) continue;
 
-                $task = Task::find($taskData['id']);
-                if (!$task) {
-                    Log::warning("TaskController@batchUpdate: Task ID {$taskData['id']} not found.");
-                    continue;
-                }
-                
-                // Pastikan tugas milik proyek yang benar
-                if ($task->project_id != $projectId) {
-                    throw new \Exception("Task ID {$task->id} does not belong to project ID {$projectId}.");
-                }
-
-                $oldStatus = $task->status;
-                $statusChanged = ($oldStatus !== $newStatus);
-                
-                // ===== PERUBAHAN LOGIKA VALIDASI WIP LIMIT =====
-                if ($statusChanged && $newStatus === $inProgressStatusName && $wipLimit > 0) {
+                    $task = Task::find($taskData['id']);
+                    if (!$task) {
+                        Log::warning("TaskController@batchUpdate: Task ID {$taskData['id']} not found.");
+                        continue;
+                    }
                     
-                    // Cek jika tugas ini punya assignee
-                    $assigneeId = $task->assigned_to;
-                    if ($assigneeId) {
-                        // Hitung jumlah tugas 'In Progress' yang SUDAH ADA untuk assignee ini
-                        // (tidak termasuk tugas yang sedang dipindahkan ini)
-                        $inProgressCountForUser = Task::where('project_id', $projectId)
-                                                      ->where('status', $inProgressStatusName)
-                                                      ->where('assigned_to', $assigneeId)
-                                                      ->where('id', '!=', $task->id) // Abaikan tugas ini sendiri
-                                                      ->count();
+                    // Pastikan tugas milik proyek yang benar
+                    if ($task->project_id != $projectId) {
+                        throw new \Exception("Task ID {$task->id} does not belong to project ID {$projectId}.");
+                    }
+
+                    $oldStatus = $task->status;
+                    $statusChanged = ($oldStatus !== $newStatus);
+                    
+                    // ===== PERUBAHAN LOGIKA VALIDASI WIP LIMIT =====
+                    if ($statusChanged && $newStatus === $inProgressStatusName && $wipLimit > 0) {
                         
-                        // Jika jumlah tugas yang ada + tugas baru ini akan melebihi limit
-                        if ($inProgressCountForUser + 1 > $wipLimit) {
-                            $assigneeName = $task->assignedUser->name ?? "User ID: {$assigneeId}";
-                            // Lempar exception dengan pesan yang spesifik
-                            throw new \Exception("WIP Limit per orang ({$wipLimit}) untuk '{$assigneeName}' telah tercapai.");
+                        // Cek jika tugas ini punya assignee
+                        $assigneeId = $task->assigned_to;
+                        if ($assigneeId) {
+                            // Hitung jumlah tugas 'In Progress' yang SUDAH ADA untuk assignee ini
+                            // (tidak termasuk tugas yang sedang dipindahkan ini)
+                            $inProgressCountForUser = Task::where('project_id', $projectId)
+                                                        ->where('status', $inProgressStatusName)
+                                                        ->where('assigned_to', $assigneeId)
+                                                        ->where('id', '!=', $task->id) // Abaikan tugas ini sendiri
+                                                        ->count();
+                            
+                            // Jika jumlah tugas yang ada + tugas baru ini akan melebihi limit
+                            if ($inProgressCountForUser + 1 > $wipLimit) {
+                                $project->owner->notify(new WipLimitExceededNotification($project, $task, $task->assignedUser));
+                                $assigneeName = $task->assignedUser->name ?? "User ID: {$assigneeId}";
+                                // Lempar exception dengan pesan yang spesifik
+                                throw new \Exception("WIP Limit per orang ({$wipLimit}) untuk '{$assigneeName}' telah tercapai.");
+                            }
+                        }
+                    }
+                    
+                    $isDraggedTask = ($draggedTaskId && $task->id == $draggedTaskId);
+
+                        // OTORISASI:
+                        // Hanya lakukan otorisasi ketat 'updateStatus' jika:
+                        // 1. Status task ini berubah, ATAU
+                        // 2. Ini adalah task yang secara eksplisit di-drag oleh pengguna.
+                        // Untuk task lain yang hanya berubah urutannya karena ada task lain yang disisipkan/dihapus,
+                        // dan task tersebut bukan milik worker, kita skip otorisasi 'updateStatus' yang ketat.
+                        // Project Owner akan selalu lolos karena TaskPolicy@before.
+                        if ($statusChanged || $isDraggedTask) {
+                            $this->authorize('updateStatus', $task);
+                        } else {
+                            // Jika ini worker, dan task bukan miliknya, dan statusnya tidak berubah,
+                            // kita mungkin tetap ingin mencegah perubahan order task orang lain.
+                            // Ini tergantung seberapa ketat Anda ingin.
+                            // Pilihan 1: Biarkan order berubah (lebih sederhana)
+                            // Pilihan 2: Tambah policy baru 'updateOrder' yang dicek di sini
+                            //            jika !currentUser->isProjectOwner($project) && $task->assigned_to !== $currentUser->id
+                            //            maka $this->authorize('updateOrder', $task) -> ini akan gagal jika tidak ada permission.
+                            // Untuk sekarang, kita biarkan worker bisa mengubah order task lain
+                            // HANYA JIKA task yang di-drag adalah miliknya dan status task lain tidak berubah.
+                            if (!$currentUser->isProjectOwner($project) && $task->assigned_to !== $currentUser->id) {
+                                // Jika worker mencoba mengubah order task orang lain (yang statusnya tidak berubah)
+                                // ini adalah efek samping dari memindahkan task miliknya.
+                                // Jika ini tidak diinginkan, Anda perlu logic yang lebih kompleks.
+                                // Untuk sekarang, kita log saja.
+                                Log::info("TaskController@batchUpdate: User {$currentUser->id} (worker) indirectly changed order of task {$task->id} (assigned to {$task->assigned_to}) which they do not own, because status did not change.");
+                            }
+                        }
+
+
+                        $task->status = $newStatus;
+                        $task->order = $taskData['order'];
+                        $task->save();
+
+                        if ($statusChanged) {
+                            ActivityLogger::log(
+                                'status_changed',
+                                $projectId,
+                                $currentUser->name . ' updated task "' . $task->title . '" to status "' . $newStatus . '"',
+                                $task, // model
+                                [     // properties
+                                    'old_status' => $oldStatus,
+                                    'new_status' => $newStatus,
+                                    'updated_by_id' => $currentUser->id,
+                                    'updated_by_name' => $currentUser->name
+                                ]
+                            );
+
+                            // --- KIRIM NOTIFIKASI PERUBAHAN STATUS ---
+                            $assignee = $task->assignedUser;
+                            $projectOwner = $task->project->owner;
+                            
+                            // Jika worker mengubah status, notifikasi PM
+                            if ($currentUser->id === $assignee?->id && $projectOwner->id !== $currentUser->id) {
+                                $projectOwner->notify(new TaskStatusChangedNotification($task, $oldStatus, $newStatus, $currentUser));
+                            } 
+                            // Jika PM mengubah status, notifikasi worker (jika ada dan bukan PM itu sendiri)
+                            elseif ($currentUser->id === $projectOwner->id && $assignee && $assignee->id !== $currentUser->id) {
+                                $assignee->notify(new TaskStatusChangedNotification($task, $oldStatus, $newStatus, $currentUser));
+                            }
                         }
                     }
                 }
-                
-                $isDraggedTask = ($draggedTaskId && $task->id == $draggedTaskId);
 
-                    // OTORISASI:
-                    // Hanya lakukan otorisasi ketat 'updateStatus' jika:
-                    // 1. Status task ini berubah, ATAU
-                    // 2. Ini adalah task yang secara eksplisit di-drag oleh pengguna.
-                    // Untuk task lain yang hanya berubah urutannya karena ada task lain yang disisipkan/dihapus,
-                    // dan task tersebut bukan milik worker, kita skip otorisasi 'updateStatus' yang ketat.
-                    // Project Owner akan selalu lolos karena TaskPolicy@before.
-                    if ($statusChanged || $isDraggedTask) {
-                        $this->authorize('updateStatus', $task);
-                    } else {
-                        // Jika ini worker, dan task bukan miliknya, dan statusnya tidak berubah,
-                        // kita mungkin tetap ingin mencegah perubahan order task orang lain.
-                        // Ini tergantung seberapa ketat Anda ingin.
-                        // Pilihan 1: Biarkan order berubah (lebih sederhana)
-                        // Pilihan 2: Tambah policy baru 'updateOrder' yang dicek di sini
-                        //            jika !currentUser->isProjectOwner($project) && $task->assigned_to !== $currentUser->id
-                        //            maka $this->authorize('updateOrder', $task) -> ini akan gagal jika tidak ada permission.
-                        // Untuk sekarang, kita biarkan worker bisa mengubah order task lain
-                        // HANYA JIKA task yang di-drag adalah miliknya dan status task lain tidak berubah.
-                        if (!$currentUser->isProjectOwner($project) && $task->assigned_to !== $currentUser->id) {
-                            // Jika worker mencoba mengubah order task orang lain (yang statusnya tidak berubah)
-                            // ini adalah efek samping dari memindahkan task miliknya.
-                            // Jika ini tidak diinginkan, Anda perlu logic yang lebih kompleks.
-                            // Untuk sekarang, kita log saja.
-                            Log::info("TaskController@batchUpdate: User {$currentUser->id} (worker) indirectly changed order of task {$task->id} (assigned to {$task->assigned_to}) which they do not own, because status did not change.");
-                        }
-                    }
+                DB::commit();
+                return response()->json(['success' => true, 'message' => 'Task order and statuses updated successfully.']);
 
-
-                    $task->status = $newStatus;
-                    $task->order = $taskData['order'];
-                    $task->save();
-
-                    if ($statusChanged) {
-                        ActivityLogger::log(
-                            'status_changed',
-                            $task,
-                            $projectId,
-                            $currentUser->name . ' updated task "' . $task->title . '" to status "' . $newStatus . '"',
-                            [
-                                'old_status' => $oldStatus,
-                                'new_status' => $newStatus,
-                                'updated_by_id' => $currentUser->id,
-                                'updated_by_name' => $currentUser->name
-                            ]
-                        );
-
-                        // --- KIRIM NOTIFIKASI PERUBAHAN STATUS ---
-                        $assignee = $task->assignedUser;
-                        $projectOwner = $task->project->owner;
-                        
-                        // Jika worker mengubah status, notifikasi PM
-                        if ($currentUser->id === $assignee?->id && $projectOwner->id !== $currentUser->id) {
-                            $projectOwner->notify(new TaskStatusChangedNotification($task, $oldStatus, $newStatus, $currentUser));
-                        } 
-                        // Jika PM mengubah status, notifikasi worker (jika ada dan bukan PM itu sendiri)
-                        elseif ($currentUser->id === $projectOwner->id && $assignee && $assignee->id !== $currentUser->id) {
-                            $assignee->notify(new TaskStatusChangedNotification($task, $oldStatus, $newStatus, $currentUser));
-                        }
-                    }
-                }
-            }
-
-            DB::commit();
-            return response()->json(['success' => true, 'message' => 'Task order and statuses updated successfully.']);
-
-        } catch (AuthorizationException $e) {
-        DB::rollBack();
-        Log::warning("Auth Exception in batchUpdate: " . $e->getMessage());
-        return response()->json(['success' => false, 'message' => 'You are not authorized to update one or more tasks.'], 403);
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::warning("Exception in batchUpdate: " . $e->getMessage());
-        // Kirim pesan error yang spesifik ke frontend
-        return response()->json([
-            'success' => false, 
-            'message' => $e->getMessage(),
-            'error_type' => 'WIP_LIMIT_EXCEEDED' // Tipe error untuk di-handle frontend
-        ], 422); // Gunakan 422 Unprocessable Entity
+            } catch (AuthorizationException $e) {
+            DB::rollBack();
+            Log::warning("Auth Exception in batchUpdate: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'You are not authorized to update one or more tasks.'], 403);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::warning("Exception in batchUpdate: " . $e->getMessage());
+            // Kirim pesan error yang spesifik ke frontend
+            return response()->json([
+                'success' => false, 
+                'message' => $e->getMessage(),
+                'error_type' => 'WIP_LIMIT_EXCEEDED' // Tipe error untuk di-handle frontend
+            ], 422); // Gunakan 422 Unprocessable Entity
+        }
     }
-}
 
     // Add this method to your TaskController to handle AJAX search and filter requests
     public function search(Request $request)
@@ -666,6 +677,13 @@ public function kanban(Project $project)
 
         // Get filtered tasks
         $tasks = $query->orderBy('order')->get();
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'data' => $tasks
+            ]);
+        }
         
         // Group tasks by status
         $tasksByStatus = $tasks->groupBy('status');
@@ -756,6 +774,10 @@ public function kanban(Project $project)
         if (!in_array($perPage, $perPageOptions)) $perPage = 15;
         
         $tasks = $query->paginate($perPage)->withQueryString();
+
+        if ($request->wantsJson()) {
+            return response()->json($tasks);
+        }
         
         if ($request->ajax()) {
             return response()->json([
@@ -790,9 +812,9 @@ public function kanban(Project $project)
         // Log aktivitas
         ActivityLogger::log(
             'progress_updated',
-            $task,
             $task->project_id,
-            'updated progress for task "' . $task->title . '" to ' . $validated['progress_percentage'] . '%'
+            'updated progress for task "' . $task->title . '" to ' . $validated['progress_percentage'] . '%',
+            $task
         );
         
         // Kita tidak perlu mengembalikan task HTML, cukup pesan sukses

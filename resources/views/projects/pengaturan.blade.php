@@ -681,7 +681,7 @@
                                             @else
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-500 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                                             @endif
-                                            <a href="{{ $file->url }}" target="_blank" class="text-sm font-medium text-indigo-600 hover:text-indigo-800 truncate" title="Lihat/Unduh: {{ $file->file_name }}">
+                                            <a href="{{ $file->url }}" target="_blank" rel="noopener noreferrer" class="text-sm font-medium text-indigo-600 hover:text-indigo-800 truncate" title="Lihat/Unduh: {{ $file->file_name }}">
                                                 {{ $file->display_name ?: $file->file_name }}
                                             </a>
                                         </div>
@@ -693,7 +693,7 @@
                                         </p>
                                     </div>
                                     <div class="flex items-center space-x-2 flex-shrink-0">
-                                        <a href="{{ $file->url }}" target="_blank" class="p-1.5 text-blue-600 hover:text-blue-800 rounded-md hover:bg-blue-50" title="Lihat/Unduh File">
+                                        <a href="{{ $file->url }}" target="_blank" rel="noopener noreferrer" class="p-1.5 text-blue-600 hover:text-blue-800 rounded-md hover:bg-blue-50" title="Lihat/Unduh File">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 12z" /></svg>
                                         </a>
                                         {{-- Tambah tombol edit di sini jika perlu --}}

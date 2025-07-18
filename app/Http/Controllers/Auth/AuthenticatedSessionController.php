@@ -10,6 +10,7 @@ use Illuminate\View\View;
 use App\Models\User;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Http\JsonResponse;
 
 class AuthenticatedSessionController extends Controller
 {
@@ -58,8 +59,17 @@ class AuthenticatedSessionController extends Controller
     /**
      * Destroy an authenticated session.
      */
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(Request $request): RedirectResponse|JsonResponse
     {
+        // Cek jika request ini adalah request API
+        // $request->is('api/*') adalah pengecekan yang andal untuk rute API
+        if ($request->is('api/*')) {
+            // Untuk API, kita hapus token yang sedang digunakan untuk otentikasi
+            $request->user()->currentAccessToken()->delete();
+            
+            return response()->json(['message' => 'Logged out successfully']);
+        }
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();

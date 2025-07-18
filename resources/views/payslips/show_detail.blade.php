@@ -184,7 +184,7 @@
                             $signatureUrl = str_replace('storage/', '', $signatureUrl);
                             $signatureUrl = ltrim($signatureUrl, '/');
                         @endphp
-                        <a href="{{ asset('storage/'.$signatureUrl) }}" target="_blank" class="text-blue-600 hover:underline text-sm">Lihat Tanda Tangan (Scan)</a>
+                        <a href="{{ asset('storage/'.$signatureUrl) }}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline text-sm">Lihat Tanda Tangan (Scan)</a>
                     @else
                         <span class="text-gray-400 italic text-sm">(Tanda Tangan Digital/Scan)</span>
                     @endif

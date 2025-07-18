@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="UTF-8">
+  <title>Dashboard for C:\Users\yasia\Documents\tabaru\YuProyek\app\Models</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="../_css/bootstrap.min.css?v=11.0.9" rel="stylesheet" type="text/css">
+  <link href="../_css/nv.d3.min.css?v=11.0.9" rel="stylesheet" type="text/css">
+  <link href="../_css/style.css?v=11.0.9" rel="stylesheet" type="text/css">
+  <link href="../_css/custom.css" rel="stylesheet" type="text/css">
+ </head>
+ <body>
+  <header>
+   <div class="container-fluid">
+    <div class="row">
+     <div class="col-md-12">
+      <nav aria-label="breadcrumb">
+       <ol class="breadcrumb">
+         <li class="breadcrumb-item"><a href="../index.html">C:\Users\yasia\Documents\tabaru\YuProyek\app</a></li>
+         <li class="breadcrumb-item"><a href="index.html">Models</a></li>
+         <li class="breadcrumb-item active">(Dashboard)</li>
+
+       </ol>
+      </nav>
+     </div>
+    </div>
+   </div>
+  </header>
+  <div class="container-fluid">
+   <div class="row">
+    <div class="col-md-12">
+     <h2>Classes</h2>
+    </div>
+   </div>
+   <div class="row">
+    <div class="col-md-6">
+     <h3>Coverage Distribution</h3>
+     <div id="classCoverageDistribution" style="height: 300px;">
+       <svg></svg>
+     </div>
+    </div>
+    <div class="col-md-6">
+     <h3>Complexity</h3>
+     <div id="classComplexity" style="height: 300px;">
+       <svg></svg>
+     </div>
+    </div>
+   </div>
+   <div class="row">
+    <div class="col-md-6">
+     <h3>Insufficient Coverage</h3>
+     <div class="scrollbox">
+      <table class="table">
+       <thead>
+        <tr>
+         <th>Class</th>
+         <th class="text-right">Coverage</th>
+        </tr>
+       </thead>
+       <tbody>
+       <tr><td><a href="Category.php.html#10">App\Models\Category</a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="DifficultyLevel.php.html#7">App\Models\DifficultyLevel</a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="PriorityLevel.php.html#7">App\Models\PriorityLevel</a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="ProjectFile.php.html#9">App\Models\ProjectFile</a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="ProjectPosition.php.html#8">App\Models\ProjectPosition</a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="TaskAttachment.php.html#9">App\Models\TaskAttachment</a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="TaskComment.php.html#8">App\Models\TaskComment</a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="UserDocument.php.html#8">App\Models\UserDocument</a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="UserEducation.php.html#8">App\Models\UserEducation</a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="WageStandard.php.html#8">App\Models\WageStandard</a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="User.php.html#11">App\Models\User</a></td><td class="text-right">22%</td></tr>
+       <tr><td><a href="ProjectUser.php.html#9">App\Models\ProjectUser</a></td><td class="text-right">33%</td></tr>
+       <tr><td><a href="Payment.php.html#9">App\Models\Payment</a></td><td class="text-right">50%</td></tr>
+       <tr><td><a href="PaymentTerm.php.html#8">App\Models\PaymentTerm</a></td><td class="text-right">50%</td></tr>
+       <tr><td><a href="ActivityLog.php.html#8">App\Models\ActivityLog</a></td><td class="text-right">66%</td></tr>
+       <tr><td><a href="Task.php.html#10">App\Models\Task</a></td><td class="text-right">68%</td></tr>
+       <tr><td><a href="Project.php.html#9">App\Models\Project</a></td><td class="text-right">80%</td></tr>
+
+       </tbody>
+      </table>
+     </div>
+    </div>
+    <div class="col-md-6">
+     <h3>Project Risks</h3>
+     <div class="scrollbox">
+      <table class="table">
+       <thead>
+        <tr>
+         <th>Class</th>
+         <th class="text-right"><abbr title="Change Risk Anti-Patterns (CRAP) Index">CRAP</abbr></th>
+        </tr>
+       </thead>
+       <tbody>
+       <tr><td><a href="ProjectFile.php.html#9">App\Models\ProjectFile</a></td><td class="text-right">210</td></tr>
+       <tr><td><a href="TaskAttachment.php.html#9">App\Models\TaskAttachment</a></td><td class="text-right">132</td></tr>
+       <tr><td><a href="User.php.html#11">App\Models\User</a></td><td class="text-right">120</td></tr>
+       <tr><td><a href="Task.php.html#10">App\Models\Task</a></td><td class="text-right">73</td></tr>
+       <tr><td><a href="Payment.php.html#9">App\Models\Payment</a></td><td class="text-right">30</td></tr>
+       <tr><td><a href="Project.php.html#9">App\Models\Project</a></td><td class="text-right">20</td></tr>
+
+       </tbody>
+      </table>
+     </div>
+    </div>
+   </div>
+   <div class="row">
+    <div class="col-md-12">
+     <h2>Methods</h2>
+    </div>
+   </div>
+   <div class="row">
+    <div class="col-md-6">
+     <h3>Coverage Distribution</h3>
+     <div id="methodCoverageDistribution" style="height: 300px;">
+       <svg></svg>
+     </div>
+    </div>
+    <div class="col-md-6">
+     <h3>Complexity</h3>
+     <div id="methodComplexity" style="height: 300px;">
+       <svg></svg>
+     </div>
+    </div>
+   </div>
+   <div class="row">
+    <div class="col-md-6">
+     <h3>Insufficient Coverage</h3>
+     <div class="scrollbox">
+      <table class="table">
+       <thead>
+        <tr>
+         <th>Method</th>
+         <th class="text-right">Coverage</th>
+        </tr>
+       </thead>
+       <tbody>
+       <tr><td><a href="ActivityLog.php.html#37"><abbr title="App\Models\ActivityLog::project">project</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="Category.php.html#20"><abbr title="App\Models\Category::projects">projects</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="DifficultyLevel.php.html#19"><abbr title="App\Models\DifficultyLevel::project">project</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="Payment.php.html#76"><abbr title="App\Models\Payment::getSignatureUrlAttribute">getSignatureUrlAttribute</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="Payment.php.html#85"><abbr title="App\Models\Payment::getProofImageUrlAttribute">getProofImageUrlAttribute</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="PaymentTerm.php.html#42"><abbr title="App\Models\PaymentTerm::payments">payments</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="PriorityLevel.php.html#18"><abbr title="App\Models\PriorityLevel::project">project</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="Project.php.html#73"><abbr title="App\Models\Project::categories">categories</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="Project.php.html#83"><abbr title="App\Models\Project::activityLogs">activityLogs</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="Project.php.html#98"><abbr title="App\Models\Project::payments">payments</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="ProjectFile.php.html#24"><abbr title="App\Models\ProjectFile::project">project</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="ProjectFile.php.html#29"><abbr title="App\Models\ProjectFile::user">user</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="ProjectFile.php.html#35"><abbr title="App\Models\ProjectFile::getUrlAttribute">getUrlAttribute</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="ProjectFile.php.html#44"><abbr title="App\Models\ProjectFile::getFormattedSizeAttribute">getFormattedSizeAttribute</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="ProjectFile.php.html#56"><abbr title="App\Models\ProjectFile::isImage">isImage</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="ProjectFile.php.html#62"><abbr title="App\Models\ProjectFile::isPdf">isPdf</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="ProjectPosition.php.html#18"><abbr title="App\Models\ProjectPosition::project">project</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="ProjectUser.php.html#32"><abbr title="App\Models\ProjectUser::user">user</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="ProjectUser.php.html#37"><abbr title="App\Models\ProjectUser::project">project</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="Task.php.html#59"><abbr title="App\Models\Task::payment">payment</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="Task.php.html#152"><abbr title="App\Models\Task::comments">comments</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="Task.php.html#181"><abbr title="App\Models\Task::activityLogs">activityLogs</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="TaskAttachment.php.html#24"><abbr title="App\Models\TaskAttachment::task">task</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="TaskAttachment.php.html#29"><abbr title="App\Models\TaskAttachment::user">user</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="TaskAttachment.php.html#35"><abbr title="App\Models\TaskAttachment::getUrlAttribute">getUrlAttribute</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="TaskAttachment.php.html#46"><abbr title="App\Models\TaskAttachment::getFormattedSizeAttribute">getFormattedSizeAttribute</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="TaskComment.php.html#22"><abbr title="App\Models\TaskComment::task">task</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="TaskComment.php.html#27"><abbr title="App\Models\TaskComment::user">user</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="User.php.html#42"><abbr title="App\Models\User::educations">educations</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="User.php.html#48"><abbr title="App\Models\User::documents">documents</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="User.php.html#54"><abbr title="App\Models\User::ownedProjects">ownedProjects</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="User.php.html#67"><abbr title="App\Models\User::tasks">tasks</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="User.php.html#73"><abbr title="App\Models\User::getCv">getCv</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="User.php.html#79"><abbr title="App\Models\User::getPortfolio">getPortfolio</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="User.php.html#85"><abbr title="App\Models\User::getCertificates">getCertificates</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="User.php.html#93"><abbr title="App\Models\User::taskComments">taskComments</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="User.php.html#101"><abbr title="App\Models\User::taskAttachments">taskAttachments</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="User.php.html#115"><abbr title="App\Models\User::isWorker">isWorker</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="User.php.html#120"><abbr title="App\Models\User::isProjectMember">isProjectMember</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="UserDocument.php.html#19"><abbr title="App\Models\UserDocument::user">user</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="UserEducation.php.html#22"><abbr title="App\Models\UserEducation::user">user</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="WageStandard.php.html#26"><abbr title="App\Models\WageStandard::project">project</abbr></a></td><td class="text-right">0%</td></tr>
+       <tr><td><a href="Task.php.html#136"><abbr title="App\Models\Task::getPaymentStatusTextAttribute">getPaymentStatusTextAttribute</abbr></a></td><td class="text-right">25%</td></tr>
+       <tr><td><a href="Task.php.html#205"><abbr title="App\Models\Task::getCanMoveAttribute">getCanMoveAttribute</abbr></a></td><td class="text-right">42%</td></tr>
+       <tr><td><a href="Task.php.html#66"><abbr title="App\Models\Task::projectUserMembership">projectUserMembership</abbr></a></td><td class="text-right">50%</td></tr>
+       <tr><td><a href="Task.php.html#196"><abbr title="App\Models\Task::getAttachmentsCountAttribute">getAttachmentsCountAttribute</abbr></a></td><td class="text-right">66%</td></tr>
+       <tr><td><a href="User.php.html#107"><abbr title="App\Models\User::isProjectOwner">isProjectOwner</abbr></a></td><td class="text-right">66%</td></tr>
+       <tr><td><a href="Task.php.html#105"><abbr title="App\Models\Task::getBaseValueAttribute">getBaseValueAttribute</abbr></a></td><td class="text-right">88%</td></tr>
+
+       </tbody>
+      </table>
+     </div>
+    </div>
+    <div class="col-md-6">
+     <h3>Project Risks</h3>
+     <div class="scrollbox">
+      <table class="table">
+       <thead>
+        <tr>
+         <th>Method</th>
+         <th class="text-right"><abbr title="Change Risk Anti-Patterns (CRAP) Index">CRAP</abbr></th>
+        </tr>
+       </thead>
+       <tbody>
+       <tr><td><a href="ProjectFile.php.html#44"><abbr title="App\Models\ProjectFile::getFormattedSizeAttribute">getFormattedSizeAttribute</abbr></a></td><td class="text-right">42</td></tr>
+       <tr><td><a href="TaskAttachment.php.html#46"><abbr title="App\Models\TaskAttachment::getFormattedSizeAttribute">getFormattedSizeAttribute</abbr></a></td><td class="text-right">42</td></tr>
+       <tr><td><a href="Task.php.html#136"><abbr title="App\Models\Task::getPaymentStatusTextAttribute">getPaymentStatusTextAttribute</abbr></a></td><td class="text-right">21</td></tr>
+       <tr><td><a href="Task.php.html#205"><abbr title="App\Models\Task::getCanMoveAttribute">getCanMoveAttribute</abbr></a></td><td class="text-right">12</td></tr>
+       <tr><td><a href="Payment.php.html#76"><abbr title="App\Models\Payment::getSignatureUrlAttribute">getSignatureUrlAttribute</abbr></a></td><td class="text-right">12</td></tr>
+       <tr><td><a href="Payment.php.html#85"><abbr title="App\Models\Payment::getProofImageUrlAttribute">getProofImageUrlAttribute</abbr></a></td><td class="text-right">12</td></tr>
+       <tr><td><a href="ProjectFile.php.html#35"><abbr title="App\Models\ProjectFile::getUrlAttribute">getUrlAttribute</abbr></a></td><td class="text-right">12</td></tr>
+       <tr><td><a href="TaskAttachment.php.html#35"><abbr title="App\Models\TaskAttachment::getUrlAttribute">getUrlAttribute</abbr></a></td><td class="text-right">12</td></tr>
+       <tr><td><a href="ProjectFile.php.html#56"><abbr title="App\Models\ProjectFile::isImage">isImage</abbr></a></td><td class="text-right">6</td></tr>
+       <tr><td><a href="User.php.html#120"><abbr title="App\Models\User::isProjectMember">isProjectMember</abbr></a></td><td class="text-right">6</td></tr>
+       <tr><td><a href="Task.php.html#105"><abbr title="App\Models\Task::getBaseValueAttribute">getBaseValueAttribute</abbr></a></td><td class="text-right">5</td></tr>
+       <tr><td><a href="Task.php.html#66"><abbr title="App\Models\Task::projectUserMembership">projectUserMembership</abbr></a></td><td class="text-right">4</td></tr>
+       <tr><td><a href="Task.php.html#196"><abbr title="App\Models\Task::getAttachmentsCountAttribute">getAttachmentsCountAttribute</abbr></a></td><td class="text-right">2</td></tr>
+       <tr><td><a href="User.php.html#107"><abbr title="App\Models\User::isProjectOwner">isProjectOwner</abbr></a></td><td class="text-right">2</td></tr>
+
+       </tbody>
+      </table>
+     </div>
+    </div>
+   </div>
+   <footer>
+    <hr/>
+    <p>
+     <small>Generated by <a href="https://github.com/sebastianbergmann/php-code-coverage" target="_top">php-code-coverage 11.0.9</a> using <a href="https://www.php.net/" target="_top">PHP 8.2.4</a> and <a href="https://phpunit.de/">PHPUnit 11.5.23</a> at Thu Jul 3 9:04:45 UTC 2025.</small>
+    </p>
+   </footer>
+  </div>
+  <script src="../_js/jquery.min.js?v=11.0.9" type="text/javascript"></script>
+  <script src="../_js/d3.min.js?v=11.0.9" type="text/javascript"></script>
+  <script src="../_js/nv.d3.min.js?v=11.0.9" type="text/javascript"></script>
+  <script type="text/javascript">
+$(document).ready(function() {
+  nv.addGraph(function() {
+    var chart = nv.models.multiBarChart();
+    chart.tooltips(false)
+      .showControls(false)
+      .showLegend(false)
+      .reduceXTicks(false)
+      .staggerLabels(true)
+      .yAxis.tickFormat(d3.format('d'));
+
+    d3.select('#classCoverageDistribution svg')
+      .datum(getCoverageDistributionData([10,0,0,1,1,0,2,2,0,1,0,2], "Class Coverage"))
+      .transition().duration(500).call(chart);
+
+    nv.utils.windowResize(chart.update);
+
+    return chart;
+  });
+
+  nv.addGraph(function() {
+    var chart = nv.models.multiBarChart();
+    chart.tooltips(false)
+      .showControls(false)
+      .showLegend(false)
+      .reduceXTicks(false)
+      .staggerLabels(true)
+      .yAxis.tickFormat(d3.format('d'));
+
+    d3.select('#methodCoverageDistribution svg')
+      .datum(getCoverageDistributionData([42,0,0,1,0,1,1,2,0,1,1,28], "Method Coverage"))
+      .transition().duration(500).call(chart);
+
+    nv.utils.windowResize(chart.update);
+
+    return chart;
+  });
+
+  function getCoverageDistributionData(data, label) {
+    var labels = [
+      '0%',
+      '0-10%',
+      '10-20%',
+      '20-30%',
+      '30-40%',
+      '40-50%',
+      '50-60%',
+      '60-70%',
+      '70-80%',
+      '80-90%',
+      '90-100%',
+      '100%'
+    ];
+    var values = [];
+    $.each(labels, function(key) {
+      values.push({x: labels[key], y: data[key]});
+    });
+
+    return [
+      {
+        key: label,
+        values: values,
+        color: "#4572A7"
+      }
+    ];
+  }
+  nv.addGraph(function() {
+    var chart = nv.models.scatterChart()
+      .showDistX(true)
+      .showDistY(true)
+      .showLegend(false)
+      .forceX([0, 100]);
+    chart.tooltipContent(function(graph) {
+      return '<p>' + graph.point.class + '</p>';
+    });
+
+    chart.xAxis.axisLabel('Code Coverage (in percent)');
+    chart.yAxis.axisLabel('Cyclomatic Complexity');
+
+    d3.select('#classComplexity svg')
+      .datum(getComplexityData([[66.66666666666666,3,"<a href=\"ActivityLog.php.html#8\">App\\Models\\ActivityLog<\/a>"],[0,1,"<a href=\"Category.php.html#10\">App\\Models\\Category<\/a>"],[0,1,"<a href=\"DifficultyLevel.php.html#7\">App\\Models\\DifficultyLevel<\/a>"],[50,12,"<a href=\"Payment.php.html#9\">App\\Models\\Payment<\/a>"],[50,2,"<a href=\"PaymentTerm.php.html#8\">App\\Models\\PaymentTerm<\/a>"],[0,1,"<a href=\"PriorityLevel.php.html#7\">App\\Models\\PriorityLevel<\/a>"],[100,0,"<a href=\"Produk.php.html#7\">App\\Models\\Produk<\/a>"],[80,18,"<a href=\"Project.php.html#9\">App\\Models\\Project<\/a>"],[100,0,"<a href=\"ProjectCategory.php.html#9\">App\\Models\\ProjectCategory<\/a>"],[0,14,"<a href=\"ProjectFile.php.html#9\">App\\Models\\ProjectFile<\/a>"],[0,1,"<a href=\"ProjectPosition.php.html#8\">App\\Models\\ProjectPosition<\/a>"],[33.33333333333333,3,"<a href=\"ProjectUser.php.html#9\">App\\Models\\ProjectUser<\/a>"],[68.42105263157895,35,"<a href=\"Task.php.html#10\">App\\Models\\Task<\/a>"],[0,11,"<a href=\"TaskAttachment.php.html#9\">App\\Models\\TaskAttachment<\/a>"],[0,2,"<a href=\"TaskComment.php.html#8\">App\\Models\\TaskComment<\/a>"],[22.22222222222222,15,"<a href=\"User.php.html#11\">App\\Models\\User<\/a>"],[0,1,"<a href=\"UserDocument.php.html#8\">App\\Models\\UserDocument<\/a>"],[0,1,"<a href=\"UserEducation.php.html#8\">App\\Models\\UserEducation<\/a>"],[0,1,"<a href=\"WageStandard.php.html#8\">App\\Models\\WageStandard<\/a>"]], 'Class Complexity'))
+      .transition()
+      .duration(500)
+      .call(chart);
+
+    nv.utils.windowResize(chart.update);
+
+    return chart;
+  });
+
+  nv.addGraph(function() {
+    var chart = nv.models.scatterChart()
+      .showDistX(true)
+      .showDistY(true)
+      .showLegend(false)
+      .forceX([0, 100]);
+    chart.tooltipContent(function(graph) {
+      return '<p>' + graph.point.class + '</p>';
+    });
+
+    chart.xAxis.axisLabel('Code Coverage (in percent)');
+    chart.yAxis.axisLabel('Method Complexity');
+
+    d3.select('#methodComplexity svg')
+      .datum(getComplexityData([[100,1,"<a href=\"ActivityLog.php.html#29\">App\\Models\\ActivityLog::user<\/a>"],[0,1,"<a href=\"ActivityLog.php.html#37\">App\\Models\\ActivityLog::project<\/a>"],[100,1,"<a href=\"ActivityLog.php.html#45\">App\\Models\\ActivityLog::loggable<\/a>"],[0,1,"<a href=\"Category.php.html#20\">App\\Models\\Category::projects<\/a>"],[0,1,"<a href=\"DifficultyLevel.php.html#19\">App\\Models\\DifficultyLevel::project<\/a>"],[100,1,"<a href=\"Payment.php.html#44\">App\\Models\\Payment::project<\/a>"],[100,1,"<a href=\"Payment.php.html#49\">App\\Models\\Payment::user<\/a>"],[100,1,"<a href=\"Payment.php.html#54\">App\\Models\\Payment::approver<\/a>"],[100,1,"<a href=\"Payment.php.html#63\">App\\Models\\Payment::paymentTerm<\/a>"],[100,1,"<a href=\"Payment.php.html#69\">App\\Models\\Payment::tasks<\/a>"],[0,3,"<a href=\"Payment.php.html#76\">App\\Models\\Payment::getSignatureUrlAttribute<\/a>"],[0,3,"<a href=\"Payment.php.html#85\">App\\Models\\Payment::getProofImageUrlAttribute<\/a>"],[100,1,"<a href=\"Payment.php.html#94\">App\\Models\\Payment::isApproved<\/a>"],[100,1,"<a href=\"PaymentTerm.php.html#33\">App\\Models\\PaymentTerm::project<\/a>"],[0,1,"<a href=\"PaymentTerm.php.html#42\">App\\Models\\PaymentTerm::payments<\/a>"],[0,1,"<a href=\"PriorityLevel.php.html#18\">App\\Models\\PriorityLevel::project<\/a>"],[100,1,"<a href=\"Project.php.html#43\">App\\Models\\Project::owner<\/a>"],[100,1,"<a href=\"Project.php.html#49\">App\\Models\\Project::workers<\/a>"],[100,1,"<a href=\"Project.php.html#56\">App\\Models\\Project::projectPositions<\/a>"],[100,1,"<a href=\"Project.php.html#62\">App\\Models\\Project::tasks<\/a>"],[100,1,"<a href=\"Project.php.html#67\">App\\Models\\Project::files<\/a>"],[0,1,"<a href=\"Project.php.html#73\">App\\Models\\Project::categories<\/a>"],[100,1,"<a href=\"Project.php.html#78\">App\\Models\\Project::wageStandards<\/a>"],[0,1,"<a href=\"Project.php.html#83\">App\\Models\\Project::activityLogs<\/a>"],[100,1,"<a href=\"Project.php.html#87\">App\\Models\\Project::difficultyLevels<\/a>"],[100,1,"<a href=\"Project.php.html#92\">App\\Models\\Project::priorityLevels<\/a>"],[0,1,"<a href=\"Project.php.html#98\">App\\Models\\Project::payments<\/a>"],[100,1,"<a href=\"Project.php.html#107\">App\\Models\\Project::paymentTerms<\/a>"],[100,3,"<a href=\"Project.php.html#114\">App\\Models\\Project::getDifficultyWeightAttribute<\/a>"],[100,3,"<a href=\"Project.php.html#120\">App\\Models\\Project::getPriorityWeightAttribute<\/a>"],[0,1,"<a href=\"ProjectFile.php.html#24\">App\\Models\\ProjectFile::project<\/a>"],[0,1,"<a href=\"ProjectFile.php.html#29\">App\\Models\\ProjectFile::user<\/a>"],[0,3,"<a href=\"ProjectFile.php.html#35\">App\\Models\\ProjectFile::getUrlAttribute<\/a>"],[0,6,"<a href=\"ProjectFile.php.html#44\">App\\Models\\ProjectFile::getFormattedSizeAttribute<\/a>"],[0,2,"<a href=\"ProjectFile.php.html#56\">App\\Models\\ProjectFile::isImage<\/a>"],[0,1,"<a href=\"ProjectFile.php.html#62\">App\\Models\\ProjectFile::isPdf<\/a>"],[0,1,"<a href=\"ProjectPosition.php.html#18\">App\\Models\\ProjectPosition::project<\/a>"],[100,1,"<a href=\"ProjectUser.php.html#26\">App\\Models\\ProjectUser::wageStandard<\/a>"],[0,1,"<a href=\"ProjectUser.php.html#32\">App\\Models\\ProjectUser::user<\/a>"],[0,1,"<a href=\"ProjectUser.php.html#37\">App\\Models\\ProjectUser::project<\/a>"],[100,1,"<a href=\"Task.php.html#39\">App\\Models\\Task::project<\/a>"],[100,1,"<a href=\"Task.php.html#44\">App\\Models\\Task::assignedUser<\/a>"],[100,1,"<a href=\"Task.php.html#49\">App\\Models\\Task::difficultyLevel<\/a>"],[100,1,"<a href=\"Task.php.html#54\">App\\Models\\Task::priorityLevel<\/a>"],[0,1,"<a href=\"Task.php.html#59\">App\\Models\\Task::payment<\/a>"],[50,3,"<a href=\"Task.php.html#66\">App\\Models\\Task::projectUserMembership<\/a>"],[92.3076923076923,3,"<a href=\"Task.php.html#79\">App\\Models\\Task::getWsmScoreAttribute<\/a>"],[88.88888888888889,5,"<a href=\"Task.php.html#105\">App\\Models\\Task::getBaseValueAttribute<\/a>"],[100,2,"<a href=\"Task.php.html#124\">App\\Models\\Task::getCalculatedValueAttribute<\/a>"],[25,6,"<a href=\"Task.php.html#136\">App\\Models\\Task::getPaymentStatusTextAttribute<\/a>"],[0,1,"<a href=\"Task.php.html#152\">App\\Models\\Task::comments<\/a>"],[100,1,"<a href=\"Task.php.html#160\">App\\Models\\Task::attachments<\/a>"],[0,1,"<a href=\"Task.php.html#181\">App\\Models\\Task::activityLogs<\/a>"],[66.66666666666666,2,"<a href=\"Task.php.html#196\">App\\Models\\Task::getAttachmentsCountAttribute<\/a>"],[42.857142857142854,6,"<a href=\"Task.php.html#205\">App\\Models\\Task::getCanMoveAttribute<\/a>"],[0,1,"<a href=\"TaskAttachment.php.html#24\">App\\Models\\TaskAttachment::task<\/a>"],[0,1,"<a href=\"TaskAttachment.php.html#29\">App\\Models\\TaskAttachment::user<\/a>"],[0,3,"<a href=\"TaskAttachment.php.html#35\">App\\Models\\TaskAttachment::getUrlAttribute<\/a>"],[0,6,"<a href=\"TaskAttachment.php.html#46\">App\\Models\\TaskAttachment::getFormattedSizeAttribute<\/a>"],[0,1,"<a href=\"TaskComment.php.html#22\">App\\Models\\TaskComment::task<\/a>"],[0,1,"<a href=\"TaskComment.php.html#27\">App\\Models\\TaskComment::user<\/a>"],[0,1,"<a href=\"User.php.html#42\">App\\Models\\User::educations<\/a>"],[0,1,"<a href=\"User.php.html#48\">App\\Models\\User::documents<\/a>"],[0,1,"<a href=\"User.php.html#54\">App\\Models\\User::ownedProjects<\/a>"],[100,1,"<a href=\"User.php.html#60\">App\\Models\\User::projects<\/a>"],[0,1,"<a href=\"User.php.html#67\">App\\Models\\User::tasks<\/a>"],[0,1,"<a href=\"User.php.html#73\">App\\Models\\User::getCv<\/a>"],[0,1,"<a href=\"User.php.html#79\">App\\Models\\User::getPortfolio<\/a>"],[0,1,"<a href=\"User.php.html#85\">App\\Models\\User::getCertificates<\/a>"],[0,1,"<a href=\"User.php.html#93\">App\\Models\\User::taskComments<\/a>"],[0,1,"<a href=\"User.php.html#101\">App\\Models\\User::taskAttachments<\/a>"],[66.66666666666666,2,"<a href=\"User.php.html#107\">App\\Models\\User::isProjectOwner<\/a>"],[0,1,"<a href=\"User.php.html#115\">App\\Models\\User::isWorker<\/a>"],[0,2,"<a href=\"User.php.html#120\">App\\Models\\User::isProjectMember<\/a>"],[0,1,"<a href=\"UserDocument.php.html#19\">App\\Models\\UserDocument::user<\/a>"],[0,1,"<a href=\"UserEducation.php.html#22\">App\\Models\\UserEducation::user<\/a>"],[0,1,"<a href=\"WageStandard.php.html#26\">App\\Models\\WageStandard::project<\/a>"]], 'Method Complexity'))
+      .transition()
+      .duration(500)
+      .call(chart);
+
+    nv.utils.windowResize(chart.update);
+
+    return chart;
+  });
+
+  function getComplexityData(data, label) {
+    var values = [];
+    $.each(data, function(key) {
+      var value = Math.round(data[key][0]*100) / 100;
+      values.push({
+        x: value,
+        y: data[key][1],
+        class: data[key][2],
+        size: 0.05,
+        shape: 'diamond'
+      });
+    });
+
+    return [
+      {
+        key: label,
+        values: values,
+        color: "#4572A7"
+      }
+    ];
+  }
+});
+  </script>
+ </body>
+</html>

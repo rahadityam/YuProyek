@@ -59,7 +59,7 @@
                             <dt class="text-sm font-medium text-gray-500">Bukti</dt>
                             <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
                                 @if ($payment->proof_image)
-                                    <a href="{{ Storage::url($payment->proof_image) }}" target="_blank" class="text-indigo-600 hover:text-indigo-900 hover:underline">Lihat Bukti</a>
+                                    <a href="{{ Storage::url($payment->proof_image) }}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-900 hover:underline">Lihat Bukti</a>
                                 @else
                                     <span class="text-gray-400">Tidak ada bukti</span>
                                 @endif

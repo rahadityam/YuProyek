@@ -11,11 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('tasks', function (Blueprint $table) {
-            // Tambahkan kolom baru setelah 'achievement_percentage'
-            // Default 0, bisa diisi oleh PW
-            $table->unsignedTinyInteger('progress_percentage')->default(0)->after('achievement_percentage');
-        });
+        // KOSONGKAN METHOD INI KARENA KOLOM SUDAH DITAMBAHKAN DI MIGRASI SEBELUMNYA
+        // Schema::table('tasks', function (Blueprint $table) {
+        //     $table->unsignedTinyInteger('progress_percentage')->default(0)->after('achievement_percentage');
+        // });
     }
 
     /**
@@ -23,8 +22,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('tasks', function (Blueprint $table) {
-            $table->dropColumn('progress_percentage');
-        });
+        // KOSONGKAN METHOD INI JUGA UNTUK KONSISTENSI
+        // Schema::table('tasks', function (Blueprint $table) {
+        //     $table->dropColumn('progress_percentage');
+        // });
     }
 };

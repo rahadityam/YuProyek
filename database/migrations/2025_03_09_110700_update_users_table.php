@@ -46,7 +46,7 @@ return new class extends Migration
             }
             
             if (!Schema::hasColumn('users', 'role')) {
-                $table->enum('role', ['admin', 'project_manager', 'worker', 'ceo'])->default('worker')->after('portfolio_path');
+                $table->enum('role', ['admin', 'project_owner', 'worker', 'ceo'])->default('worker')->after('portfolio_path');
             }
              if (!Schema::hasColumn('users', 'status')) {
                 $table->enum('status', ['active', 'blocked'])->default('active')->after('role');

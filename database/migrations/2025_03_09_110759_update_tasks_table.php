@@ -12,52 +12,33 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('tasks', function (Blueprint $table) {
-            // Cek dan hapus kolom yang ingin diubah jika ada
-            if (Schema::hasColumn('tasks', 'status')) {
-                $table->dropColumn('status');
-            }
-            
-            if (Schema::hasColumn('tasks', 'user_id')) {
-                // Cek apakah ada foreign key pada kolom user_id
-                $table->dropForeign(['user_id']);
+            // HANYA TAMBAHKAN KOLOM BARU
 
-                $table->dropColumn('user_id');
-            }
+            $table->foreignId('project_id')->after('order')->constrained('projects')->onDelete('cascade');
+            $table->foreignId('assigned_to')->nullable()->after('project_id')->constrained('users')->onDelete('set null');
             
-            // Tambahkan kolom baru
-            if (!Schema::hasColumn('tasks', 'status')) {
-                $table->enum('status', ['to_do', 'in_progress', 'done'])->default('to_do');
+            // Hapus kolom integer lama jika ada (dari migrasi yang salah sebelumnya)
+            // Ini aman untuk ditinggalkan, karena migrate:fresh akan membuat skema dari awal
+            // Namun, untuk kebersihan, kita bisa cek dan hapus.
+            if (Schema::hasColumn('tasks', 'difficulty_level')) {
+                $table->dropColumn('difficulty_level');
             }
-            
-            if (!Schema::hasColumn('tasks', 'project_id')) {
-                $table->unsignedBigInteger('project_id')->after('order');
-                $table->foreign('project_id')->references('id')->on('projects')->onDelete('cascade');
+            if (Schema::hasColumn('tasks', 'priority_level')) {
+                $table->dropColumn('priority_level');
             }
-            
-            if (!Schema::hasColumn('tasks', 'assigned_to')) {
-                $table->unsignedBigInteger('assigned_to')->nullable()->after('project_id');
-                $table->foreign('assigned_to')->references('id')->on('users')->onDelete('set null');
-            }
-            
-            if (!Schema::hasColumn('tasks', 'difficulty_level')) {
-                $table->integer('difficulty_level')->default(1)->comment('1-5 from easy to hard');
-            }
-            
-            if (!Schema::hasColumn('tasks', 'priority_level')) {
-                $table->integer('priority_level')->default(1)->comment('1-5 from low to high');
-            }
-            
-            if (!Schema::hasColumn('tasks', 'start_time')) {
-                $table->dateTime('start_time')->nullable();
-            }
-            
-            if (!Schema::hasColumn('tasks', 'end_time')) {
-                $table->dateTime('end_time')->nullable();
-            }
-            
-            if (!Schema::hasColumn('tasks', 'notes')) {
-                $table->text('notes')->nullable();
-            }
+
+            // Tambahkan kolom foreign key baru
+            $table->foreignId('difficulty_level_id')->nullable()->constrained('difficulty_levels')->nullOnDelete()->after('assigned_to');
+            $table->foreignId('priority_level_id')->nullable()->constrained('priority_levels')->nullOnDelete()->after('difficulty_level_id');
+
+            $table->dateTime('start_time')->nullable();
+            $table->dateTime('end_time')->nullable();
+            $table->text('notes')->nullable();
+
+            // Kolom-kolom baru lainnya
+            $table->unsignedTinyInteger('achievement_percentage')->default(100)->after('priority_level_id');
+            $table->foreignId('payment_id')->nullable()->constrained('payments')->nullOnDelete()->after('achievement_percentage');
+            $table->unsignedTinyInteger('progress_percentage')->default(0)->after('achievement_percentage');
         });
     }
 
@@ -67,63 +48,27 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('tasks', function (Blueprint $table) {
-            // Hapus foreign key jika ada
-            if (Schema::hasColumn('tasks', 'project_id')) {
-                $table->dropForeign(['project_id']);
-            }
-            
-            if (Schema::hasColumn('tasks', 'assigned_to')) {
-                $table->dropForeign(['assigned_to']);
-            }
-            
-            // Hapus kolom yang ditambahkan
-            $columns = [
-                'status', 'project_id', 'assigned_to', 'difficulty_level', 
-                'priority_level', 'start_time', 'end_time', 'notes'
+            // Logika untuk membalikkan perubahan
+            $columnsToDrop = [
+                'project_id', 'assigned_to', 'difficulty_level_id', 'priority_level_id',
+                'start_time', 'end_time', 'notes', 'achievement_percentage',
+                'payment_id', 'progress_percentage'
             ];
             
-            $columnsToRemove = [];
-            foreach ($columns as $column) {
-                if (Schema::hasColumn('tasks', $column)) {
-                    $columnsToRemove[] = $column;
+            // Urutan drop foreign key penting
+            $foreignKeysToDrop = ['project_id', 'assigned_to', 'difficulty_level_id', 'priority_level_id', 'payment_id'];
+            foreach($foreignKeysToDrop as $fk) {
+                if(Schema::hasColumn('tasks', $fk)) {
+                    $table->dropForeign([$fk]);
                 }
             }
-            
-            if (!empty($columnsToRemove)) {
-                $table->dropColumn($columnsToRemove);
-            }
-            
-            // Tambahkan kembali kolom lama jika perlu
-            if (!Schema::hasColumn('tasks', 'status')) {
-                $table->string('status')->default('To Do');
-            }
-            
-            if (!Schema::hasColumn('tasks', 'user_id')) {
-                $table->foreignId('user_id')->constrained()->onDelete('cascade');
+
+            // Drop kolom biasa
+            foreach($columnsToDrop as $col) {
+                if(Schema::hasColumn('tasks', $col)) {
+                    $table->dropColumn($col);
+                }
             }
         });
-    }
-    
-    /**
-     * Get list of foreign keys for a table
-     */
-    private function listTableForeignKeys($table)
-    {
-        $conn = Schema::getConnection()->getDoctrineSchemaManager();
-        
-        $foreignKeys = [];
-        
-        if (method_exists($conn, 'listTableForeignKeys')) {
-            $tableForeignKeys = $conn->listTableForeignKeys($table);
-            
-            foreach ($tableForeignKeys as $key) {
-                $foreignKeys[] = [
-                    'name' => $key->getName(),
-                    'columns' => $key->getLocalColumns(),
-                ];
-            }
-        }
-        
-        return $foreignKeys;
     }
 };

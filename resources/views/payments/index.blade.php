@@ -353,7 +353,7 @@
                                         </td>
                                         <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500 text-center"> {{-- Bukti --}}
                                             @if ($payment->proof_image)
-                                                <a href="{{ Storage::url($payment->proof_image) }}" target="_blank" class="text-indigo-600 hover:text-indigo-900">Lihat</a>
+                                                <a href="{{ Storage::url($payment->proof_image) }}" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:text-indigo-900">Lihat</a>
                                             @else
                                                 <span class="text-gray-400">-</span>
                                             @endif

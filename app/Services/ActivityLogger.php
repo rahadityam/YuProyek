@@ -11,18 +11,20 @@ class ActivityLogger
     /**
      * Log an activity.
      *
+     * FIX: The optional $model parameter is moved to the end to comply with PHP 8 standards.
+     *
      * @param string $action The action performed (created, updated, etc.)
-     * @param Model|null $model The model being acted upon
      * @param int $projectId The project ID
      * @param string $description The description of the activity
-     * @param array $properties Additional properties to store
+     * @param Model|null $model The model being acted upon (optional)
+     * @param array $properties Additional properties to store (optional)
      * @return ActivityLog
      */
     public static function log(
         string $action,
-        ?Model $model = null,
         int $projectId,
         string $description,
+        ?Model $model = null,
         array $properties = []
     ): ActivityLog {
         $user = Auth::user();

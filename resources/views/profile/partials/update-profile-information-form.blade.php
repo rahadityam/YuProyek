@@ -193,7 +193,7 @@
                 
                 @if($cv)
                 <div class="mt-2 mb-3 flex items-center">
-                    <a href="{{ asset('storage/' . $cv->file_path) }}" target="_blank" 
+                    <a href="{{ asset('storage/' . $cv->file_path) }}" target="_blank" rel="noopener noreferrer" 
                        class="text-blue-600 hover:text-blue-800 mr-2">
                         {{ __('View Current CV') }}
                     </a>
@@ -211,7 +211,7 @@
                 
                 @if($portfolio)
                 <div class="mt-2 mb-3 flex items-center">
-                    <a href="{{ asset('storage/' . $portfolio->file_path) }}" target="_blank" 
+                    <a href="{{ asset('storage/' . $portfolio->file_path) }}" target="_blank" rel="noopener noreferrer" 
                        class="text-blue-600 hover:text-blue-800 mr-2">
                         {{ __('View Current Portfolio') }}
                     </a>
@@ -236,7 +236,7 @@
                         @foreach($certificates as $cert)
                         <div class="flex items-center justify-between p-2 border rounded-md">
                             <div class="flex items-center">
-                                <a href="{{ asset('storage/' . $cert->file_path) }}" target="_blank" 
+                                <a href="{{ asset('storage/' . $cert->file_path) }}" target="_blank" rel="noopener noreferrer" 
                                    class="text-blue-600 hover:text-blue-800">
                                     {{ $cert->title }}
                                 </a>

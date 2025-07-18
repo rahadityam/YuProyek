@@ -16,11 +16,16 @@ class AdminUserController extends Controller
         $users   = User::select('id', 'name', 'email', 'role', 'status')
                         ->paginate($perPage); // Ambil data pengguna dengan pagination
 
+        // Tambahkan respons JSON untuk API
+        if ($request->wantsJson()) {
+            return response()->json($users);
+        }
+        
         return view('admin.users.user_admin', compact('users')); // Kirim data pengguna ke view
     }
 
     // Mengubah status pengguna (active / blocked)
-    public function toggleStatus($id)
+    public function toggleStatus(Request $request, $id)
     {
         $user = User::findOrFail($id); // Cari pengguna berdasarkan ID
 
@@ -32,6 +37,11 @@ class AdminUserController extends Controller
         $message = $user->status === 'blocked'
                  ? 'User has been blocked successfully.'
                  : 'User has been unblocked successfully.';
+
+        // Return JSON response for API requests
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => $message, 'user' => $user->fresh()]);
+        }
 
         return redirect()
             ->route('admin.users.index') // Arahkan kembali ke halaman daftar pengguna
@@ -48,7 +58,7 @@ class AdminUserController extends Controller
     public function store(Request $request)
     {
         // Validasi inputan
-        $request->validate([
+        $validatedData = $request->validate([
             'name'                  => 'required|string|max:255',
             'email'                 => 'required|email|unique:users,email',
             'role'                  => 'required|in:admin,project_owner,worker',
@@ -67,13 +77,22 @@ class AdminUserController extends Controller
         ]);
 
         // Membuat pengguna baru dan menyimpannya ke database
-        User::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
-            'role'     => $request->role,
-            'password' => Hash::make($request->password), // Enkripsi password menggunakan Hash
-            'status'   => 'active', // Status awal pengguna adalah 'active'
+        $user = User::create([
+            'name'     => $validatedData['name'],
+            'email'    => $validatedData['email'],
+            'role'     => $validatedData['role'],
+            'password' => Hash::make($validatedData['password']),
+            'status'   => 'active',
         ]);
+
+        // Return JSON response for API requests
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true, 
+                'message' => 'Account has been created successfully.',
+                'user' => $user
+            ], 201);
+        }
 
         // Setelah berhasil membuat akun, arahkan ke halaman form pembuatan akun dan tampilkan pesan sukses
         return redirect()

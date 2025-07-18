@@ -143,7 +143,7 @@
                             <div class="border rounded-md p-4">
                                 <p class="text-sm text-gray-600">{{ __('CV/Resume') }}</p>
                                 @if($cv)
-                                    <a href="{{ asset('storage/' . $cv->file_path) }}" target="_blank" 
+                                    <a href="{{ asset('storage/' . $cv->file_path) }}" target="_blank" rel="noopener noreferrer" 
                                        class="text-blue-600 hover:text-blue-800 flex items-center mt-1">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
                                             <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd" />
@@ -159,7 +159,7 @@
                             <div class="border rounded-md p-4">
                                 <p class="text-sm text-gray-600">{{ __('Portfolio') }}</p>
                                 @if($portfolio)
-                                    <a href="{{ asset('storage/' . $portfolio->file_path) }}" target="_blank" 
+                                    <a href="{{ asset('storage/' . $portfolio->file_path) }}" target="_blank" rel="noopener noreferrer" 
                                        class="text-blue-600 hover:text-blue-800 flex items-center mt-1">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
                                             <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd" />
@@ -177,7 +177,7 @@
                                 @if($certificates->count() > 0)
                                     <div class="mt-2 space-y-2">
                                         @foreach($certificates as $cert)
-                                            <a href="{{ asset('storage/' . $cert->file_path) }}" target="_blank" 
+                                            <a href="{{ asset('storage/' . $cert->file_path) }}" target="_blank" rel="noopener noreferrer" 
                                                class="text-blue-600 hover:text-blue-800 flex items-center">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
                                                     <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd" />

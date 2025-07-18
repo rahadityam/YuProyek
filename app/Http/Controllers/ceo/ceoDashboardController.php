@@ -60,17 +60,34 @@ class ceoDashboardController extends Controller
                 ];
             });
 
-        // --- Data Chart (tidak berubah) ---
         // Weekly
         $startOfWeek = Carbon::now()->startOfWeek();
         $endOfWeek = Carbon::now()->endOfWeek();
-        $weeklyProjects = Project::whereBetween('start_date', [$startOfWeek, $endOfWeek])->selectRaw('DAYOFWEEK(start_date) as day, COUNT(*) as total')->groupBy('day')->pluck('total', 'day')->toArray();
+
+        // Cek driver database yang digunakan
+        $dbDriver = DB::connection()->getDriverName();
+        if ($dbDriver === 'sqlite') {
+            $dayOfWeekExpression = "CAST(strftime('%w', start_date) AS INTEGER) + 1";
+        } else {
+            $dayOfWeekExpression = "DAYOFWEEK(start_date)";
+        }
+
+        $weeklyProjects = Project::whereBetween('start_date', [$startOfWeek, $endOfWeek])
+            ->selectRaw("{$dayOfWeekExpression} as day, COUNT(*) as total")
+            ->groupBy('day')
+            ->pluck('total', 'day')
+            ->toArray();
         $weekDays = [1 => 'Sunday', 2 => 'Monday', 3 => 'Tuesday', 4 => 'Wednesday', 5 => 'Thursday', 6 => 'Friday', 7 => 'Saturday'];
         $projectLabels['daily'] = array_values($weekDays);
         $projectData['daily'] = array_map(fn($d) => $weeklyProjects[$d] ?? 0, array_keys($weekDays));
 
         // Monthly
-        $monthlyProjects = Project::whereYear('start_date', now()->year)->selectRaw('MONTH(start_date) as month, COUNT(*) as total')->groupBy('month')->pluck('total', 'month')->toArray();
+        $monthlyProjects = Project::whereYear('start_date', now()->year)
+            // Gunakan strftime untuk kompatibilitas SQLite
+            ->selectRaw("CAST(strftime('%m', start_date) AS INTEGER) as month, COUNT(*) as total")
+            ->groupBy('month')
+            ->pluck('total', 'month')
+            ->toArray();
         $months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         $projectLabels['monthly'] = $months;
         $projectData['monthly'] = array_map(fn($i) => $monthlyProjects[$i] ?? 0, range(1, 12));
@@ -78,7 +95,13 @@ class ceoDashboardController extends Controller
         // Yearly
         $currentYear = now()->year;
         $years = range($currentYear - 4, $currentYear);
-        $yearlyProjects = Project::whereIn(DB::raw('YEAR(start_date)'), $years)->selectRaw('YEAR(start_date) as year, COUNT(*) as total')->groupBy('year')->pluck('total', 'year')->toArray();
+
+        // Ganti YEAR() dengan strftime('%Y', ...) untuk kompatibilitas SQLite
+        $yearlyProjects = Project::whereIn(DB::raw("strftime('%Y', start_date)"), array_map('strval', $years))
+            ->selectRaw("strftime('%Y', start_date) as year, COUNT(*) as total")
+            ->groupBy('year')
+            ->pluck('total', 'year')
+            ->toArray();
         $projectLabels['yearly'] = array_map('strval', $years);
         $projectData['yearly'] = array_map(fn($y) => $yearlyProjects[$y] ?? 0, $years);
 

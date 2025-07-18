@@ -62,18 +62,26 @@ class ActivityController extends Controller
 
         $logs = $query->paginate(20)->withQueryString();
 
-        // --- Respons AJAX ---
-        if ($request->ajax()) {
+        if ($request->ajax() || $request->wantsJson()) {
+            // Jika dari Postman, kita mungkin ingin data mentah, bukan HTML.
+            // Mari kita buat dua jenis respons JSON.
+            
+            // Opsi 1: Jika request secara spesifik meminta JSON (bukan hanya AJAX)
+            if ($request->wantsJson() && !$request->ajax()) {
+                // Kembalikan data log dalam format JSON murni
+                return response()->json($logs);
+            }
+            
+            // Opsi 2: Jika ini adalah request AJAX dari halaman web Anda (yang mengharapkan HTML)
             return response()->json([
                 'table_html' => view('projects.partials._activity_log_table', compact('logs'))->render(),
                 'pagination_html' => $logs->links('vendor.pagination.tailwind')->toHtml(),
             ]);
         }
 
-        // --- Respons Halaman Biasa ---
+        // --- Respons Halaman Biasa (jika diakses dari browser langsung) ---
         $projectUsers = $project->workers()->wherePivot('status', 'accepted')->orderBy('name')->get();
         $projectUsers->prepend($project->owner);
-
         $availableActions = ActivityLog::where('project_id', $project->id)->distinct()->pluck('action');
 
         return view('projects.activity', [

@@ -29,8 +29,6 @@ class SettingController extends Controller
     {
         $this->authorize('viewSettings', $project);
 
-        // $categories = Category::orderBy('name')->get(); // Hapus jika tidak dipakai
-        // $selectedCategories = $project->categories->pluck('id')->toArray(); // Hapus
         $wageStandards = $project->wageStandards()->orderBy('job_category')->get();
         $members = $project->workers()->wherePivot('status', 'accepted')->withPivot('wage_standard_id')->orderBy('name')->get();
         $paymentTerms = $project->paymentTerms()->orderBy('start_date')->get();
@@ -42,9 +40,7 @@ class SettingController extends Controller
                                 ->exists();
 
         return view('projects.pengaturan', compact(
-            'project', // project akan di-load dengan projectPositions di blade
-            // 'categories', // Hapus
-            // 'selectedCategories', // Hapus
+            'project',
             'wageStandards',
             'members',
             'paymentTerms',
@@ -55,23 +51,14 @@ class SettingController extends Controller
         ));
     }
 
-    // SettingController.php
-
-public function updateProjectInfo(Request $request, Project $project)
+    public function updateProjectInfo(Request $request, Project $project)
     {
-        // Otorisasi tetap sama
         $this->authorize('update', $project);
 
-        // Cek status "terkunci" dari sisi backend sebagai pengaman utama
         $isLocked = Payment::where('project_id', $project->id)
                            ->where('status', Payment::STATUS_APPROVED)
                            ->exists();
 
-        // ==========================================================
-        // ===== MODIFIKASI ATURAN VALIDASI DIMULAI DI SINI =====
-        // ==========================================================
-
-        // Aturan validasi dasar yang selalu berlaku
         $baseRules = [
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -82,7 +69,6 @@ public function updateProjectInfo(Request $request, Project $project)
             'positions.*.delete' => 'nullable|boolean',
         ];
 
-        // Aturan validasi untuk field yang bisa dikunci
         $lockableRules = [
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
@@ -90,12 +76,10 @@ public function updateProjectInfo(Request $request, Project $project)
         ];
         
         $rules = $baseRules;
-        // Jika proyek TIDAK terkunci, gabungkan semua aturan validasi
         if (!$isLocked) {
             $rules = array_merge($baseRules, $lockableRules);
         }
 
-        // Aturan validasi kondisional untuk setiap item dalam array 'positions'
         foreach ($request->input('positions', []) as $key => $position) {
             if (!isset($position['delete']) || !$position['delete']) {
                 $rules["positions.{$key}.name"] = 'required|string|max:255';
@@ -109,40 +93,34 @@ public function updateProjectInfo(Request $request, Project $project)
             'positions.*.count.min' => 'Jumlah untuk posisi minimal 1.',
         ]);
 
-        // ==========================================================
-        // ===== MODIFIKASI LOGIKA UPDATE DIMULAI DI SINI =====
-        // ==========================================================
         DB::beginTransaction();
         try {
-            // Data yang selalu bisa diupdate
+            // FIX: Safely assign wip_limits
             $updateData = [
                 'name' => $validated['name'],
                 'description' => $validated['description'],
                 'status' => $validated['status'],
-                'wip_limits' => $validated['wip_limits'],
+                'wip_limits' => $validated['wip_limits'] ?? $project->wip_limits, // Use old value if not present
             ];
 
-            // Hanya tambahkan data yang bisa dikunci jika proyek TIDAK terkunci
             if (!$isLocked) {
                 $updateData['start_date'] = $validated['start_date'];
                 $updateData['end_date'] = $validated['end_date'];
                 $updateData['budget'] = $validated['budget'];
             }
             
-            // Lakukan update
             $project->update($updateData);
 
-            // Proses Project Positions (logika ini tetap sama, tapi fieldset disabled melindunginya)
             if (isset($validated['positions'])) {
                 foreach ($validated['positions'] as $positionData) {
                     if (isset($positionData['id']) && $positionData['id']) {
                         $position = ProjectPosition::find($positionData['id']);
                         if ($position && $position->project_id === $project->id) {
                             if (isset($positionData['delete']) && $positionData['delete']) {
-                                if (!$isLocked) $position->delete(); // Hanya hapus jika tidak terkunci
+                                if (!$isLocked) $position->delete();
                             } else {
                                 if (isset($positionData['name']) && isset($positionData['count'])) {
-                                     if (!$isLocked) $position->update([ // Hanya update jika tidak terkunci
+                                     if (!$isLocked) $position->update([
                                         'name' => $positionData['name'],
                                         'count' => $positionData['count'],
                                     ]);
@@ -151,7 +129,7 @@ public function updateProjectInfo(Request $request, Project $project)
                         }
                     } elseif (!isset($positionData['delete']) || !$positionData['delete']) {
                         if (isset($positionData['name']) && isset($positionData['count'])) {
-                             if (!$isLocked) $project->projectPositions()->create([ // Hanya buat baru jika tidak terkunci
+                             if (!$isLocked) $project->projectPositions()->create([
                                 'name' => $positionData['name'],
                                 'count' => $positionData['count'],
                             ]);
@@ -174,23 +152,45 @@ public function updateProjectInfo(Request $request, Project $project)
         }
     }
 
-    // --- Method BARU untuk Update Tipe Kalkulasi Pembayaran ---
     public function updatePaymentCalculationType(Request $request, Project $project)
     {
-        if (Auth::id() !== $project->owner_id) { abort(403); }
+        $this->authorize('update', $project);
 
-        // Validasi HANYA untuk tipe pembayaran
+        // FIX: Tambahkan pengecekan kunci proyek
+        $isLocked = Payment::where('project_id', $project->id)
+                           ->where('status', Payment::STATUS_APPROVED)
+                           ->exists();
+
+        if ($isLocked) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Metode kalkulasi pembayaran tidak dapat diubah karena proyek sudah terkunci.',
+                ], 403);
+            }
+            return redirect()->route('projects.pengaturan', $project)
+                             ->withErrors(['general' => 'Metode kalkulasi pembayaran tidak dapat diubah karena sudah ada pembayaran yang disetujui.'])
+                             ->with('active_tab', 'financial');
+        }
+        // End of FIX
+
         $validated = $request->validate([
             'payment_calculation_type' => ['required', Rule::in(['termin', 'task', 'full'])],
         ]);
 
-        // Update hanya field payment_calculation_type
         $project->update($validated);
+        
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Metode kalkulasi pembayaran berhasil diperbarui!',
+                'project' => $project->fresh()->only('id', 'payment_calculation_type')
+            ]);
+        }
 
-        // Gunakan key flash message berbeda
         return redirect()->route('projects.pengaturan', $project)
                          ->with('success_financial', 'Metode kalkulasi pembayaran berhasil diperbarui!')
-                         ->with('active_tab', 'financial'); // <-- Kembalikan ke tab financial
+                         ->with('active_tab', 'financial');
     }
 
     public function updatePaymentTerms(Request $request, Project $project)
@@ -377,33 +377,86 @@ public function updateProjectInfo(Request $request, Project $project)
     // HAPUS Method 'update' yang lama jika sudah tidak dipakai (jika semua update dipecah)
     // public function update(Request $request, Project $project) { ... }
 
-    // --- Weight Management ---
-    // ... (Tidak berubah) ...
-    public function editWeights(Project $project)
+    public function editWeights(Request $request, Project $project) // <-- Tambahkan Request $request
     {
-        if (Auth::id() !== $project->owner_id) { abort(403); }
-        return view('projects.settings-weights', compact('project')); // <-- Ganti nama view jika perlu
+        // Otorisasi sederhana, bisa disempurnakan dengan Policy
+        if (Auth::id() !== $project->owner_id) {
+            if ($request->wantsJson()) {
+                return response()->json(['message' => 'This action is unauthorized.'], 403);
+            }
+            abort(403);
+        }
+
+        // ==========================================================
+        // ===== BLOK PERBAIKAN UNTUK API DIMULAI DI SINI =====
+        // ==========================================================
+        
+        // Jika request dari API, kembalikan data bobot dalam format JSON
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'difficulty_weight' => $project->difficulty_weight,
+                    'priority_weight' => $project->priority_weight,
+                ]
+            ]);
+        }
+        
+        // ==========================================================
+        // ===== AKHIR BLOK PERBAIKAN =====
+        // ==========================================================
+
+        // Jika request dari web, redirect ke halaman pengaturan utama
+        // karena tidak ada view terpisah untuk ini.
+        return redirect()->route('projects.pengaturan', ['project' => $project, 'active_tab' => 'criteria']);
     }
 
-    public function updateWeights(Request $request, Project $project)
+    public function updateWeights(Request $request, Project $project) // Tambahkan Request
     {
-        if (Auth::id() !== $project->owner_id) { abort(403); }
+        // Otorisasi: Hanya owner yang bisa mengubah
+        $this->authorize('update', $project);
+
         $validated = $request->validate([
             'difficulty_weight' => 'required|integer|min:0|max:100',
             'priority_weight' => 'required|integer|min:0|max:100',
         ]);
 
         if (($validated['difficulty_weight'] + $validated['priority_weight']) != 100) {
+            // Jika validasi gagal, kembalikan error JSON untuk API
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'message' => 'The given data was invalid.',
+                    'errors' => [
+                        'weights_total' => ['Total bobot Kesulitan dan Prioritas harus 100%.']
+                    ]
+                ], 422);
+            }
             return back()->withErrors(['weights' => 'Total bobot Kesulitan dan Prioritas harus 100%.'])->withInput()->with('active_tab', 'criteria');
         }
+
         $project->update($validated);
+        
+        // ==========================================================
+        // ===== BLOK PERBAIKAN UNTUK API DIMULAI DI SINI =====
+        // ==========================================================
+        
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Bobot WSM berhasil diperbarui.',
+                'data' => $project->fresh()->only('difficulty_weight', 'priority_weight')
+            ]);
+        }
+        
+        // ==========================================================
+        // ===== AKHIR BLOK PERBAIKAN =====
+        // ==========================================================
+
         return redirect()->route('projects.pengaturan', $project)
                 ->with('success_criteria', 'Bobot WSM berhasil diperbarui.')
-                ->with('active_tab', 'criteria'); // Gunakan key berbeda agar bisa direct ke tab
+                ->with('active_tab', 'criteria');
     }
 
-    // --- Level Management (Difficulty & Priority) ---
-    // ... (Tidak berubah) ...
     public function manageLevels(Project $project)
     {
         if (Auth::id() !== $project->owner_id) { abort(403); }
@@ -414,8 +467,6 @@ public function updateProjectInfo(Request $request, Project $project)
         return view('projects.settings-levels', compact('project', 'difficultyLevels', 'priorityLevels')); // <-- Ganti nama view jika perlu
     }
 
-    // --- Difficulty Level CRUD ---
-    // ... (Tidak berubah) ...
     public function storeDifficultyLevel(Request $request, Project $project)
     {
         if (Auth::id() !== $project->owner_id) { abort(403); }

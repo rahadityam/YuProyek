@@ -321,16 +321,22 @@
                     </h4>
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm summary-grid">
                         <div class="border border-gray-200 rounded-md p-3">
-                            <dt class="text-gray-500 truncate">Total Nilai Task</dt>
-                            <dd class="mt-1 text-xl print:text-base font-semibold text-blue-600" x-text="formatCurrency(totals.filteredTask)"></dd>
+                            <dl>
+                                <dt class="text-gray-500 truncate">Total Nilai Task</dt>
+                                <dd class="mt-1 text-xl print:text-base font-semibold text-blue-600" x-text="formatCurrency(totals.filteredTask)"></dd>
+                            </dl>
                         </div>
                         <div class="border border-gray-200 rounded-md p-3">
-                            <dt class="text-gray-500 truncate">Total Bonus/Lainnya</dt>
-                            <dd class="mt-1 text-xl print:text-base font-semibold text-purple-600" x-text="formatCurrency(totals.filteredOther)"></dd>
+                            <dl>
+                                <dt class="text-gray-500 truncate">Total Bonus/Lainnya</dt>
+                                <dd class="mt-1 text-xl print:text-base font-semibold text-purple-600" x-text="formatCurrency(totals.filteredOther)"></dd>
+                            </dl>
                         </div>
                         <div class="border border-green-200 bg-green-50 rounded-md p-3">
-                            <dt class="text-green-800 truncate font-medium">Total Sudah Dibayar</dt>
-                            <dd class="mt-1 text-xl print:text-base font-bold text-green-700" x-text="formatCurrency(totals.filteredPaidTask + totals.filteredPaidOther)"></dd>
+                            <dl>
+                                <dt class="text-green-800 truncate font-medium">Total Sudah Dibayar</dt>
+                                <dd class="mt-1 text-xl print:text-base font-bold text-green-700" x-text="formatCurrency(totals.filteredPaidTask + totals.filteredPaidOther)"></dd>
+                            </dl>
                             <p class="text-xs text-green-600 mt-1">
                                 Task: <span x-text="formatCurrency(totals.filteredPaidTask)"></span><br>
                                 Bonus/Lain: <span x-text="formatCurrency(totals.filteredPaidOther)"></span>
@@ -338,17 +344,19 @@
                         </div>
                         @if($isProjectOwner) {{-- Budget Difference hanya relevan untuk owner --}}
                             <div class="border rounded-md p-3 {{ $budgetDifference >= 0 ? 'border-yellow-300 bg-yellow-50' : 'border-red-300 bg-red-50' }}">
-                                <dt class="text-gray-500 truncate">Sisa / Lebih Budget Proyek</dt>
-                                <dd class="mt-1 text-lg font-semibold {{ $budgetDifference >= 0 ? 'text-yellow-700' : 'text-red-700' }}">
-                                    Rp {{ number_format(abs($budgetDifference), 0, ',', '.') }}
-                                    ({{ $budgetDifference >= 0 ? 'Sisa' : 'Melebihi' }})
-                                </dd>
+                                <dl>
+                                    <dt class="text-gray-500 truncate">Sisa / Lebih Budget Proyek</dt>
+                                    <dd class="mt-1 text-lg font-semibold {{ $budgetDifference >= 0 ? 'text-yellow-700' : 'text-red-700' }}">
+                                        Rp {{ number_format(abs($budgetDifference), 0, ',', '.') }}
+                                        ({{ $budgetDifference >= 0 ? 'Sisa' : 'Melebihi' }})
+                                    </dd>
+                                </dl>
                                 <p class="text-xs {{ $budgetDifference >= 0 ? 'text-yellow-600' : 'text-red-600' }} mt-1">
                                     Dibandingkan total estimasi hak gaji keseluruhan proyek.
                                 </p>
                             </div>
                         @else
-                             <div class="border border-transparent rounded-md p-3"> </div>
+                            <div class="border border-transparent rounded-md p-3"> </div>
                         @endif
                     </div>
                     <!-- @if($isProjectOwner)

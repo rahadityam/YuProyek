@@ -12,15 +12,29 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use Illuminate\Http\JsonResponse;
+use App\Notifications\ProfileUpdatedNotification;
 
 class ProfileController extends Controller
 {
     /**
      * Display the user's profile form.
      */
-    public function edit(Request $request): View
+    public function edit(Request $request) // <--- HAPUS TIPE RETURN DARI SINI
     {
         $user = $request->user();
+
+        // Cek jika request adalah API
+        if ($request->wantsJson()) {
+            $user->load('educations', 'documents');
+            
+            return response()->json([
+                'success' => true,
+                'data' => $user
+            ]);
+        }
+        
+        // Jika bukan API, kembalikan view untuk web
         $educations = $user->educations;
         $cv = $user->getCv();
         $portfolio = $user->getPortfolio();
@@ -38,7 +52,7 @@ class ProfileController extends Controller
     /**
      * Update the user's profile information.
      */
-    public function update(Request $request): RedirectResponse
+    public function update(Request $request)
     {
         // Validate main user information
         $validated = $request->validate([
@@ -55,6 +69,8 @@ class ProfileController extends Controller
         ]);
 
         $user = $request->user();
+        
+        $actor = Auth::user();
 
         // Handle profile photo upload
         if ($request->hasFile('profile_photo')) {
@@ -76,11 +92,32 @@ class ProfileController extends Controller
 
         $user->save();
 
+        // 1. Notify the user whose profile was updated
+        $user->notify(new ProfileUpdatedNotification($user, $actor));
+
+        // 2. Notify all PMs of the projects this user is in
+        $projects = $user->projects()->wherePivot('status', 'accepted')->with('owner')->get();
+        foreach ($projects as $project) {
+            $pm = $project->owner;
+            // Don't send a notification if the PM is the one updating their own profile
+            if ($pm && $pm->id !== $actor->id) {
+                $pm->notify(new ProfileUpdatedNotification($user, $actor));
+            }
+        }
+
         // Handle education data
         $this->handleEducationData($request, $user);
 
         // Handle document uploads
         $this->handleDocumentUploads($request, $user);
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Profile has been updated successfully!',
+                'user' => $user->fresh()->load('educations', 'documents')
+            ]);
+        }
 
         return Redirect::route('profile.edit')->with('success', 'Profile has been updated successfully!');
     }

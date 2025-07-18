@@ -47,11 +47,11 @@
                  <span class="block sm:inline">{{ request()->get('success_message', session('success')) }}</span>
              </div>
          @endif
-          @if($errors->has('general'))
-             <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-                  <span class="block sm:inline">{{ $errors->first('general') }}</span>
-              </div>
-          @endif
+          @if(isset($errors) && $errors->has('general'))
+            <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                <span class="block sm:inline">{{ $errors->first('general') }}</span>
+            </div>
+        @endif
 
         {{-- PERBAIKAN: Hapus @submit.prevent dan trigger @input/@change --}}
         <div class="mb-6 bg-gray-50 p-4 rounded-md border border-gray-200">

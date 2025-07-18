@@ -85,10 +85,10 @@
                                             <div id="documents-tab-{{ $user->id }}" class="tab-content hidden">
                                                 <div class="space-y-2 text-sm">
                                                     @if ($user->cv_path)
-                                                    <div><strong>CV:</strong> <a href="{{ asset('storage/' . $user->cv_path) }}" target="_blank" class="text-blue-600 underline">View</a></div>
+                                                    <div><strong>CV:</strong> <a href="{{ asset('storage/' . $user->cv_path) }}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline">View</a></div>
                                                     @endif
                                                     @if ($user->portfolio_path)
-                                                    <div><strong>Portfolio:</strong> <a href="{{ asset('storage/' . $user->portfolio_path) }}" target="_blank" class="text-blue-600 underline">View</a></div>
+                                                    <div><strong>Portfolio:</strong> <a href="{{ asset('storage/' . $user->portfolio_path) }}" target="_blank" rel="noopener noreferrer" class="text-blue-600 underline">View</a></div>
                                                     @endif
                                                 </div>
                                             </div>

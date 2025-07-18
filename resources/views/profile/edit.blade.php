@@ -1,9 +1,9 @@
 <x-app-layout>
     <div x-data="{ 
-            show: {{ session()->has('success') || $errors->any() ? 'true' : 'false' }}, 
+            show: {{ session()->has('success') || (isset($errors) && $errors->any()) ? 'true' : 'false' }}, 
             isSuccess: {{ session()->has('success') ? 'true' : 'false' }},
-            message: '{{ session('success') ?: ($errors->any() ? 'Failed to update profile. Please check the form.' : '') }}' 
-         }"
+            message: '{{ session('success') ?: ((isset($errors) && $errors->any()) ? 'Failed to update profile. Please check the form.' : '') }}' 
+        }"
          x-init="
             if (show) {
                 setTimeout(() => show = false, 4000); // Sembunyikan setelah 4 detik
